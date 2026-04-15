@@ -1,7 +1,16 @@
 ---
 name: wilma
 version: 1.4.1
-description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, messages, and news via the wilma CLI. Start with `wilma summary --json` for a full daily briefing, or drill into specific data with individual commands.
+description: "Access Finland's Wilma school system from AI agents. Use when the user asks about their child's school schedule, homework, exams, grades, messages, or news from Wilma. Fetches data via the wilma CLI; start with `wilma summary --json` for a full daily briefing."
+user-invocable: true
+triggers:
+  - Wilma schedule
+  - homework from Wilma
+  - check my child's school
+  - Finnish school system
+  - wilma messages
+  - upcoming exams Wilma
+  - school grades Wilma
 metadata:
   {
     "openclaw":

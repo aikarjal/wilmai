@@ -1,0 +1,11 @@
+{
+  "name": "tessl-labs/bulk-optimize",
+  "version": "0.2.0",
+  "summary": "Bulk skill optimization for external PR contributions. Detects auto-generated files, merge conflicts, preserves domain expertise, validates syntax. Use when improving multiple external skills for pull requests.",
+  "private": true,
+  "skills": {
+    "bulk-optimize": {
+      "path": "skills/bulk-optimize/SKILL.md"
+    }
+  }
+}
