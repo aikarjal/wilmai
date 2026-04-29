@@ -561,6 +561,24 @@ async function handleCommand(
     return;
   }
 
+  if (command === "attendance") {
+    const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
+    if (!studentInfo && !profile.studentNumber) {
+      await printStudentSelectionHelp(profile, config);
+      return;
+    }
+    const perStudentClient = await WilmaClient.login({
+      ...profile,
+      studentNumber: studentInfo?.studentNumber ?? profile.studentNumber,
+    }, mfaCallback);
+    await outputAttendance(perStudentClient, {
+      date: flags.date,
+      json: flags.json,
+      label: studentInfo?.name ?? undefined,
+    });
+    return;
+  }
+
   if (command === "exams") {
     if (flags.allStudents) {
       await outputAllExams(profile, config, flags.limit ?? 20, flags.json, mfaCallback);
@@ -688,6 +706,7 @@ function printUsage() {
   console.log("  wilma news read <id> [--student <id|name>] [--json]");
   console.log("  wilma messages list [--folder inbox] [--limit 20] [--student <id|name>] [--all-students] [--json]");
   console.log("  wilma messages read <id> [--student <id|name>] [--json]");
+  console.log("  wilma attendance list [--date YYYY-MM-DD] [--student <id|name>] [--json]");
   console.log("  wilma update");
   console.log("  wilma config clear");
   console.log("  wilma --help | -h");
@@ -1219,6 +1238,31 @@ async function outputUpcomingExams(
   slice.forEach((exam) => {
     const topic = exam.topic ? ` — ${compactText(exam.topic)}` : "";
     console.log(`- ${exam.date}  ${exam.subject}: ${exam.name}${topic}`);
+  });
+}
+
+async function outputAttendance(
+  client: WilmaClient,
+  opts: { date?: string; json?: boolean; label?: string }
+) {
+  const notes = await client.attendance.list({ date: opts.date });
+  if (opts.json) {
+    console.log(JSON.stringify(notes, null, 2));
+    return;
+  }
+  const date = opts.date ?? new Date().toISOString().slice(0, 10);
+  const prefix = opts.label ? `[${opts.label}] ` : "";
+  console.log(`\n${prefix}Lesson notes for ${date} (${notes.length})`);
+  if (!notes.length) {
+    console.log("  No lesson notes found.");
+    return;
+  }
+  notes.forEach((note) => {
+    const time = note.start && note.end ? ` (${note.start}-${note.end})` : "";
+    const type = note.typeLabel ? ` [${note.typeLabel}]` : "";
+    const teacher = note.teacher ? ` ${note.teacher}` : "";
+    const subject = note.subject ? ` [${note.subject}]` : "";
+    console.log(`-${time}${type}${teacher}${subject}`);
   });
 }
 
