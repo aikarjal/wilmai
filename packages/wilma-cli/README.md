@@ -64,6 +64,13 @@ wilma messages list [--folder inbox] [--limit 20] [--student <id|name>] [--all-s
 wilma messages read <id> [--student <id|name>] [--json]
 ```
 
+### Attendance / lesson notes
+```bash
+wilma attendance list [--date YYYY-MM-DD] [--student <id|name>] [--all-students] [--json]
+```
+
+Shows lesson notes (type labels, subjects, teachers) for a given date. Defaults to today if --date is omitted.
+
 ### Other
 ```bash
 wilma kids list [--json]

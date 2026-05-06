@@ -1,5 +1,5 @@
 import { WilmaSession, MfaRequiredError } from "./session.js";
-import type { Exam, Message, MessageFolder, NewsItem, OverviewData, WilmaProfile, StudentInfo } from "./types.js";
+import type { Exam, Message, MessageFolder, NewsItem, OverviewData, WilmaProfile, StudentInfo, LessonNote } from "./types.js";
 import { parseWilmaTimestamp } from "./parsers/dates.js";
 import { parseMessagesList, parseMessageDetailHtml } from "./parsers/messages.js";
 import {
@@ -9,6 +9,7 @@ import {
   parseNewsListHtml,
 } from "./parsers/news.js";
 import { parseExamsHtml } from "./parsers/exams.js";
+import { parseAttendanceHtml } from "./parsers/attendance.js";
 import { parseOverview } from "./parsers/overview.js";
 import { parseStudentsFromHome } from "./parsers/students.js";
 
@@ -138,6 +139,20 @@ export class WilmaClient {
       const resp = await this.session.get(path);
       const text = await resp.text();
       return parseExamsHtml(text);
+    },
+  };
+
+  attendance = {
+    list: async (opts?: { date?: string }): Promise<LessonNote[]> => {
+      const params = new URLSearchParams();
+      if (opts?.date) {
+        params.set("date", opts.date);
+      }
+      const query = params.toString();
+      const path = query ? `/attendance/view?${query}` : "/attendance/view";
+      const resp = await this.session.get(path);
+      const text = await resp.text();
+      return parseAttendanceHtml(text, opts?.date ?? "");
     },
   };
 

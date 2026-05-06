@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### New commands
+
+- **`wilma attendance list`** - View student attendance / lesson notes for a given date (defaults to today). Supports `--date YYYY-MM-DD`, `--all-students`, and `--json`.
+
+### New in wilma-client
+
+- Added `client.attendance.list()` method that scrapes the Wilma `/attendance/view` page.
+- Added `LessonNote` type with date, start/end time, subject, teacher, and type label.
+
 ## 1.1.0 (2026-02-09)
 
 ### New commands

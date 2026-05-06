@@ -562,6 +562,10 @@ async function handleCommand(
   }
 
   if (command === "attendance") {
+    if (flags.allStudents) {
+      await outputAllAttendance(profile, config, { date: flags.date, json: flags.json }, mfaCallback);
+      return;
+    }
     const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
     if (!studentInfo && !profile.studentNumber) {
       await printStudentSelectionHelp(profile, config);
@@ -706,7 +710,7 @@ function printUsage() {
   console.log("  wilma news read <id> [--student <id|name>] [--json]");
   console.log("  wilma messages list [--folder inbox] [--limit 20] [--student <id|name>] [--all-students] [--json]");
   console.log("  wilma messages read <id> [--student <id|name>] [--json]");
-  console.log("  wilma attendance list [--date YYYY-MM-DD] [--student <id|name>] [--json]");
+  console.log("  wilma attendance list [--date YYYY-MM-DD] [--student <id|name>] [--all-students] [--json]");
   console.log("  wilma update");
   console.log("  wilma config clear");
   console.log("  wilma --help | -h");
@@ -1830,6 +1834,39 @@ async function outputAllExams(
       console.log(`- ${exam.date} ${exam.subject}: ${exam.name}${topic}`);
     });
   });
+}
+
+async function outputAllAttendance(
+  profile: WilmaProfile,
+  config: { profiles: StoredProfile[]; lastProfileId?: string | null },
+  opts: { date?: string; json?: boolean },
+  onMfa?: MfaCallback
+) {
+  const students = await getStudentsForCommand(profile, config);
+  const results: { student: StudentInfo; notes: Awaited<ReturnType<WilmaClient["attendance"]["list"]>> }[] = [];
+  for (const student of students) {
+    const client = await WilmaClient.login({ ...profile, studentNumber: student.studentNumber }, onMfa);
+    const notes = await client.attendance.list({ date: opts.date });
+    results.push({ student, notes });
+  }
+  if (opts.json) {
+    console.log(JSON.stringify({ students: results.map((r) => ({ student: r.student, items: r.notes })) }, null, 2));
+    return;
+  }
+  for (const r of results) {
+    if (!r.notes.length) {
+      console.log(`\n[${r.student.name}]  No lesson notes found.`);
+      continue;
+    }
+    console.log(`\n[${r.student.name}]`);
+    r.notes.forEach((note) => {
+      const time = note.start && note.end ? ` (${note.start}-${note.end})` : "";
+      const type = note.typeLabel ? ` [${note.typeLabel}]` : "";
+      const teacher = note.teacher ? ` ${note.teacher}` : "";
+      const subject = note.subject ? ` [${note.subject}]` : "";
+      console.log(`-${time}${type}${teacher}${subject}`);
+    });
+  }
 }
 
 async function outputAllOverviewCommand(

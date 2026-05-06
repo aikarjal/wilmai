@@ -4,7 +4,7 @@
 
 # wilmai
 
-**wilmai** (wilm.ai) is an independent, open-source CLI that reads data from Finland's Wilma school system — schedules, homework, exams, grades, messages, and news.
+**wilmai** (wilm.ai) is an independent, open-source CLI that reads data from Finland's Wilma school system — schedules, homework, exams, grades, attendance/lesson notes, messages, and news.
 
 Use it **interactively as a parent** to quickly scan what matters across your kids, or wire it into **AI agents** (OpenClaw, Claude Code, etc.) as a skill so they can help you keep up with school life.
 
@@ -46,6 +46,7 @@ wilma schedule list --when tomorrow --json
 wilma homework list --all-students --json
 wilma exams list --all-students --json
 wilma grades list --all-students --json
+wilma attendance list --all-students --json
 ```
 
 Config is stored in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`). Override with `WILMAI_CONFIG_PATH`.
