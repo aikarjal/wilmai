@@ -1,7 +1,7 @@
 ---
 name: wilma
-version: 1.4.1
-description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, messages, and news via the wilma CLI. Start with `wilma summary --json` for a full daily briefing, or drill into specific data with individual commands.
+version: 1.5.0
+description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, attendance/lesson notes (merkinnät), messages, and news via the wilma CLI. Start with `wilma summary --json` for a full daily briefing, or drill into specific data with individual commands.
 metadata:
   {
     "openclaw":
@@ -81,12 +81,15 @@ wilma exams list --student <id|name> --json
 wilma grades list --student <id|name> --json
 ```
 
-### Attendance / lesson notes
+### Attendance / lesson notes (merkinnät)
 ```bash
 wilma attendance list --student <id|name> --json
 wilma attendance list --date 2026-03-10 --student <id|name> --json
+wilma attendance list --all-students --json
 ```
-Defaults to today if --date is omitted.
+Returns Wilma's per-lesson notes ("merkinnät") for a single day: positive feedback, behavioral remarks, missing materials, and absence categorizations (medical, explained, unexplained). Defaults to today if `--date` is omitted; teachers usually fill notes during or after class, so for a morning agent run prefer `--date <yesterday>`.
+
+Each note has `start`/`end` times derived from Wilma's hour-grid headers — accurate to the lesson hour, with 45-minute period assumed. `subject` is the Wilma course code (e.g. `MA_8LV` = math, 8th grade), and `typeLabel` is the human-readable Finnish reason or remark.
 
 ### List students
 ```bash

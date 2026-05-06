@@ -1,7 +1,7 @@
 ---
 name: wilma-triage
-version: 1.0.1
-description: Daily triage of Wilma school notifications for Finnish parents. Fetches exams, messages, news, schedules, and homework — filters for actionable items, syncs exams to Google Calendar, and reports via chat. Requires the `wilma` skill and `gog` CLI (or `gog` skill from ClawHub) for calendar access.
+version: 1.1.0
+description: Daily triage of Wilma school notifications for Finnish parents. Fetches exams, messages, news, schedules, homework, and lesson notes (merkinnät) — filters for actionable items, syncs exams to Google Calendar, and reports via chat. Requires the `wilma` skill and `gog` CLI (or `gog` skill from ClawHub) for calendar access.
 metadata:
   {
     "openclaw":
@@ -59,6 +59,11 @@ Over time, the user will give feedback on what to report and what to skip — st
    wilma messages list --all-students --limit 10 --json
    wilma news list --all-students --limit 10 --json
 
+   # Lesson notes (merkinnät) — fetch yesterday's notes during a morning run,
+   # since teachers fill them during/after class. For a same-day check later
+   # in the afternoon, omit --date.
+   wilma attendance list --all-students --date <yesterday-YYYY-MM-DD> --json
+
    # Read full content when subject line looks actionable
    wilma messages read <id> --student <name> --json
    wilma news read <id> --student <name> --json
@@ -95,6 +100,18 @@ Wilma messages come from different sources and have very different signal-to-noi
 
 **Rule of thumb:** If a message is from a teacher (class teacher or subject teacher), always read it. If it's from the school office or city, skim the subject and skip unless it's clearly actionable.
 
+## Understanding Lesson Notes (merkinnät)
+
+Lesson notes are short per-lesson remarks teachers leave in Wilma. They fall into a few categories — signal varies a lot:
+
+- **Behavioral concerns** (e.g. "Sinulta puuttui opiskeluvälineitä" = "you were missing study materials", "Häiritsi tuntia" = "disrupted class") — **Report.** Parents typically want to know and may want to follow up.
+- **Unexplained absences** ("Selvittämätön poissaolo") — **Report immediately.** Could indicate truancy or that the parent forgot to file an excuse in Wilma.
+- **Explained absences** ("Terveydellinen syy" = medical, "Muu selvitetty poissaolo" = other-explained) — **Report briefly** as confirmation that the absence is logged. Skip if MEMORY.md says the parent doesn't want absence confirmations.
+- **Positive feedback** ("Hyvä!", "Osasit toimia ryhmän vastuullisena jäsenenä") — **Skip by default.** Mention occasionally if MEMORY.md indicates the parent wants positive notes too.
+- **Note with parenthetical detail** (e.g. "Muu selvitetty poissaolo; Lähti 13.00" = "left at 13:00") — the extra clause after the semicolon is often the most useful part. Surface it.
+
+The `typeLabel` field in the JSON is the full Finnish reason; `subject` is the course code (e.g. `MA_8LV`). Group consecutive same-subject same-type notes when reporting (one absence often spans multiple periods).
+
 ## Triage Rules
 
 ### Always Report (Actionable)
@@ -105,12 +122,14 @@ Wilma messages come from different sources and have very different signal-to-noi
 - After-school events kids might want to attend (discos, movie nights)
 - Exam schedule updates or new exams
 - Cancelled events that are on the calendar → remove them
+- Behavioral lesson notes or unexplained absences (see merkinnät section above)
 
 ### Report Briefly (Worth Mentioning)
 - Field trips, themed days with date info
 - School closures, holiday schedule changes
 - Health notices (lice alerts, illness outbreaks)
 - New grades (brief mention with grade)
+- Explained absences logged in lesson notes (confirmation only)
 
 ### Important: Always Read Weekly Letters (viikkoviesti)
 Weekly letters from class teachers often contain actionable items buried in the text: exams, materials to bring, schedule changes, field trips. **Always read the full content** of viikkoviesti messages — do not skip based on subject line alone.
@@ -120,6 +139,7 @@ Weekly letters from class teachers often contain actionable items buried in the 
 - Generic "welcome back" or seasonal greetings
 - City-wide informational notices (health campaigns, transport info, surveys)
 - Parent union messages (unless user is actively involved — check MEMORY.md)
+- Positive lesson notes (unless MEMORY.md says otherwise)
 
 **Check MEMORY.md for additional skip/report rules** the user has provided over time (e.g., subject overrides, school-specific filtering).
 
@@ -143,6 +163,7 @@ Stagger with other morning jobs (e.g., email check at 07:05) to avoid API rate l
 Child A (8th grade)
 • Math exam tomorrow — yhtälöt, kpl 1-8
 • Friday short day (9:20-12:35) — kulttuuripäivä, bring laptop + outdoor clothes
+• Lesson note (yesterday, MA_8LV): "Sinulta puuttui opiskeluvälineitä" — kirja jäi kotiin
 
 Child B (6th grade)
 • No actionable items
