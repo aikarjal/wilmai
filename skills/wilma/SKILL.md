@@ -81,6 +81,13 @@ wilma exams list --student <id|name> --json
 wilma grades list --student <id|name> --json
 ```
 
+### Attendance / lesson notes
+```bash
+wilma attendance list --student <id|name> --json
+wilma attendance list --date 2026-03-10 --student <id|name> --json
+```
+Defaults to today if --date is omitted.
+
 ### List students
 ```bash
 wilma kids list --json

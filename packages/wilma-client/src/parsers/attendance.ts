@@ -72,11 +72,14 @@ export function parseAttendanceHtml(
             }
           }
 
-          // Derive start/end time from column position
-          // Columns 2+ correspond to hours starting at 8:00
+          // Derive start/end time from column position.
+          // Columns 2+ (i=2,3,4...) correspond to hours 08:00, 09:00, 10:00...
+          // Assumption: 45-minute lessons starting at 08:00, one column per hour.
+          // This matches the default Wilma timetable layout in most Finnish schools.
+          // If Wilma changes the column-to-time mapping, this needs updating.
           const hour = 8 + (i - 2);
-          let start = "";
-          let end = "";
+          let start = null;
+          let end = null;
           if (hour >= 8 && hour <= 15) {
             start = `${String(hour).padStart(2, "0")}:00`;
             end = `${String(hour).padStart(2, "0")}:45`;

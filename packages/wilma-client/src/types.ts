@@ -128,3 +128,19 @@ export interface OverviewData {
   homework: HomeworkItem[];
   fetchedAt: Date;
 }
+
+/**
+ * A lesson note from the attendance/lesson notes page.
+ * start/end are string | null — null when time-slot derivation
+ * falls outside the assumed 08:00–15:00 range (see parseAttendanceHtml).
+ */
+export interface LessonNote {
+  /** YYYY-MM-DD */
+  date: string;
+  start: string | null;
+  end: string | null;
+  subject: string;
+  typeLabel: string;
+  typeClass: string;
+  teacher: string;
+}

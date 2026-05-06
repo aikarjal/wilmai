@@ -2,6 +2,7 @@ export type {
   Exam,
   ExamGrade,
   HomeworkItem,
+  LessonNote,
   Message,
   MessageFolder,
   Municipality,
