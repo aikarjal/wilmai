@@ -168,6 +168,11 @@ MESSAGES (last 7 days)
             <code className="cmd">wilma grades</code>
           </div>
           <div className="card">
+            <h3>Lesson notes</h3>
+            <p className="card-prompt">&quot;Any feedback or absences logged today?&quot;</p>
+            <code className="cmd">wilma attendance</code>
+          </div>
+          <div className="card">
             <h3>Messages</h3>
             <p className="card-prompt">&quot;Any new messages from school?&quot;</p>
             <code className="cmd">wilma messages</code>

@@ -14,3 +14,7 @@ coverage
 .vercel
 
 .wilmai
+
+# pnpm is the workspace package manager — npm lockfiles are accidental artifacts
+package-lock.json
+yarn.lock

@@ -1,15 +1,16 @@
 # Changelog
 
-## Unreleased
+## 1.5.0 (2026-05-06)
 
 ### New commands
 
-- **`wilma attendance list`** - View student attendance / lesson notes for a given date (defaults to today). Supports `--date YYYY-MM-DD`, `--all-students`, and `--json`.
+- **`wilma attendance list`** - View student attendance / lesson notes (merkinnät) for a given date (defaults to today). Supports `--date YYYY-MM-DD`, `--all-students`, and `--json`.
 
-### New in wilma-client
+### New in wilma-client (1.4.0)
 
 - Added `client.attendance.list()` method that scrapes the Wilma `/attendance/view` page.
 - Added `LessonNote` type with date, start/end time, subject, teacher, and type label.
+- Hour mapping derived from the `<thead>` colspans, so schedules outside the default 08:00–15:00 range and rows with `colspan` cells are handled correctly.
 
 ## 1.1.0 (2026-02-09)
 
