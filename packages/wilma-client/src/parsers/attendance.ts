@@ -4,67 +4,77 @@ import type { LessonNote } from "../types.js";
 /**
  * Parse Wilma's /attendance/view HTML page into structured LessonNote objects.
  *
- * The attendance page renders lesson notes in a table where:
- * - First <td> = weekday abbreviation (Ma, Ti, Ke, To, Pe)
- * - Second <td> = date in DD.M.YYYY format
- * - Subsequent <td> with class 'at-tpNN' = lesson notes at time positions
- * - title attribute on note cells = "SubjectCode; TypeLabel; TeacherCode"
- * - A separate legend table maps type codes to labels (we skip this entirely)
+ * The attendance table is a fine-grained grid: <thead> declares hour-group
+ * headers like `<th colspan="3">9</th>`, and tbody rows mix `<td>` cells with
+ * varying colspans (filler `<td colspan="2">`, event `<td colspan="3">`, etc).
+ * To map an event `<td>` to its hour, we walk cumulative grid columns (sum of
+ * colspans) within the row and look up the column's hour group from the thead.
+ *
+ * Counting `<td>` indices alone is wrong: a `<td colspan="3">` filler skips
+ * three grid columns but consumes one index, so by the third or fourth cell
+ * the index has drifted from the true grid column.
+ *
+ * Title attribute on event cells: "TypeLabel /TeacherName" or
+ * "SubjectCode; TypeLabel /TeacherName".
  */
-export function parseAttendanceHtml(
-  html: string,
-  date: string
-): LessonNote[] {
+export function parseAttendanceHtml(html: string, date: string): LessonNote[] {
   const $ = cheerio.load(html);
   const notes: LessonNote[] = [];
-
-  // Convert target date to Finnish format DD.M.YYYY for comparison
-  // Input is YYYY-MM-DD
   const targetFinnish = dateToFinnish(date);
 
-  // Find the main attendance table (the one with at-tp cells in tbody)
-  // Skip legend tables by only looking at the tbody of the first table with date cells
-  $("table tbody").each((_, tbody) => {
-    $(tbody).find("tr").each((_, row) => {
+  $("table").each((_, table) => {
+    const $table = $(table);
+
+    // Build a flat array indexed by grid-column whose value is the hour.
+    // thead has hour-labeled <th>s with colspans (e.g. <th colspan="3">9</th>);
+    // replicate each hour by its colspan to get a column->hour lookup.
+    // Non-numeric headers (Päivämäärä, Yhteensä, Huomioita) are skipped.
+    const hourMap: number[] = [];
+    $table.find("thead th").each((_, th) => {
+      const text = $(th).text().trim();
+      const hour = parseInt(text, 10);
+      if (!Number.isNaN(hour) && hour >= 0 && hour <= 23) {
+        const colspan = parseInt($(th).attr("colspan") ?? "1", 10) || 1;
+        for (let i = 0; i < colspan; i++) hourMap.push(hour);
+      }
+    });
+    if (hourMap.length === 0) return; // not the attendance table (e.g. legend)
+
+    $table.find("tbody tr").each((_, row) => {
       const cells = $(row).find("td").toArray();
-      if (cells.length < 3) return; // need at least weekday, date, and one note
+      if (cells.length < 3) return; // need at least weekday, date, and one slot
 
-      // First cell = weekday, second cell = date
       const rowDate = $(cells[1]).text().trim();
-      if (!rowDate) return;
+      if (!rowDate || rowDate !== targetFinnish) return;
 
-      // Skip if this row is not for the requested date
-      if (rowDate !== targetFinnish) return;
-
-      // Process remaining cells for notes
+      // Walk event-grid cells. Indices 0..1 are weekday + date (outside grid).
+      let gridCol = 0;
       for (let i = 2; i < cells.length; i++) {
-        const cell = cells[i];
-        const classes = ($(cell).attr("class") ?? "").split(/\s+/);
-        const tpClass = classes.find(c => /^at-tp\d+$/.test(c));
+        const $cell = $(cells[i]);
+        const colspan = parseInt($cell.attr("colspan") ?? "1", 10) || 1;
+        const tpClass = (($cell.attr("class") ?? "").match(/\bat-tp\d+\b/) ?? [])[0];
 
         if (tpClass) {
-          const title = ($(cell).attr("title") ?? "").trim();
-          const cellText = $(cell).text().trim();
+          const title = ($cell.attr("title") ?? "").trim();
+          const cellText = $cell.text().trim();
 
-          // Parse title. Two formats observed:
+          // Title formats observed:
           //   "TypeLabel /TeacherFullName"
           //   "SubjectCode; TypeLabel /TeacherFullName"
+          //   "SubjectCode; TypeLabel; ExtraNote /TeacherFullName"
           let subject = "";
           let typeLabel = "";
           let teacher = cellText;
 
           if (title) {
             let rest = title;
-            // Check for subject prefix before semicolon
             const semiIdx = rest.indexOf(";");
             if (semiIdx > 0) {
               subject = rest.slice(0, semiIdx).trim();
               rest = rest.slice(semiIdx + 1).trim();
             }
-            // Split type label and teacher by " /" or " / "
             const slashIdx = rest.lastIndexOf(" /");
             if (slashIdx > 0) {
-              // Check if there's a space after the slash too
               const afterSlash = rest.slice(slashIdx + 2);
               const spaceAfter = afterSlash.startsWith(" ") ? 1 : 0;
               typeLabel = rest.slice(0, slashIdx).trim();
@@ -72,17 +82,18 @@ export function parseAttendanceHtml(
             }
           }
 
-          // Derive start/end time from column position.
-          // Columns 2+ (i=2,3,4...) correspond to hours 08:00, 09:00, 10:00...
-          // Assumption: 45-minute lessons starting at 08:00, one column per hour.
-          // This matches the default Wilma timetable layout in most Finnish schools.
-          // If Wilma changes the column-to-time mapping, this needs updating.
-          const hour = 8 + (i - 2);
-          let start = null;
-          let end = null;
-          if (hour >= 8 && hour <= 15) {
-            start = `${String(hour).padStart(2, "0")}:00`;
-            end = `${String(hour).padStart(2, "0")}:45`;
+          // Map cell's grid range to start/end via the thead-derived map.
+          // start = hour at the cell's first grid column.
+          // end   = hour at the cell's last grid column + 45 min.
+          // If the cell extends past the mapped grid (shouldn't happen with
+          // well-formed tables), report null so consumers don't see a wrong time.
+          const startHour = hourMap[gridCol];
+          const endHour = hourMap[gridCol + colspan - 1];
+          let start: string | null = null;
+          let end: string | null = null;
+          if (startHour !== undefined && endHour !== undefined) {
+            start = `${pad(startHour)}:00`;
+            end = `${pad(endHour)}:45`;
           }
 
           notes.push({
@@ -95,6 +106,7 @@ export function parseAttendanceHtml(
             teacher,
           });
         }
+        gridCol += colspan;
       }
     });
   });
@@ -102,8 +114,12 @@ export function parseAttendanceHtml(
   return notes;
 }
 
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
 function dateToFinnish(date: string): string {
-  // Convert YYYY-MM-DD to D.M.YYYY (Finnish format, no leading zeros)
+  // Convert YYYY-MM-DD to D.M.YYYY (Finnish format, no leading zeros).
   if (!date) return "";
   const parts = date.split("-");
   if (parts.length !== 3) return date;
