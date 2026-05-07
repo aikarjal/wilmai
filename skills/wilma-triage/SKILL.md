@@ -1,6 +1,6 @@
 ---
 name: wilma-triage
-version: 1.1.0
+version: 1.2.0
 description: Daily triage of Wilma school notifications for Finnish parents. Fetches exams, messages, news, schedules, homework, and lesson notes (merkinnät) — filters for actionable items, syncs exams to Google Calendar, and reports via chat. Requires the `wilma` skill and `gog` CLI (or `gog` skill from ClawHub) for calendar access.
 metadata:
   {
@@ -133,6 +133,26 @@ The `typeLabel` field in the JSON is the full Finnish reason; `subject` is the c
 
 ### Important: Always Read Weekly Letters (viikkoviesti)
 Weekly letters from class teachers often contain actionable items buried in the text: exams, materials to bring, schedule changes, field trips. **Always read the full content** of viikkoviesti messages — do not skip based on subject line alone.
+
+### Day-Before Logistics (critical!)
+
+Viikkoviestit and teacher messages often contain **operational details for upcoming days** that don't map to calendar events but are essential for parents the day/evening before:
+
+- **Modified start/end times** (e.g., "9:30 kouluun" instead of the normal 8:30)
+- **What to bring/pack** (water bottle, outdoor clothes, snacks, specific gear)
+- **Which lessons are cancelled** due to trips or events (e.g., no ET, no electives)
+- **Pickup/return time changes** (e.g., "paluu koululle noin klo 15")
+- **Order of the day** (e.g., "exam first, then trip immediately after")
+
+**These details are just as important as exams and schedule changes.** A parent who knows there's a Superpark trip but doesn't know school starts at 9:30 instead of 8:30 has incomplete information.
+
+**Workflow:**
+1. When reading viikkoviestit, extract ALL day-specific logistics for the next 2-3 school days
+2. If today's triage finds logistics for tomorrow or the day after, **always report them** even if the underlying event (trip, exam) is already on the calendar
+3. Include: modified times, what to bring, cancelled lessons, transport details, return times
+4. Don't assume calendar sync = job done — the calendar has the event but not the logistics
+
+**Example of what gets missed without this:** Calendar shows "Superpark trip" and "History exam" on Friday. But the viikkoviesti says school starts at 9:30 (not 8:30), history exam is first, bring water bottle + snacks, no ET or electives, return around 15:00. All of that is critical for the parent to know the evening before.
 
 ### Skip Silently
 - Concerts, cultural performances (FYI only)
