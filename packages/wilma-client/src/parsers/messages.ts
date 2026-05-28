@@ -85,9 +85,49 @@ export function parseMessageDetailHtml(html: string, messageId: number): Message
   }
 
   let content: string | null = null;
-  const hidden = $("div.ckeditor.hidden").first();
-  if (hidden.length) {
-    content = hidden.text().trim();
+
+  // Check for threaded replies first (m-replybox elements)
+  const replyBoxes = $("div.m-replybox.hidden");
+  if (replyBoxes.length > 0) {
+    // Pick the last reply that isn't our own (m-replybox-me)
+    // Filter: exclude m-replybox-me (our own replies)
+    const otherReplies = replyBoxes.filter(function () {
+      return !$(this).hasClass("m-replybox-me");
+    });
+    if (otherReplies.length > 0) {
+      // Get the latest reply (last one)
+      const latest = otherReplies.last();
+      const inner = latest.find("div.inner.hidden");
+      if (inner.length) {
+        content = inner.text().trim();
+        // Update sender from the reply box header
+        const replySender = latest.find("a.profile-link").first();
+        if (replySender.length) {
+          senderName = replySender.text().trim();
+          sendersJson = {
+            senders: [
+              {
+                Name: senderName,
+                Href: replySender.attr("href"),
+              },
+            ],
+          };
+        }
+        // Update timestamp from reply header (e.g. "vastasi tänään klo 14:45")
+        const replyHeaderText = latest.find("h2").first().text().trim();
+        if (replyHeaderText) {
+          sentAt = parseWilmaTimestamp(replyHeaderText);
+        }
+      }
+    }
+  }
+
+  // Fallback: original message content (ckeditor.hidden)
+  if (!content) {
+    const hidden = $("div.ckeditor.hidden").first();
+    if (hidden.length) {
+      content = hidden.text().trim();
+    }
   }
 
   if (!content && panelBody.length) {
