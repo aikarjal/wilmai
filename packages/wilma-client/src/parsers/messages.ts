@@ -85,9 +85,56 @@ export function parseMessageDetailHtml(html: string, messageId: number): Message
   }
 
   let content: string | null = null;
-  const hidden = $("div.ckeditor.hidden").first();
-  if (hidden.length) {
-    content = hidden.text().trim();
+
+  const replyBoxes = $("div.m-replybox.hidden");
+  if (replyBoxes.length > 0) {
+    const otherReplies = replyBoxes.filter(function () {
+      return !$(this).hasClass("m-replybox-me");
+    });
+    if (otherReplies.length > 0) {
+      const latest = otherReplies.last();
+      const inner = latest.find("div.inner.hidden");
+      if (inner.length) {
+        content = inner.text().trim();
+        const replyHeaderText = latest.find("h2").first().text().trim();
+        const replySender = latest.find("a.profile-link").first();
+
+        if (replySender.length) {
+          senderName = replySender.text().trim();
+          sendersJson = {
+            senders: [
+              {
+                Name: senderName,
+                Href: replySender.attr("href"),
+              },
+            ],
+          };
+        } else {
+          const replySenderName = extractReplySenderName(replyHeaderText);
+          if (replySenderName) {
+            senderName = replySenderName;
+            sendersJson = {
+              senders: [
+                {
+                  Name: senderName,
+                },
+              ],
+            };
+          }
+        }
+
+        if (replyHeaderText) {
+          sentAt = parseWilmaTimestamp(extractReplyTimestampText(replyHeaderText));
+        }
+      }
+    }
+  }
+
+  if (!content) {
+    const hidden = $("div.ckeditor.hidden").first();
+    if (hidden.length) {
+      content = hidden.text().trim();
+    }
   }
 
   if (!content && panelBody.length) {
@@ -150,4 +197,15 @@ export function debugMessageFields(data: unknown): string[] {
 
 function compactText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function extractReplyTimestampText(headerText: string): string {
+  const absoluteDateTime = /(\d{1,2}\.\d{1,2}\.\d{4}\s+\d{1,2}:\d{2})/.exec(headerText);
+  return absoluteDateTime?.[1] ?? headerText;
+}
+
+function extractReplySenderName(headerText: string): string | null {
+  const match = /^(.+?)\s+(?:vastasi|svarade|replied)\b/i.exec(compactText(headerText));
+  const sender = match?.[1]?.trim();
+  return sender || null;
 }
