@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.1 (2026-05-30)
+
+### Fixed
+
+- **`wilma messages`** now extracts the latest non-self threaded reply content from Wilma message detail pages instead of returning the original parent message.
+- Reply sender and timestamp metadata are parsed from Wilma threaded reply headers, including plain-text senders and absolute `DD.MM.YYYY HH:MM` timestamps.
+
+### New in wilma-client (1.4.1)
+
+- Added parser coverage for threaded Wilma message replies and fallback behavior when a thread only contains the user's own replies.
+
 ## 1.5.0 (2026-05-06)
 
 ### New commands
