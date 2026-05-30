@@ -86,22 +86,19 @@ export function parseMessageDetailHtml(html: string, messageId: number): Message
 
   let content: string | null = null;
 
-  // Check for threaded replies first (m-replybox elements)
   const replyBoxes = $("div.m-replybox.hidden");
   if (replyBoxes.length > 0) {
-    // Pick the last reply that isn't our own (m-replybox-me)
-    // Filter: exclude m-replybox-me (our own replies)
     const otherReplies = replyBoxes.filter(function () {
       return !$(this).hasClass("m-replybox-me");
     });
     if (otherReplies.length > 0) {
-      // Get the latest reply (last one)
       const latest = otherReplies.last();
       const inner = latest.find("div.inner.hidden");
       if (inner.length) {
         content = inner.text().trim();
-        // Update sender from the reply box header
+        const replyHeaderText = latest.find("h2").first().text().trim();
         const replySender = latest.find("a.profile-link").first();
+
         if (replySender.length) {
           senderName = replySender.text().trim();
           sendersJson = {
@@ -112,17 +109,27 @@ export function parseMessageDetailHtml(html: string, messageId: number): Message
               },
             ],
           };
+        } else {
+          const replySenderName = extractReplySenderName(replyHeaderText);
+          if (replySenderName) {
+            senderName = replySenderName;
+            sendersJson = {
+              senders: [
+                {
+                  Name: senderName,
+                },
+              ],
+            };
+          }
         }
-        // Update timestamp from reply header (e.g. "vastasi tänään klo 14:45")
-        const replyHeaderText = latest.find("h2").first().text().trim();
+
         if (replyHeaderText) {
-          sentAt = parseWilmaTimestamp(replyHeaderText);
+          sentAt = parseWilmaTimestamp(extractReplyTimestampText(replyHeaderText));
         }
       }
     }
   }
 
-  // Fallback: original message content (ckeditor.hidden)
   if (!content) {
     const hidden = $("div.ckeditor.hidden").first();
     if (hidden.length) {
@@ -190,4 +197,15 @@ export function debugMessageFields(data: unknown): string[] {
 
 function compactText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function extractReplyTimestampText(headerText: string): string {
+  const absoluteDateTime = /(\d{1,2}\.\d{1,2}\.\d{4}\s+\d{1,2}:\d{2})/.exec(headerText);
+  return absoluteDateTime?.[1] ?? headerText;
+}
+
+function extractReplySenderName(headerText: string): string | null {
+  const match = /^(.+?)\s+(?:vastasi|svarade|replied)\b/i.exec(compactText(headerText));
+  const sender = match?.[1]?.trim();
+  return sender || null;
 }
