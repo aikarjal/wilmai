@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.2 (2026-07-06)
+
+### Fixed
+
+- **`wilma schedule list --date YYYY-MM-DD`** now fetches Wilma's schedule page for the requested date instead of relying only on the `/overview` payload, which can omit published future timetables.
+- **`wilma schedule list --weekday ...`** and `--all-students` schedule lookups use the same date-aware schedule fetch path.
+
+### New in wilma-client (1.4.2)
+
+- Added `client.schedule.list({ date })` for date-specific schedule retrieval.
+- Added parser coverage for Wilma schedule page `eventsJSON` HTML payloads.
+
 ## 1.5.1 (2026-05-30)
 
 ### Fixed

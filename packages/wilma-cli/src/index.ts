@@ -1140,15 +1140,16 @@ function currentWeekBounds(): [string, string] {
 
 const DAY_NAMES = ["Su", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-async function outputSchedule(
-  client: WilmaClient,
-  opts: { when: string; date?: string; weekday?: string; json?: boolean; label?: string }
-) {
-  const overview = await client.overview.get();
-  const when = opts.when || "week";
+type ScheduleDateSelection = {
+  when: string;
+  startDate: string;
+  endDate: string;
+  queryDate?: string;
+  outputWhen: string;
+};
 
-  let startDate: string;
-  let endDate: string;
+function resolveScheduleDateSelection(opts: { when?: string; date?: string; weekday?: string }): ScheduleDateSelection {
+  const when = opts.when || "week";
 
   if (opts.date && opts.weekday) {
     console.error("Use either --date or --weekday, not both.");
@@ -1157,26 +1158,58 @@ async function outputSchedule(
 
   if (opts.date) {
     const parsed = parseIsoDateOrExit(opts.date);
-    startDate = endDate = parsed;
-  } else if (opts.weekday) {
-    const parsed = nextDateForWeekday(opts.weekday);
-    startDate = endDate = parsed;
-  } else if (when === "today") {
-    startDate = endDate = todayString();
-  } else if (when === "tomorrow") {
-    startDate = endDate = nextSchoolDay();
-  } else {
-    [startDate, endDate] = currentWeekBounds();
+    return {
+      when,
+      startDate: parsed,
+      endDate: parsed,
+      queryDate: parsed,
+      outputWhen: "date",
+    };
   }
 
-  const lessons = overview.schedule.filter(
+  if (opts.weekday) {
+    const parsed = nextDateForWeekday(opts.weekday);
+    return {
+      when,
+      startDate: parsed,
+      endDate: parsed,
+      queryDate: parsed,
+      outputWhen: "weekday",
+    };
+  }
+
+  if (when === "today") {
+    const date = todayString();
+    return { when, startDate: date, endDate: date, outputWhen: when };
+  }
+
+  if (when === "tomorrow") {
+    const date = nextSchoolDay();
+    return { when, startDate: date, endDate: date, outputWhen: when };
+  }
+
+  const [startDate, endDate] = currentWeekBounds();
+  return { when, startDate, endDate, outputWhen: when };
+}
+
+async function outputSchedule(
+  client: WilmaClient,
+  opts: { when: string; date?: string; weekday?: string; json?: boolean; label?: string }
+) {
+  const selection = resolveScheduleDateSelection(opts);
+  const { when, startDate, endDate } = selection;
+  const schedule = await client.schedule.list(
+    selection.queryDate ? { date: selection.queryDate } : undefined
+  );
+
+  const lessons = schedule.filter(
     (l) => l.date >= startDate && l.date <= endDate
   );
 
   if (opts.json) {
     const result = !opts.date && !opts.weekday && when === "week"
       ? { when, weekStart: startDate, weekEnd: endDate, lessons }
-      : { when: opts.date ? "date" : (opts.weekday ? "weekday" : when), date: startDate, lessons };
+      : { when: selection.outputWhen, date: startDate, lessons };
     console.log(JSON.stringify(result, null, 2));
     return;
   }
@@ -1873,7 +1906,7 @@ async function outputAllOverviewCommand(
   profile: WilmaProfile,
   config: { profiles: StoredProfile[]; lastProfileId?: string | null },
   command: "schedule" | "homework" | "grades" | "summary",
-  flags: { json?: boolean; limit?: number; when?: string; days?: number },
+  flags: { json?: boolean; limit?: number; when?: string; date?: string; weekday?: string; days?: number },
   onMfa?: MfaCallback
 ) {
   const students = await getStudentsForCommand(profile, config);
@@ -1917,27 +1950,27 @@ async function outputAllOverviewCommand(
     return;
   }
 
+  const scheduleSelection = command === "schedule"
+    ? resolveScheduleDateSelection(flags)
+    : null;
   const results: { student: StudentInfo; data: unknown }[] = [];
   for (const student of students) {
     const client = await WilmaClient.login({ ...profile, studentNumber: student.studentNumber }, onMfa);
-    const overview = await client.overview.get();
-    if (command === "schedule") {
-      const when = flags.when || "week";
-      let startDate: string, endDate: string;
-      if (when === "today") {
-        startDate = endDate = todayString();
-      } else if (when === "tomorrow") {
-        startDate = endDate = nextSchoolDay();
-      } else {
-        [startDate, endDate] = currentWeekBounds();
-      }
+    if (command === "schedule" && scheduleSelection) {
+      const schedule = await client.schedule.list(
+        scheduleSelection.queryDate ? { date: scheduleSelection.queryDate } : undefined
+      );
       results.push({
         student,
-        data: overview.schedule.filter((l) => l.date >= startDate && l.date <= endDate),
+        data: schedule.filter(
+          (l) => l.date >= scheduleSelection.startDate && l.date <= scheduleSelection.endDate
+        ),
       });
     } else if (command === "homework") {
+      const overview = await client.overview.get();
       results.push({ student, data: overview.homework.slice(0, flags.limit ?? 10) });
     } else if (command === "grades") {
+      const overview = await client.overview.get();
       results.push({ student, data: overview.grades.slice(0, flags.limit ?? 20) });
     }
   }

@@ -11,6 +11,7 @@ import {
 import { parseExamsHtml } from "./parsers/exams.js";
 import { parseAttendanceHtml } from "./parsers/attendance.js";
 import { parseOverview } from "./parsers/overview.js";
+import { parseScheduleHtml } from "./parsers/schedule.js";
 import { parseStudentsFromHome } from "./parsers/students.js";
 
 export type MfaCallback = (formkey: string) => Promise<string>;
@@ -156,6 +157,19 @@ export class WilmaClient {
     },
   };
 
+  schedule = {
+    list: async (opts?: { date?: string }): Promise<OverviewData["schedule"]> => {
+      if (!opts?.date) {
+        return (await this.overview.get()).schedule;
+      }
+      const params = new URLSearchParams();
+      params.set("date", isoDateToFinnish(opts.date));
+      const resp = await this.session.get(`/schedule?${params.toString()}`);
+      const text = await resp.text();
+      return parseScheduleHtml(text);
+    },
+  };
+
   overview = {
     get: async (): Promise<OverviewData> => {
       const resp = await this.session.get("/overview");
@@ -171,4 +185,12 @@ function safeJson(text: string): unknown {
   } catch {
     return {};
   }
+}
+
+function isoDateToFinnish(date: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match) {
+    return date;
+  }
+  return `${match[3]}.${match[2]}.${match[1]}`;
 }
