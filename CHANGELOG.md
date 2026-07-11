@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.3 (2026-07-11)
+
+### Fixed
+
+- The published CLI package now uses a valid semver dependency on `@wilm-ai/wilma-client`, fixing global npm installs that failed with `EUNSUPPORTEDPROTOCOL` on the leaked `workspace:^` specifier.
+
 ## 1.5.2 (2026-07-06)
 
 ### Fixed
