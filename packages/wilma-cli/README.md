@@ -100,3 +100,7 @@ Use `wilma config clear` to remove it. Override with `WILMAI_CONFIG_PATH`.
 - Credentials and TOTP secrets are stored with lightweight obfuscation for convenience.
 - For multi-child accounts, you can pass `--student <id|name>` or `--all-students`.
 - All list commands support `--json` for agent-friendly structured output.
+
+## Privacy
+
+Wilma contains sensitive personal data about your children. When using this tool with AI agents, be mindful of sharing detailed schedules, messages, or attendance notes with non-European cloud services, as they may be subject to different data protection regulations. For better privacy, consider running agents locally or using European-hosted LLM providers. Credentials and TOTP secrets stored by the CLI are kept locally on your machine.
