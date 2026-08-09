@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`wilma news read`** no longer drops the body of link-only bulletins. Some Wilma bulletins have no prose body — the entire payload is a single link (e.g. a SharePoint PDF loaded into the `#content-wrapper` iframe). `parseNewsDetailHtml` used cheerio's `.text()`, which discards `href` URLs, so these bulletins returned only header/footer. Anchor URLs are now inlined as `label (url)` so the actionable link survives.
+
+### New in wilma-client
+
+- Added parser coverage (`test/parser-news.mjs`) for link-only bulletins, prose bulletins, bare-URL links (no duplication), and skipped `#`/`javascript:` hrefs.
+
 ## 1.5.3 (2026-07-11)
 
 ### Fixed

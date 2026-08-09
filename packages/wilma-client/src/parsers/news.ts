@@ -57,6 +57,23 @@ export function parseNewsDetailHtml(html: string, newsId: number): NewsItem {
   const contentElem = $(".panel-body, .news-content, .content, .ckeditor, article").first();
   if (contentElem.length) {
     contentElem.find("script, style").remove();
+    // Some bulletins have no prose body — the entire payload is a single link
+    // (e.g. a SharePoint PDF loaded into the #content-wrapper iframe). Cheerio's
+    // .text() drops href URLs, leaving only header/footer. Inline each anchor's
+    // URL next to its text so link-only bulletins keep their actionable content.
+    contentElem.find("a[href]").each((_, el) => {
+      const anchor = $(el);
+      const href = (anchor.attr("href") ?? "").trim();
+      if (!href || href.startsWith("#") || href.startsWith("javascript:")) {
+        return;
+      }
+      const label = anchor.text().trim();
+      // Avoid duplicating when the visible text already is the URL.
+      if (label === href) {
+        return;
+      }
+      anchor.text(label ? `${label} (${href})` : href);
+    });
     content = contentElem.text().trim();
   }
 

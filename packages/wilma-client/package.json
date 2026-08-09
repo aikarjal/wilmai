@@ -17,7 +17,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "echo 'add lint'",
-    "test": "pnpm run build && node test/parser-messages.mjs && node test/parser-schedule.mjs && node test/client-schedule.mjs",
+    "test": "pnpm run build && node test/parser-messages.mjs && node test/parser-news.mjs && node test/parser-schedule.mjs && node test/client-schedule.mjs",
     "test:smoke": "tsc -p tsconfig.json && node test/smoke.mjs",
     "test:live": "tsc -p tsconfig.json && node test/live.spec.mjs"
   },
