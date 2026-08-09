@@ -4,6 +4,7 @@ import { select, input, password } from "@inquirer/prompts";
 import { createHmac } from "node:crypto";
 import { readFile, writeFile, mkdir, open, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import {
   WilmaClient,
@@ -11,6 +12,7 @@ import {
   listTenants,
   type MfaCallback,
   type MessageFolder,
+  type NewsItem,
   type NewsResource,
   type OverviewData,
   type TenantInfo,
@@ -475,9 +477,9 @@ async function handleCommand(
         throw new Error('Expected "wilma news resource download <news-id> <resource-id>"');
       }
       const newsId = parseReadId(flags.id, "news");
-      const resourceId = flags.resourceId;
+      const resourceId = normalizeResourceId(flags.resourceId);
       if (!resourceId) {
-        throw new Error("Missing news resource id (for example, resource-1)");
+        throw new Error("Missing news resource id (for example, resource-1 or just 1)");
       }
       if (!flags.student) {
         const students = await getStudentsForCommand(profile, config);
@@ -521,7 +523,9 @@ async function handleCommand(
         ...profile,
         studentNumber: studentInfo?.studentNumber ?? profile.studentNumber,
       }, mfaCallback);
-      await outputNewsItem(perStudentClient, newsId, flags.json);
+      await outputNewsItem(perStudentClient, newsId, flags.json, {
+        studentNumber: studentInfo?.studentNumber ?? profile.studentNumber,
+      });
       return;
     }
     if (flags.allStudents) {
@@ -741,7 +745,7 @@ function printUsage() {
   console.log("  wilma kids list [--json]");
   console.log("  wilma news list [--limit 20] [--student <id|name>] [--all-students] [--json]");
   console.log("  wilma news read <id> [--student <id|name>] [--json]");
-  console.log("  wilma news resource download <news-id> <resource-id> --student <id|name> --output <directory> [--json]");
+  console.log("  wilma news resource download <news-id> <resource-id> [--student <id|name>] [--output <directory>] [--json]");
   console.log("  wilma messages list [--folder inbox] [--limit 20] [--student <id|name>] [--all-students] [--json]");
   console.log("  wilma messages read <id> [--student <id|name>] [--json]");
   console.log("  wilma attendance list [--date YYYY-MM-DD] [--student <id|name>] [--all-students] [--json]");
@@ -1125,11 +1129,16 @@ async function outputNews(
   });
 }
 
-async function outputNewsItem(client: WilmaClient, id: number, json?: boolean) {
+async function outputNewsItem(
+  client: WilmaClient,
+  id: number,
+  json?: boolean,
+  opts?: { studentNumber?: string | null; suppressDownloadHint?: boolean }
+) {
   const item = await client.news.get(id);
   if (json) {
     console.log(JSON.stringify(item, null, 2));
-    return;
+    return item;
   }
   console.log(`\n${item.title}`);
   if (item.subtitle) console.log(item.subtitle);
@@ -1137,24 +1146,19 @@ async function outputNewsItem(client: WilmaClient, id: number, json?: boolean) {
   if (item.content) console.log(`\n${formatContent(item.content)}`);
   if (item.resources?.length) {
     console.log(`\nResources (${item.resources.length})`);
-    item.resources.forEach((resource, index) => {
-      const type = resource.kind === "wilma_attachment"
-        ? "Wilma attachment"
-        : resource.kind === "external_attachment"
-          ? "External attachment"
-          : "External link";
-      console.log(`\n[${index + 1}] ${resource.label}`);
-      console.log(`    Type: ${type}`);
-      console.log(`    Open: ${resource.url}`);
-      if (resource.availableActions.includes("download")) {
-        console.log(
-          `    Download: wilma news resource download ${item.wilmaId} ${resource.id} --student <id|name> --output <directory>`
-        );
-      } else if (resource.authContext === "external") {
-        console.log("    Note: External authentication may be required.");
-      }
-    });
+    for (const resource of item.resources) {
+      const origin = resource.authContext === "wilma" ? "Wilma" : new URL(resource.url).host;
+      console.log(`\n[${resource.id}] ${resource.label} (${origin})`);
+      console.log(`    ${resource.url}`);
+    }
+    if (!opts?.suppressDownloadHint) {
+      const student = opts?.studentNumber ?? "<id|name>";
+      console.log(
+        `\nDownload any resource with:\n  wilma news resource download ${item.wilmaId} <resource-id> --student ${student} --output <directory>`
+      );
+    }
   }
+  return item;
 }
 
 const MAX_NEWS_RESOURCE_BYTES = 50 * 1024 * 1024;
@@ -1168,47 +1172,30 @@ async function outputNewsResourceDownload(
   const item = await client.news.get(newsId);
   const resource = item.resources?.find((candidate) => candidate.id === resourceId);
   if (!resource) {
-    throw new Error(`News resource "${resourceId}" not found in news item ${newsId}`);
+    const known = (item.resources ?? []).map((r) => r.id).join(", ") || "none";
+    throw new Error(
+      `News resource "${resourceId}" not found in news item ${newsId} (available: ${known})`
+    );
   }
 
-  if (!resource.availableActions.includes("download")) {
+  const fetched = await client.news.fetchResource(newsId, resourceId, { item });
+  if (fetched.status === "not_a_file" || !fetched.response) {
     const result = {
-      status: "external_access_required",
+      status: "not_a_file",
       newsId,
       resource,
-      availableActions: ["open_in_authenticated_browser"],
-      message: "This resource is an external link and cannot be downloaded with the Wilma session.",
+      availableActions: ["open_in_browser"],
+      message:
+        "The link answered with a web page instead of a file. It may require signing in — open the URL in a browser instead.",
     };
     if (opts.json) {
       console.log(JSON.stringify(result, null, 2));
     } else {
       console.log(`\n${resource.label}`);
-      console.log("This resource must be opened with its external authentication context:");
-      console.log(resource.url);
-    }
-    return;
-  }
-
-  if (!opts.output) {
-    throw new Error("Missing --output <directory> for resource download");
-  }
-
-  const fetched = await client.news.fetchResource(newsId, resourceId);
-  if (fetched.status === "external_access_required" || !fetched.response) {
-    const result = {
-      status: "external_access_required",
-      newsId,
-      resource,
-      availableActions: ["open_in_authenticated_browser"],
-      message: "The external provider requires authentication that is not available to the CLI.",
-    };
-    if (opts.json) {
-      console.log(JSON.stringify(result, null, 2));
-    } else {
       console.log(result.message);
       console.log(resource.url);
     }
-    return;
+    return result;
   }
   const { response } = fetched;
   if (!response.ok) {
@@ -1221,24 +1208,8 @@ async function outputNewsResourceDownload(
     await response.body?.cancel();
     throw new Error("News resource exceeds the 50 MB download limit");
   }
-  if (contentType === "text/html") {
-    const result = {
-      status: "not_a_file",
-      newsId,
-      resource,
-      contentType,
-      message: "The resource returned an HTML page instead of a downloadable file.",
-    };
-    await response.body?.cancel();
-    if (opts.json) {
-      console.log(JSON.stringify(result, null, 2));
-    } else {
-      console.log(result.message);
-    }
-    return;
-  }
 
-  const outputDirectory = resolve(opts.output);
+  const outputDirectory = resolve(opts.output ?? process.cwd());
   await mkdir(outputDirectory, { recursive: true });
   const preferredName = fileNameFromResponse(resource, response.headers.get("content-disposition"), contentType);
   const { path, handle } = await createUniqueDownloadFile(outputDirectory, preferredName);
@@ -1285,6 +1256,12 @@ async function outputNewsResourceDownload(
   } else {
     console.log(`Downloaded ${resource.label} to ${path}`);
   }
+  return result;
+}
+
+function normalizeResourceId(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  return /^\d+$/.test(raw) ? `resource-${raw}` : raw;
 }
 
 function fileNameFromResponse(
@@ -1756,7 +1733,46 @@ async function selectNewsToRead(client: WilmaClient) {
     choices,
   });
   if (!selected || selected === "back") return;
-  await outputNewsItem(client, Number(selected), false);
+  const item = await outputNewsItem(client, Number(selected), false, { suppressDownloadHint: true });
+  if (item?.resources?.length) {
+    await offerResourceDownloads(client, item);
+  }
+}
+
+async function offerResourceDownloads(client: WilmaClient, item: NewsItem) {
+  while (true) {
+    const resources = item.resources ?? [];
+    const choices = [
+      { value: "back", name: "Continue" },
+      ...resources.map((resource) => ({
+        value: resource.id,
+        name: `Download "${compactText(resource.label)}"`,
+      })),
+    ];
+    const selected = await selectOrCancel<string>(
+      { message: "Resources", choices },
+      false
+    );
+    if (!selected || selected === "back") return;
+
+    const outputDirectory = await inputOrCancel({
+      message: "Save to directory",
+      default: resolve(homedir(), "Downloads"),
+    });
+    if (outputDirectory === null) continue;
+
+    try {
+      await outputNewsResourceDownload(client, item.wilmaId, selected, {
+        output: outputDirectory,
+        json: false,
+      });
+    } catch (error) {
+      console.error(
+        "Download failed:",
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
 }
 
 async function selectMessageToRead(client: WilmaClient, folder: MessageFolder) {
@@ -2290,6 +2306,11 @@ main().catch((err) => {
     console.error("For interactive use, run 'wilma' without arguments.");
     process.exit(1);
   }
-  console.error("CLI error:", err instanceof Error ? err.message : err);
+  const message = err instanceof Error ? err.message : String(err);
+  if (process.argv.includes("--json")) {
+    console.log(JSON.stringify({ status: "error", message }, null, 2));
+  } else {
+    console.error("CLI error:", message);
+  }
   process.exit(1);
 });

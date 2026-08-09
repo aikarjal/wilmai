@@ -50,7 +50,7 @@ wilma attendance list --all-students --json
 wilma news read <id> --student <id|name> --json
 ```
 
-News JSON includes structured `resources` for linked documents and attachments. Agents can explicitly download Wilma-hosted attachments and recognized SharePoint sharing links with `wilma news resource download <news-id> <resource-id> --student <id|name> --output <directory> --json`; unsupported external links are passed through instead of fetched automatically.
+News JSON includes structured `resources` for every link in a bulletin. Any resource can be downloaded with `wilma news resource download <news-id> <resource-id> --student <id|name> --output <directory> --json`. Wilma-hosted files download through the authenticated session; external URLs are fetched with an isolated, unauthenticated request that never carries Wilma credentials. The CLI does not guess whether a URL is a file — it attempts the download and reports `downloaded` or `not_a_file` (a web page answered, e.g. a sign-in wall).
 
 Config is stored in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`). Override with `WILMAI_CONFIG_PATH`.
 

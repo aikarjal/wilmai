@@ -34,9 +34,19 @@ const server = createServer((req, res) => {
   if (req.method === "GET" && req.url === "/!123/news/43") {
     res.writeHead(200, { "Content-Type": "text/html" });
     res.end(`
-      <title>SharePoint-tiedote - Wilma</title>
+      <title>Jaettu asiakirja - Wilma</title>
       <div id="news-content" class="hidden">
-        <a href="https://example.sharepoint.com/:b:/g/personal/example/token?e=abc">Tiedote</a>
+        <a href="https://files.example.com/share/token?e=abc">Tiedote</a>
+      </div>
+    `);
+    return;
+  }
+  if (req.method === "GET" && req.url === "/!123/news/44") {
+    res.writeHead(200, { "Content-Type": "text/html" });
+    res.end(`
+      <title>Verkkosivu - Wilma</title>
+      <div id="news-content">
+        <a href="https://www.example.org/info/page">Lue lisaa</a>
       </div>
     `);
     return;
@@ -66,44 +76,69 @@ try {
     studentNumber: "123",
   });
 
+  // Wilma-hosted attachments download through the authenticated session.
   const item = await client.news.get(42);
-  assert.equal(item.resources?.[0]?.kind, "wilma_attachment");
-  assert.deepEqual(item.resources?.[0]?.availableActions, ["open", "download"]);
+  assert.equal(item.resources?.[0]?.authContext, "wilma");
+  assert.equal(item.resources?.[0]?.fileName, "retkilupa.pdf");
 
-  const { resource, response } = await client.news.fetchResource(42, "resource-1");
-  assert.equal(resource.fileName, "retkilupa.pdf");
-  assert.equal(response.headers.get("content-type"), "application/pdf");
-  assert.equal(await response.text(), "test-pdf-bytes");
+  const wilmaFetch = await client.news.fetchResource(42, "resource-1", { item });
+  assert.equal(wilmaFetch.status, "fetched");
+  assert.equal(wilmaFetch.resource.fileName, "retkilupa.pdf");
+  assert.equal(wilmaFetch.response.headers.get("content-type"), "application/pdf");
+  assert.equal(await wilmaFetch.response.text(), "test-pdf-bytes");
   assert(requests.includes("/!123/files/retkilupa.pdf"));
 
   const mockAgent = new MockAgent();
   mockAgent.enableNetConnect(/^127\.0\.0\.1:/);
   setGlobalDispatcher(mockAgent);
-  const sharePoint = mockAgent.get("https://example.sharepoint.com");
-  sharePoint.intercept({
+
+  // A sharing link that serves an HTML viewer page as-is, but returns the file
+  // when the conventional download parameter is added — via a cross-host
+  // redirect that sets a cookie along the way.
+  const sharingHost = mockAgent.get("https://files.example.com");
+  sharingHost.intercept({
     method: "GET",
-    path: "/:b:/g/personal/example/token?e=abc&download=1",
+    path: "/share/token?e=abc",
+  }).reply(200, "<html>viewer</html>", {
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+  sharingHost.intercept({
+    method: "GET",
+    path: "/share/token?e=abc&download=1",
   }).reply(302, "", {
     headers: {
-      location: "/personal/example/document.pdf",
-      "set-cookie": "SharePointSession=test-cookie; Path=/; Secure",
+      location: "https://cdn.example.net/files/document.pdf",
+      "set-cookie": "ShareSession=test-cookie; Path=/; Secure",
     },
   });
-  sharePoint.intercept({
+  const cdnHost = mockAgent.get("https://cdn.example.net");
+  cdnHost.intercept({
     method: "GET",
-    path: "/personal/example/document.pdf",
-    headers: { cookie: "SharePointSession=test-cookie" },
-  }).reply(200, "sharepoint-pdf-bytes", {
+    path: "/files/document.pdf",
+  }).reply(200, "external-pdf-bytes", {
     headers: { "content-type": "application/pdf" },
   });
 
   const externalItem = await client.news.get(43);
-  assert.equal(externalItem.resources?.[0]?.kind, "external_attachment");
-  assert.deepEqual(externalItem.resources?.[0]?.availableActions, ["open", "download"]);
-  const externalFetch = await client.news.fetchResource(43, "resource-1");
+  assert.equal(externalItem.resources?.[0]?.authContext, "external");
+  const externalFetch = await client.news.fetchResource(43, "resource-1", { item: externalItem });
   assert.equal(externalFetch.status, "fetched");
   assert.equal(externalFetch.response?.headers.get("content-type"), "application/pdf");
-  assert.equal(await externalFetch.response?.text(), "sharepoint-pdf-bytes");
+  assert.equal(await externalFetch.response?.text(), "external-pdf-bytes");
+
+  // A link that answers with HTML for every candidate is reported as
+  // not_a_file — no guessing, the attempt itself is the classifier.
+  const webHost = mockAgent.get("https://www.example.org");
+  for (const path of ["/info/page", "/info/page?download=1", "/info/page?dl=1"]) {
+    webHost.intercept({ method: "GET", path }).reply(200, "<html>page</html>", {
+      headers: { "content-type": "text/html; charset=utf-8" },
+    });
+  }
+  const pageItem = await client.news.get(44);
+  const pageFetch = await client.news.fetchResource(44, "resource-1", { item: pageItem });
+  assert.equal(pageFetch.status, "not_a_file");
+  assert.equal(pageFetch.response, null);
+
   await mockAgent.close();
 } finally {
   await new Promise((resolve, reject) => {

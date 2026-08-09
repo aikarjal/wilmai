@@ -60,12 +60,12 @@ wilma grades list [--limit 20] [--student <id|name>] [--all-students] [--json]
 ```bash
 wilma news list [--limit 20] [--student <id|name>] [--all-students] [--json]
 wilma news read <id> [--student <id|name>] [--json]
-wilma news resource download <news-id> <resource-id> --student <id|name> --output <directory> [--json]
+wilma news resource download <news-id> <resource-id> [--student <id|name>] [--output <directory>] [--json]
 wilma messages list [--folder inbox] [--limit 20] [--student <id|name>] [--all-students] [--json]
 wilma messages read <id> [--student <id|name>] [--json]
 ```
 
-`news read --json` includes a `resources` array for document links and attachments. Resources with `availableActions` containing `download` can be downloaded directly. This includes Wilma-hosted files and recognized SharePoint sharing links. Other external links expose only `open` and return `external_access_required` if passed to the download command.
+`news read --json` includes a `resources` array with every link in the bulletin. Any resource can be passed to the download command (the resource id also accepts a bare number, e.g. `1` for `resource-1`). Wilma-hosted files download through the authenticated session; external URLs are fetched with an isolated, unauthenticated request — no Wilma credentials are ever sent to external hosts. The result `status` reports what actually happened: `downloaded` (use the returned `path`), or `not_a_file` when the URL answered with a web page instead of a file (for example a sharing link that requires signing in — open it in a browser instead). `--output` defaults to the current directory; existing files are never overwritten.
 
 ### Attendance / lesson notes
 ```bash

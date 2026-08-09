@@ -1,5 +1,5 @@
 import { WilmaSession, MfaRequiredError } from "./session.js";
-import type { Exam, Message, MessageFolder, NewsItem, OverviewData, WilmaProfile, StudentInfo, LessonNote } from "./types.js";
+import type { Exam, Message, MessageFolder, NewsItem, NewsResource, OverviewData, WilmaProfile, StudentInfo, LessonNote } from "./types.js";
 import { parseWilmaTimestamp } from "./parsers/dates.js";
 import { parseMessagesList, parseMessageDetailHtml } from "./parsers/messages.js";
 import {
@@ -125,36 +125,41 @@ export class WilmaClient {
       if (!contentType.includes("text/html")) {
         const data = safeJson(text) as Record<string, unknown>;
         if (Object.keys(data).length) {
-          return parseNewsDetailJson(newsId, data);
+          return parseNewsDetailJson(newsId, data, resp.url);
         }
       }
       return parseNewsDetailHtml(text, newsId, resp.url);
     },
 
-    fetchResource: async (newsId: number, resourceId: string) => {
-      const item = await this.news.get(newsId);
+    fetchResource: async (
+      newsId: number,
+      resourceId: string,
+      options?: { item?: NewsItem }
+    ): Promise<
+      | { resource: NewsResource; response: Response; status: "fetched" }
+      | { resource: NewsResource; response: null; status: "not_a_file" }
+    > => {
+      const item = options?.item ?? (await this.news.get(newsId));
       const resource = item.resources?.find((candidate) => candidate.id === resourceId);
       if (!resource) {
         throw new Error(`News resource "${resourceId}" not found`);
       }
-      if (!resource.availableActions.includes("download")) {
-        throw new Error(`News resource "${resourceId}" is not downloadable with the Wilma session`);
-      }
 
-      if (resource.kind === "external_attachment") {
-        const response = await fetchSharePointDownload(resource.url);
-        if (!response) {
-          return { resource, response: null, status: "external_access_required" as const };
+      if (resource.authContext === "wilma") {
+        const url = new URL(resource.url);
+        const response = await this.session.get(`${url.pathname}${url.search}`);
+        if (isHtmlResponse(response)) {
+          await response.body?.cancel();
+          return { resource, response: null, status: "not_a_file" };
         }
-        return { resource, response, status: "fetched" as const };
+        return { resource, response: response as unknown as Response, status: "fetched" };
       }
 
-      if (resource.kind !== "wilma_attachment" || resource.authContext !== "wilma") {
-        throw new Error(`News resource "${resourceId}" is not downloadable with the Wilma session`);
+      const response = await fetchExternalFile(resource.url);
+      if (!response) {
+        return { resource, response: null, status: "not_a_file" };
       }
-      const url = new URL(resource.url);
-      const response = await this.session.get(`${url.pathname}${url.search}`);
-      return { resource, response, status: "fetched" as const };
+      return { resource, response, status: "fetched" };
     },
   };
 
@@ -211,20 +216,59 @@ export class WilmaClient {
   };
 }
 
-async function fetchSharePointDownload(rawUrl: string): Promise<Response | null> {
-  const initialUrl = new URL(rawUrl);
-  if (!isSharePointHost(initialUrl) || !/^\/:\w:\/[a-z]\//i.test(initialUrl.pathname)) {
-    throw new Error("External resource is not a supported SharePoint sharing URL");
-  }
-  initialUrl.searchParams.set("download", "1");
+// Some document hosts serve an HTML viewer page for a sharing URL but return
+// the file itself when a conventional download parameter is present. These are
+// generic retry variants, not provider detection: the original URL is always
+// attempted first, and a variant is tried only after an HTML answer.
+const DOWNLOAD_PARAM_VARIANTS: Array<[string, string]> = [
+  ["download", "1"],
+  ["dl", "1"],
+];
 
+function buildDownloadCandidates(rawUrl: string): URL[] {
+  const original = new URL(rawUrl);
+  const candidates = [original];
+  for (const [param, value] of DOWNLOAD_PARAM_VARIANTS) {
+    if (!original.searchParams.has(param)) {
+      const variant = new URL(original.href);
+      variant.searchParams.set(param, value);
+      candidates.push(variant);
+    }
+  }
+  return candidates;
+}
+
+function isHtmlResponse(response: { headers: { get(name: string): string | null } }): boolean {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  return contentType.startsWith("text/html") || contentType.startsWith("application/xhtml");
+}
+
+// Fetch an external URL the way a signed-out browser would: an isolated
+// in-memory cookie jar, redirects followed across hosts, and no Wilma
+// credentials anywhere. Returns null when every candidate answered with an
+// HTML page instead of a file.
+async function fetchExternalFile(rawUrl: string): Promise<Response | null> {
+  for (const candidate of buildDownloadCandidates(rawUrl)) {
+    const response = await fetchFollowingRedirects(candidate);
+    if (!response) {
+      continue;
+    }
+    if (response.ok && isHtmlResponse(response)) {
+      await response.body?.cancel();
+      continue;
+    }
+    return response;
+  }
+  return null;
+}
+
+async function fetchFollowingRedirects(initialUrl: URL): Promise<Response | null> {
   const cookieJar = new CookieJar();
-  const sharePointHost = initialUrl.hostname.toLowerCase();
   let currentUrl = initialUrl;
   for (let redirectCount = 0; redirectCount <= 10; redirectCount += 1) {
     const headers = new Headers({
       "User-Agent": EXTERNAL_USER_AGENT,
-      "Accept": "application/pdf,application/octet-stream;q=0.9,*/*;q=0.8",
+      "Accept": "*/*",
     });
     const cookieHeader = cookieJar.getCookieStringSync(currentUrl.href);
     if (cookieHeader) {
@@ -235,11 +279,11 @@ async function fetchSharePointDownload(rawUrl: string): Promise<Response | null>
     const setCookies = (response.headers as unknown as { getSetCookie?: () => string[] })
       .getSetCookie?.() ?? [];
     for (const cookie of setCookies) {
-      cookieJar.setCookieSync(cookie, currentUrl.href);
+      cookieJar.setCookieSync(cookie, currentUrl.href, { ignoreError: true });
     }
     if (!setCookies.length) {
       const cookie = response.headers.get("set-cookie");
-      if (cookie) cookieJar.setCookieSync(cookie, currentUrl.href);
+      if (cookie) cookieJar.setCookieSync(cookie, currentUrl.href, { ignoreError: true });
     }
 
     if (response.status < 300 || response.status >= 400) {
@@ -251,16 +295,12 @@ async function fetchSharePointDownload(rawUrl: string): Promise<Response | null>
       return null;
     }
     const nextUrl = new URL(location, currentUrl);
-    if (nextUrl.protocol !== "https:" || nextUrl.hostname.toLowerCase() !== sharePointHost) {
+    if (nextUrl.protocol !== "https:" && nextUrl.protocol !== "http:") {
       return null;
     }
     currentUrl = nextUrl;
   }
-  throw new Error("SharePoint resource exceeded the redirect limit");
-}
-
-function isSharePointHost(url: URL): boolean {
-  return url.protocol === "https:" && url.hostname.toLowerCase().endsWith(".sharepoint.com");
+  throw new Error("External resource exceeded the redirect limit");
 }
 
 function safeJson(text: string): unknown {

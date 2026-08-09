@@ -30,17 +30,17 @@ export interface NewsItem {
   fetchedAt: Date;
 }
 
-export type NewsResourceKind = "external_link" | "external_attachment" | "wilma_attachment";
 export type NewsResourceAuthContext = "external" | "wilma";
-export type NewsResourceAction = "open" | "download";
 
 export interface NewsResource {
   id: string;
   label: string;
   url: string;
-  kind: NewsResourceKind;
+  // "wilma": downloads use the authenticated Wilma session.
+  // "external": downloads use an isolated, unauthenticated fetch that never
+  // carries Wilma credentials. Every resource supports a download attempt;
+  // the attempt's status reports whether the URL actually served a file.
   authContext: NewsResourceAuthContext;
-  availableActions: NewsResourceAction[];
   fileName?: string | null;
 }
 

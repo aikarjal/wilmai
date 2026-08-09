@@ -2,8 +2,7 @@ import * as cheerio from "cheerio";
 import { parseWilmaTimestamp } from "./dates.js";
 import type { NewsItem, NewsResource } from "../types.js";
 
-const ATTACHMENT_PATH_RE = /\/(?:attachment|attachments|download|files?)\b/i;
-const ATTACHMENT_EXTENSION_RE = /\.(?:pdf|docx?|xlsx?|pptx?|odt|ods|odp|rtf|txt|csv|zip|7z|png|jpe?g|gif|webp)$/i;
+const FILE_EXTENSION_RE = /\.(?:pdf|docx?|xlsx?|pptx?|odt|ods|odp|rtf|txt|csv|zip|7z|png|jpe?g|gif|webp)$/i;
 
 export function parseNewsList(data: unknown): NewsItem[] {
   if (Array.isArray(data)) {
@@ -29,14 +28,25 @@ export function parseNewsList(data: unknown): NewsItem[] {
   return [];
 }
 
-export function parseNewsDetailJson(newsId: number, data: Record<string, unknown>): NewsItem {
+export function parseNewsDetailJson(
+  newsId: number,
+  data: Record<string, unknown>,
+  baseUrl?: string
+): NewsItem {
+  const content = (data["content"] ?? data["Content"]) as string | null;
+  let resources: NewsResource[] = [];
+  if (content && content.includes("<a")) {
+    const $ = cheerio.load(content);
+    resources = extractNewsResources($, $.root(), baseUrl);
+  }
   return {
     wilmaId: newsId,
     title: String(data["title"] ?? data["Title"] ?? ""),
     subtitle: (data["subtitle"] ?? data["Subtitle"]) as string | null,
     author: (data["author"] ?? data["Author"]) as string | null,
     published: parseWilmaTimestamp(data["Published"] ?? data["published"]),
-    content: (data["content"] ?? data["Content"]) as string | null,
+    content,
+    resources,
     fetchedAt: new Date(),
   };
 }
@@ -92,7 +102,7 @@ export function parseNewsDetailHtml(html: string, newsId: number, baseUrl?: stri
 
 function extractNewsResources(
   $: cheerio.CheerioAPI,
-  contentElem: ReturnType<cheerio.CheerioAPI>,
+  contentElem: cheerio.Cheerio<any>,
   baseUrl?: string
 ): NewsResource[] {
   const resources: NewsResource[] = [];
@@ -108,39 +118,23 @@ function extractNewsResources(
     seen.add(url.href);
 
     const authContext = baseUrl && url.origin === new URL(baseUrl).origin ? "wilma" : "external";
-    const wilmaDownloadable =
-      authContext === "wilma" &&
-      (anchor.is("[download]") ||
-        ATTACHMENT_PATH_RE.test(url.pathname) ||
-        ATTACHMENT_EXTENSION_RE.test(decodeURIComponentSafely(url.pathname)));
-    const sharePointDownloadable = authContext === "external" && isSharePointSharingUrl(url);
-    const downloadable = wilmaDownloadable || sharePointDownloadable;
-    const kind = wilmaDownloadable
-      ? "wilma_attachment"
-      : sharePointDownloadable
-        ? "external_attachment"
-        : "external_link";
-    const fileName = wilmaDownloadable ? fileNameFromUrl(url) : null;
+    // Only a naming hint — never used to decide whether a download may be
+    // attempted. The download attempt itself reveals whether a URL is a file.
+    const fileName = FILE_EXTENSION_RE.test(decodeURIComponentSafely(url.pathname))
+      ? fileNameFromUrl(url)
+      : null;
     const label = anchor.text().trim() || fileName || url.host;
 
     resources.push({
       id: `resource-${resources.length + 1}`,
       label,
       url: url.href,
-      kind,
       authContext,
-      availableActions: downloadable ? ["open", "download"] : ["open"],
       fileName,
     });
   });
 
   return resources;
-}
-
-function isSharePointSharingUrl(url: URL): boolean {
-  return url.protocol === "https:" &&
-    url.hostname.toLowerCase().endsWith(".sharepoint.com") &&
-    /^\/:\w:\/[a-z]\//i.test(url.pathname);
 }
 
 function resolveSafeHttpUrl(rawHref: string, baseUrl?: string): URL | null {

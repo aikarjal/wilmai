@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { parseNewsDetailHtml } from "../dist/parsers/news.js";
+import { parseNewsDetailHtml, parseNewsDetailJson } from "../dist/parsers/news.js";
 
 // Regression: link-only bulletins can hide their real payload in #news-content
 // while Wilma renders an empty iframe. Preserve the link as a structured
@@ -12,7 +12,7 @@ const linkOnly = parseNewsDetailHtml(
         <div class="panel-body">
           <h2>Lukuvuositiedote 2026-27</h2>
           <div class="margin-bottom hidden" id="news-content">
-            <p><a href="https://example.sharepoint.com/:b:/g/personal/example/token?e=abc">Lukuvuositiedote 2026-27</a></p>
+            <p><a href="https://files.example.com/share/token?e=abc">Lukuvuositiedote 2026-27</a></p>
           </div>
           <div class="panel-body-padding-remover">
             <iframe id="content-wrapper"></iframe>
@@ -35,10 +35,8 @@ assert.deepEqual(linkOnly.resources, [
   {
     id: "resource-1",
     label: "Lukuvuositiedote 2026-27",
-    url: "https://example.sharepoint.com/:b:/g/personal/example/token?e=abc",
-    kind: "external_attachment",
+    url: "https://files.example.com/share/token?e=abc",
     authContext: "external",
-    availableActions: ["open", "download"],
     fileName: null,
   },
 ]);
@@ -62,10 +60,12 @@ assert.ok(prose.content?.includes("Koulutyo alkaa keskiviikkona 12.8.2026"));
 assert.equal((prose.content?.match(/https:\/\/kruna\.fi/g) ?? []).length, 1);
 assert.equal(prose.resources?.length, 1);
 assert.equal(prose.resources?.[0]?.url, "https://kruna.fi/");
-assert.equal(prose.resources?.[0]?.kind, "external_link");
+assert.equal(prose.resources?.[0]?.authContext, "external");
+assert.equal(prose.resources?.[0]?.fileName, null);
 
-// Wilma-hosted file links explicitly advertise download. Relative links are
-// resolved so JSON consumers receive an actionable absolute URL.
+// Wilma-hosted links use the Wilma session for downloads. Relative links are
+// resolved so JSON consumers receive an actionable absolute URL, duplicates
+// collapse, and file-looking paths yield a naming hint.
 const attachment = parseNewsDetailHtml(
   `
   <div id="news-content">
@@ -83,11 +83,23 @@ assert.deepEqual(attachment.resources?.[0], {
   id: "resource-1",
   label: "Retkilupa",
   url: "https://helsinki.inschool.fi/files/123/retkilupa.pdf",
-  kind: "wilma_attachment",
   authContext: "wilma",
-  availableActions: ["open", "download"],
   fileName: "retkilupa.pdf",
 });
+
+// The file-name hint applies to external hosts too — it is only a hint for
+// naming, never a gate on whether a download may be attempted.
+const externalFile = parseNewsDetailHtml(
+  `
+  <div id="news-content">
+    <a href="https://cdn.example.net/docs/erityisruokavaliokuvaus.pdf">Koulujen erityisruokavaliot</a>
+  </div>
+`,
+  72470,
+  "https://helsinki.inschool.fi/!123/news/72470"
+);
+assert.equal(externalFile.resources?.[0]?.authContext, "external");
+assert.equal(externalFile.resources?.[0]?.fileName, "erityisruokavaliokuvaus.pdf");
 
 // Fragment, JavaScript, data, and mail links remain ordinary visible text but
 // never become actions exposed to an agent.
@@ -104,5 +116,20 @@ const unsafeHrefs = parseNewsDetailHtml(
 assert.deepEqual(unsafeHrefs.resources, []);
 assert.ok(unsafeHrefs.content?.includes("top"));
 assert.ok(!unsafeHrefs.content?.includes("javascript:"));
+
+// Tenants that serve news detail as JSON still expose resources when the
+// content payload is HTML with anchors.
+const jsonDetail = parseNewsDetailJson(
+  7,
+  {
+    title: "JSON-tiedote",
+    content: '<p>Katso <a href="/files/7/liite.pdf">liite</a>.</p>',
+  },
+  "https://helsinki.inschool.fi/!123/news/7"
+);
+assert.equal(jsonDetail.resources?.length, 1);
+assert.equal(jsonDetail.resources?.[0]?.url, "https://helsinki.inschool.fi/files/7/liite.pdf");
+assert.equal(jsonDetail.resources?.[0]?.authContext, "wilma");
+assert.equal(jsonDetail.resources?.[0]?.fileName, "liite.pdf");
 
 console.log("parser-news: all assertions passed");
