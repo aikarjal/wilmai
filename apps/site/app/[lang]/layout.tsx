@@ -5,7 +5,8 @@ import {
   Caveat,
   JetBrains_Mono
 } from "next/font/google";
-import "./globals.css";
+import { dictionaries, locales, isLang, type Lang } from "../../lib/i18n";
+import "../globals.css";
 
 const display = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -29,20 +30,45 @@ const mono = JetBrains_Mono({
   variable: "--font-mono"
 });
 
-export const metadata: Metadata = {
-  title: "WilmAI — School data for AI agents",
-  description:
-    "WilmAI gives your AI agent read access to Wilma — schedules, homework, exams, messages, and news — as one daily briefing for the whole family."
-};
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return locales.map((lang) => ({ lang }));
+}
+
+export function generateMetadata({
+  params
+}: {
+  params: { lang: string };
+}): Metadata {
+  const lang: Lang = isLang(params.lang) ? params.lang : "en";
+  const dict = dictionaries[lang];
+  return {
+    metadataBase: new URL("https://wilm.ai"),
+    title: dict.meta.title,
+    description: dict.meta.description,
+    alternates: {
+      canonical: `/${lang}`,
+      languages: {
+        en: "/en",
+        fi: "/fi",
+        "x-default": "/"
+      }
+    }
+  };
+}
 
 export default function RootLayout({
-  children
+  children,
+  params
 }: {
   children: React.ReactNode;
+  params: { lang: string };
 }) {
+  const lang: Lang = isLang(params.lang) ? params.lang : "en";
   return (
     <html
-      lang="en"
+      lang={lang}
       className={`${display.variable} ${body.variable} ${hand.variable} ${mono.variable}`}
     >
       <body>{children}</body>

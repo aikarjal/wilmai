@@ -4,6 +4,10 @@
 
 # wilmai
 
+[![npm downloads](https://img.shields.io/npm/dt/%40wilm-ai%2Fwilma-cli?label=downloads&color=2e9e93)](https://www.npmjs.com/package/@wilm-ai/wilma-cli)
+[![npm version](https://img.shields.io/npm/v/%40wilm-ai%2Fwilma-cli?label=wilma-cli&color=1b2b34)](https://www.npmjs.com/package/@wilm-ai/wilma-cli)
+[![license](https://img.shields.io/badge/license-MIT-ffd84d)](LICENSE)
+
 **wilmai** (wilm.ai) is an independent, open-source CLI that reads data from Finland's Wilma school system — schedules, homework, exams, grades, attendance/lesson notes, messages, and news.
 
 Use it **interactively as a parent** to quickly scan what matters across your kids, or wire it into **AI agents** (OpenClaw, Claude Code, etc.) as a skill so they can help you keep up with school life.

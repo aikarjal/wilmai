@@ -119,6 +119,27 @@ main {
   vertical-align: middle;
 }
 
+.lang-toggle {
+  display: inline-flex;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 2px 2px 0 var(--ink);
+  overflow: hidden;
+}
+
+.lang-option {
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.lang-option.active {
+  background: var(--marker);
+  color: var(--ink);
+}
+
 /* ---------- Hero ---------- */
 
 .hero {
@@ -582,6 +603,55 @@ main {
   white-space: nowrap;
   max-width: 100%;
   overflow-x: auto;
+}
+
+/* ---------- Recipe ---------- */
+
+.recipe-card {
+  position: relative;
+  max-width: 720px;
+  background: var(--note-teal);
+  padding: 28px 30px 22px;
+  border-radius: 2px;
+  box-shadow: 0 5px 12px rgba(27, 43, 52, 0.1);
+  transform: rotate(-0.5deg);
+}
+
+.recipe-card::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 84px;
+  height: 22px;
+  transform: translateX(-50%) rotate(-2deg);
+  background: rgba(233, 242, 244, 0.55);
+  border-left: 1px dashed rgba(27, 43, 52, 0.12);
+  border-right: 1px dashed rgba(27, 43, 52, 0.12);
+  box-shadow: 0 1px 3px rgba(27, 43, 52, 0.08);
+}
+
+.recipe-quote {
+  font-family: var(--font-hand), cursive;
+  font-size: 26px;
+  line-height: 1.25;
+  color: var(--teal-deep);
+}
+
+.recipe-tail {
+  margin-top: 14px;
+  font-size: 15px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.recipe-tail a {
+  font-weight: 700;
+  color: var(--teal-deep);
+}
+
+.recipe-tail a:hover {
+  color: var(--ink);
 }
 
 /* ---------- FAQ ---------- */

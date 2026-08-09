@@ -6,24 +6,34 @@ const agentText = `# 1) Install the CLI\nnpm install -g @wilm-ai/wilma-cli\n\n# 
 
 const cliText = `# 1) Install the CLI\nnpm install -g @wilm-ai/wilma-cli\n\n# 2) Login once (interactive)\nwilma\n\n# 3) Query data\nwilma kids list --json`;
 
-const tabs = [
-  {
-    id: "agent",
-    label: "With an AI agent",
-    caption: "Adds Wilma as a skill for Claude Code, OpenAI, or OpenClaw.",
-    text: agentText
-  },
-  {
-    id: "cli",
-    label: "Terminal only",
-    caption: "Plain CLI, no agent involved.",
-    text: cliText
-  }
-] as const;
+export interface QuickStartLabels {
+  tabAgent: string;
+  tabAgentCaption: string;
+  tabCli: string;
+  tabCliCaption: string;
+  copy: string;
+  copied: string;
+}
 
-export default function QuickStart() {
-  const [active, setActive] = useState<(typeof tabs)[number]>(tabs[0]);
+export default function QuickStart({ labels }: { labels: QuickStartLabels }) {
+  const tabs = [
+    {
+      id: "agent",
+      label: labels.tabAgent,
+      caption: labels.tabAgentCaption,
+      text: agentText
+    },
+    {
+      id: "cli",
+      label: labels.tabCli,
+      caption: labels.tabCliCaption,
+      text: cliText
+    }
+  ] as const;
+
+  const [activeId, setActiveId] = useState<(typeof tabs)[number]["id"]>("agent");
   const [copied, setCopied] = useState(false);
+  const active = tabs.find((tab) => tab.id === activeId) ?? tabs[0];
 
   const copy = async () => {
     try {
@@ -43,7 +53,7 @@ export default function QuickStart() {
             key={tab.id}
             className={`tab ${active.id === tab.id ? "active" : ""}`}
             onClick={() => {
-              setActive(tab);
+              setActiveId(tab.id);
               setCopied(false);
             }}
             role="tab"
@@ -58,7 +68,7 @@ export default function QuickStart() {
         <p className="lead">{active.caption}</p>
         <div className="code-block">
           <button className="copy" onClick={copy} type="button">
-            {copied ? "Copied" : "Copy"}
+            {copied ? labels.copied : labels.copy}
           </button>
           <pre>{active.text}</pre>
         </div>
