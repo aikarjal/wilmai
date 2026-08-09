@@ -1,10 +1,32 @@
 import type { Metadata } from "next";
-import { Space_Grotesk } from "next/font/google";
+import {
+  Bricolage_Grotesque,
+  Atkinson_Hyperlegible,
+  Caveat,
+  JetBrains_Mono
+} from "next/font/google";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
+const display = Bricolage_Grotesque({
   subsets: ["latin"],
-  variable: "--font-sans"
+  variable: "--font-display"
+});
+
+const body = Atkinson_Hyperlegible({
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-body"
+});
+
+const hand = Caveat({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-hand"
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-mono"
 });
 
 export const metadata: Metadata = {
@@ -19,7 +41,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={spaceGrotesk.variable}>
+    <html
+      lang="en"
+      className={`${display.variable} ${body.variable} ${hand.variable} ${mono.variable}`}
+    >
       <body>{children}</body>
     </html>
   );

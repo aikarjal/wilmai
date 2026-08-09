@@ -54,12 +54,14 @@ export default function QuickStart() {
           </button>
         ))}
       </div>
-      <p className="lead">{active.caption}</p>
-      <div className="code-block">
-        <button className="copy" onClick={copy} type="button">
-          {copied ? "Copied" : "Copy"}
-        </button>
-        <pre>{active.text}</pre>
+      <div className="qs-card">
+        <p className="lead">{active.caption}</p>
+        <div className="code-block">
+          <button className="copy" onClick={copy} type="button">
+            {copied ? "Copied" : "Copy"}
+          </button>
+          <pre>{active.text}</pre>
+        </div>
       </div>
     </div>
   );
