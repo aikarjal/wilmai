@@ -4,11 +4,16 @@
 
 ### Fixed
 
-- **`wilma news read`** no longer drops the body of link-only bulletins. Some Wilma bulletins have no prose body — the entire payload is a single link (e.g. a SharePoint PDF loaded into the `#content-wrapper` iframe). `parseNewsDetailHtml` used cheerio's `.text()`, which discards `href` URLs, so these bulletins returned only header/footer. Anchor URLs are now inlined as `label (url)` so the actionable link survives.
+- **`wilma news read`** no longer drops link-only bulletin payloads. Some Wilma bulletins hide their real `#news-content` while rendering an external document in an iframe. The parser now returns those links as structured `resources` instead of losing the `href` or mixing URLs into prose.
+
+### New commands
+
+- **`wilma news resource download <news-id> <resource-id>`** downloads Wilma-hosted attachments to an explicit output directory. External resources such as protected SharePoint links return an `external_access_required` handoff with their original URL instead of pretending Wilma credentials can download them.
 
 ### New in wilma-client
 
-- Added parser coverage (`test/parser-news.mjs`) for link-only bulletins, prose bulletins, bare-URL links (no duplication), and skipped `#`/`javascript:` hrefs.
+- `NewsItem.resources` exposes stable resource IDs, labels, absolute URLs, authentication context, and available actions.
+- Added parser and client coverage for link-only bulletins, safe URL filtering, resource deduplication, and authenticated Wilma attachment retrieval.
 
 ## 1.5.3 (2026-07-11)
 

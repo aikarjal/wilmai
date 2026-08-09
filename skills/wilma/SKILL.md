@@ -1,7 +1,6 @@
 ---
 name: wilma
-version: 1.5.0
-description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, attendance/lesson notes (merkinnät), messages, and news via the wilma CLI. Start with `wilma summary --json` for a full daily briefing, or drill into specific data with individual commands.
+description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, attendance/lesson notes (merkinnät), messages, news, and linked news resources via the wilma CLI. Start with `wilma summary --json`, drill into news with `news read --json`, and use explicit resource actions for Wilma attachments or external document links.
 metadata:
   {
     "openclaw":
@@ -103,6 +102,21 @@ wilma news read <id> --student <id|name> --json
 wilma messages list --student <id|name> --folder inbox --json
 wilma messages read <id> --student <id|name> --json
 ```
+
+#### News resources and attachments
+
+Always inspect the `resources` array returned by `wilma news read <id> --json`. Treat each resource according to `kind`, `authContext`, and `availableActions`:
+
+- For `wilma_attachment` with `download` in `availableActions`, download only when the document is relevant to the user's request:
+  ```bash
+  wilma news resource download <news-id> <resource-id> --student <id|name> --output <directory> --json
+  ```
+  Use the returned absolute `path` to inspect or summarize the file. Keep downloads in a task-scoped directory and do not overwrite existing files.
+- For `external_link`, use the passed-through `url`. Do not call the download command or fetch the URL automatically. If access is necessary, open it in a user-authorized browser session that has the external service's authentication.
+- If a download returns `external_access_required`, report that the Wilma session cannot authenticate to the external service and use `availableActions` to choose the next step.
+- Never infer that an external link is a PDF solely from its bulletin label. Use returned content metadata after a successful download.
+
+Prefer resource metadata over URLs embedded in `content`; `content` is prose and can be null for link-only bulletins.
 
 ### Fetch data for all students
 All list commands support `--all-students`:

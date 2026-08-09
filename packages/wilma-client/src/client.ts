@@ -122,7 +122,22 @@ export class WilmaClient {
           return parseNewsDetailJson(newsId, data);
         }
       }
-      return parseNewsDetailHtml(text, newsId);
+      return parseNewsDetailHtml(text, newsId, resp.url);
+    },
+
+    fetchResource: async (newsId: number, resourceId: string) => {
+      const item = await this.news.get(newsId);
+      const resource = item.resources?.find((candidate) => candidate.id === resourceId);
+      if (!resource) {
+        throw new Error(`News resource "${resourceId}" not found`);
+      }
+      if (resource.kind !== "wilma_attachment" || resource.authContext !== "wilma") {
+        throw new Error(`News resource "${resourceId}" is not downloadable with the Wilma session`);
+      }
+
+      const url = new URL(resource.url);
+      const response = await this.session.get(`${url.pathname}${url.search}`);
+      return { resource, response };
     },
   };
 

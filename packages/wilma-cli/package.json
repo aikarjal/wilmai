@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "echo 'add lint'",
-    "test": "echo 'add tests'",
+    "test": "pnpm --filter @wilm-ai/wilma-client build && pnpm run build && node test/news-resources.mjs",
     "start": "node dist/index.js",
     "prepack": "pnpm --filter @wilm-ai/wilma-client build && pnpm --filter @wilm-ai/wilma-cli build",
     "test:live": "tsc -p tsconfig.json && node test/live.spec.mjs"

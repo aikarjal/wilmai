@@ -26,7 +26,22 @@ export interface NewsItem {
   author?: string | null;
   published?: Date | null;
   content?: string | null;
+  resources?: NewsResource[];
   fetchedAt: Date;
+}
+
+export type NewsResourceKind = "external_link" | "wilma_attachment";
+export type NewsResourceAuthContext = "external" | "wilma";
+export type NewsResourceAction = "open" | "download";
+
+export interface NewsResource {
+  id: string;
+  label: string;
+  url: string;
+  kind: NewsResourceKind;
+  authContext: NewsResourceAuthContext;
+  availableActions: NewsResourceAction[];
+  fileName?: string | null;
 }
 
 export interface Exam {

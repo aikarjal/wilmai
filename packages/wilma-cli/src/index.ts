@@ -2,7 +2,7 @@
 import { emitKeypressEvents } from "node:readline";
 import { select, input, password } from "@inquirer/prompts";
 import { createHmac } from "node:crypto";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, open, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import {
@@ -11,6 +11,7 @@ import {
   listTenants,
   type MfaCallback,
   type MessageFolder,
+  type NewsResource,
   type OverviewData,
   type TenantInfo,
   type WilmaProfile,
@@ -435,7 +436,7 @@ async function handleCommand(
   args: string[],
   config: { profiles: StoredProfile[]; lastProfileId?: string | null }
 ) {
-  const { command, subcommand, flags } = parseArgs(args);
+  const { command, subcommand, resourceAction, flags } = parseArgs(args);
   if (command === "config" && subcommand === "clear") {
     await clearConfig();
     console.log(`Cleared config at ${getConfigPath()}`);
@@ -469,6 +470,38 @@ async function handleCommand(
   }
 
   if (command === "news") {
+    if (subcommand === "resource") {
+      if (resourceAction !== "download") {
+        throw new Error('Expected "wilma news resource download <news-id> <resource-id>"');
+      }
+      const newsId = parseReadId(flags.id, "news");
+      const resourceId = flags.resourceId;
+      if (!resourceId) {
+        throw new Error("Missing news resource id (for example, resource-1)");
+      }
+      if (!flags.student) {
+        const students = await getStudentsForCommand(profile, config);
+        if (students.length > 1) {
+          console.error("Multiple students found. Use --student <id> to specify which one:");
+          students.forEach((s) => console.error(`  ${s.studentNumber}  ${s.name}`));
+          process.exit(1);
+        }
+      }
+      const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
+      if (!studentInfo && !profile.studentNumber) {
+        await printStudentSelectionHelp(profile, config);
+        return;
+      }
+      const perStudentClient = await WilmaClient.login({
+        ...profile,
+        studentNumber: studentInfo?.studentNumber ?? profile.studentNumber,
+      }, mfaCallback);
+      await outputNewsResourceDownload(perStudentClient, newsId, resourceId, {
+        output: flags.output,
+        json: flags.json,
+      });
+      return;
+    }
     if (subcommand === "read" && flags.id) {
       const newsId = parseReadId(flags.id, "news");
       if (!flags.student) {
@@ -708,6 +741,7 @@ function printUsage() {
   console.log("  wilma kids list [--json]");
   console.log("  wilma news list [--limit 20] [--student <id|name>] [--all-students] [--json]");
   console.log("  wilma news read <id> [--student <id|name>] [--json]");
+  console.log("  wilma news resource download <news-id> <resource-id> --student <id|name> --output <directory> [--json]");
   console.log("  wilma messages list [--folder inbox] [--limit 20] [--student <id|name>] [--all-students] [--json]");
   console.log("  wilma messages read <id> [--student <id|name>] [--json]");
   console.log("  wilma attendance list [--date YYYY-MM-DD] [--student <id|name>] [--all-students] [--json]");
@@ -764,7 +798,10 @@ function parseArgs(args: string[]) {
     weekday?: string;
     totpSecret?: string;
     days?: number;
+    resourceId?: string;
+    output?: string;
   } = {};
+  const positionals: string[] = [];
   let i = 0;
   while (i < rest.length) {
     const arg = rest[i];
@@ -829,14 +866,26 @@ function parseArgs(args: string[]) {
       i += 2;
       continue;
     }
-    if (!flags.id && !arg.startsWith("--")) {
-      flags.id = arg;
-      i += 1;
+    if (arg === "--output") {
+      flags.output = rest[i + 1];
+      i += 2;
       continue;
+    }
+    if (!arg.startsWith("--")) {
+      positionals.push(arg);
     }
     i += 1;
   }
-  return { command, subcommand, flags };
+  const resourceAction = command === "news" && subcommand === "resource"
+    ? positionals[0]
+    : undefined;
+  if (resourceAction) {
+    flags.id = positionals[1];
+    flags.resourceId = positionals[2];
+  } else {
+    flags.id = positionals[0];
+  }
+  return { command, subcommand, resourceAction, flags };
 }
 
 function parseReadId(raw: string | undefined, entity: string): number {
@@ -1086,6 +1135,198 @@ async function outputNewsItem(client: WilmaClient, id: number, json?: boolean) {
   if (item.subtitle) console.log(item.subtitle);
   if (item.published) console.log(item.published.toISOString());
   if (item.content) console.log(`\n${formatContent(item.content)}`);
+  if (item.resources?.length) {
+    console.log(`\nResources (${item.resources.length})`);
+    item.resources.forEach((resource, index) => {
+      const type = resource.kind === "wilma_attachment"
+        ? "Wilma attachment"
+        : "External link";
+      console.log(`\n[${index + 1}] ${resource.label}`);
+      console.log(`    Type: ${type}`);
+      console.log(`    Open: ${resource.url}`);
+      if (resource.availableActions.includes("download")) {
+        console.log(
+          `    Download: wilma news resource download ${item.wilmaId} ${resource.id} --student <id|name> --output <directory>`
+        );
+      } else if (resource.authContext === "external") {
+        console.log("    Note: External authentication may be required.");
+      }
+    });
+  }
+}
+
+const MAX_NEWS_RESOURCE_BYTES = 50 * 1024 * 1024;
+
+async function outputNewsResourceDownload(
+  client: WilmaClient,
+  newsId: number,
+  resourceId: string,
+  opts: { output?: string; json?: boolean }
+) {
+  const item = await client.news.get(newsId);
+  const resource = item.resources?.find((candidate) => candidate.id === resourceId);
+  if (!resource) {
+    throw new Error(`News resource "${resourceId}" not found in news item ${newsId}`);
+  }
+
+  if (!resource.availableActions.includes("download")) {
+    const result = {
+      status: "external_access_required",
+      newsId,
+      resource,
+      availableActions: ["open_in_authenticated_browser"],
+      message: "This resource is an external link and cannot be downloaded with the Wilma session.",
+    };
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`\n${resource.label}`);
+      console.log("This resource must be opened with its external authentication context:");
+      console.log(resource.url);
+    }
+    return;
+  }
+
+  if (!opts.output) {
+    throw new Error("Missing --output <directory> for resource download");
+  }
+
+  const { response } = await client.news.fetchResource(newsId, resourceId);
+  const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim() || null;
+  const declaredLength = Number(response.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_NEWS_RESOURCE_BYTES) {
+    await response.body?.cancel();
+    throw new Error("News resource exceeds the 50 MB download limit");
+  }
+  if (contentType === "text/html") {
+    const result = {
+      status: "not_a_file",
+      newsId,
+      resource,
+      contentType,
+      message: "The resource returned an HTML page instead of a downloadable file.",
+    };
+    await response.body?.cancel();
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(result.message);
+    }
+    return;
+  }
+
+  const outputDirectory = resolve(opts.output);
+  await mkdir(outputDirectory, { recursive: true });
+  const preferredName = fileNameFromResponse(resource, response.headers.get("content-disposition"), contentType);
+  const { path, handle } = await createUniqueDownloadFile(outputDirectory, preferredName);
+  let sizeBytes = 0;
+  try {
+    if (!response.body) {
+      throw new Error("News resource response had no body");
+    }
+    const reader = response.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      sizeBytes += value.byteLength;
+      if (sizeBytes > MAX_NEWS_RESOURCE_BYTES) {
+        await reader.cancel();
+        throw new Error("News resource exceeds the 50 MB download limit");
+      }
+      let offset = 0;
+      while (offset < value.byteLength) {
+        const { bytesWritten } = await handle.write(value, offset, value.byteLength - offset);
+        if (bytesWritten === 0) {
+          throw new Error("Could not write news resource to disk");
+        }
+        offset += bytesWritten;
+      }
+    }
+    await handle.close();
+  } catch (error) {
+    await handle.close().catch(() => undefined);
+    await rm(path, { force: true });
+    throw error;
+  }
+
+  const result = {
+    status: "downloaded",
+    newsId,
+    resourceId,
+    path,
+    contentType,
+    sizeBytes,
+  };
+  if (opts.json) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    console.log(`Downloaded ${resource.label} to ${path}`);
+  }
+}
+
+function fileNameFromResponse(
+  resource: NewsResource,
+  contentDisposition: string | null,
+  contentType: string | null
+): string {
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(contentDisposition ?? "")?.[1];
+  const quoted = /filename="([^"]+)"/i.exec(contentDisposition ?? "")?.[1];
+  const plain = /filename=([^;]+)/i.exec(contentDisposition ?? "")?.[1]?.trim();
+  let name = encoded ? decodeURIComponentSafely(encoded) : quoted ?? plain ?? resource.fileName ?? resource.label;
+  name = sanitizeFileName(name);
+  if (!/\.[A-Za-z0-9]{1,8}$/.test(name)) {
+    const extension = extensionForContentType(contentType);
+    if (extension) name += extension;
+  }
+  return name || "wilma-resource";
+}
+
+function sanitizeFileName(value: string): string {
+  return value
+    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_")
+    .replace(/^\.+|\.+$/g, "")
+    .trim()
+    .slice(0, 180);
+}
+
+function extensionForContentType(contentType: string | null): string {
+  const extensions: Record<string, string> = {
+    "application/pdf": ".pdf",
+    "application/zip": ".zip",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "text/plain": ".txt",
+    "text/csv": ".csv",
+  };
+  return contentType ? extensions[contentType] ?? "" : "";
+}
+
+function decodeURIComponentSafely(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+async function createUniqueDownloadFile(directory: string, preferredName: string) {
+  const dot = preferredName.lastIndexOf(".");
+  const hasExtension = dot > 0;
+  const stem = hasExtension ? preferredName.slice(0, dot) : preferredName;
+  const extension = hasExtension ? preferredName.slice(dot) : "";
+  for (let index = 0; index < 1000; index += 1) {
+    const candidate = index === 0 ? preferredName : `${stem}-${index}${extension}`;
+    const path = resolve(directory, candidate);
+    try {
+      const handle = await open(path, "wx", 0o600);
+      return { path, handle };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw error;
+      }
+    }
+  }
+  throw new Error("Could not choose a unique output filename");
 }
 
 async function outputExams(
