@@ -9,14 +9,14 @@ const cliText = `# 1) Install the CLI\nnpm install -g @wilm-ai/wilma-cli\n\n# 2)
 const tabs = [
   {
     id: "agent",
-    label: "Agent",
-    caption: "Use this if you want Wilma as a skill for OpenAI, Claude Code, or OpenClaw.",
+    label: "With an AI agent",
+    caption: "Adds Wilma as a skill for Claude Code, OpenAI, or OpenClaw.",
     text: agentText
   },
   {
     id: "cli",
-    label: "CLI-only",
-    caption: "Use this if you just want terminal access.",
+    label: "Terminal only",
+    caption: "Plain CLI, no agent involved.",
     text: cliText
   }
 ] as const;

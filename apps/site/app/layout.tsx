@@ -32,7 +32,7 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "WilmAI — School data for AI agents",
   description:
-    "Run Wilma from the CLI and wire it into agents like OpenAI, Claude Code, and OpenClaw."
+    "WilmAI gives your AI agent read access to Wilma — schedules, homework, exams, messages, and news — as one daily briefing for the whole family."
 };
 
 export default function RootLayout({

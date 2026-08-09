@@ -238,6 +238,12 @@ main {
   box-shadow: 1px 2px 0 var(--ink);
 }
 
+.hero-proof {
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
 /* ---------- Terminal ---------- */
 
 .terminal-stage {
@@ -625,6 +631,29 @@ main {
   color: var(--ink-soft);
   max-width: 640px;
   line-height: 1.55;
+}
+
+.faq details p code {
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  background: rgba(27, 43, 52, 0.07);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* ---------- Closing note ---------- */
+
+.closing {
+  max-width: 620px;
+  margin: 100px auto 0;
+  text-align: center;
+}
+
+.closing-text {
+  font-size: 19px;
+  line-height: 1.6;
+  margin-top: 8px;
 }
 
 /* ---------- Footer ---------- */

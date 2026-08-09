@@ -55,26 +55,31 @@ export default function HomePage() {
       </header>
 
       <section className="hero">
-        <p className="taped-note">Ready for the new school year!</p>
+        <p className="taped-note">New school year? Ten-minute setup.</p>
         <h1>
-          Wilma access for <span className="marker">AI&nbsp;agents</span>.
+          Wilma access for <span className="marker">your AI&nbsp;agent</span>.
         </h1>
         <p className="disclaimer">
           This is an independent open-source project by a parent, not affiliated with,
           endorsed by, or connected to Visma or the official Wilma service.
         </p>
         <p className="hero-sub">
-          An open-source CLI that lets AI agents read schedules, homework, exams,
-          grades, messages, and news from Wilma. One command gives a full daily briefing.
+          Keeping up with school is work — schedules, homework, exams, messages, and
+          news, times every kid, sometimes across different schools. WilmAI is an
+          open-source CLI that lets your AI agent read Wilma and hand you one plain
+          briefing for the whole family.
         </p>
         <div className="hero-actions">
           <a className="button primary" href="#quickstart">
             Add Skill to Agent
           </a>
           <a className="button secondary" href="#quickstart">
-            Install CLI
+            Install the CLI
           </a>
         </div>
+        <p className="hero-proof">
+          Downloaded thousands of times · in daily use by parents across Finland
+        </p>
 
         <div className="terminal-stage">
           <p className="hand-note" aria-hidden="true">
@@ -192,31 +197,31 @@ Summary for Kiia (2025-03-10)
           <h2>Quick Start</h2>
         </div>
         <p className="lead">
-          Choose your setup and copy the commands directly into your terminal.
+          Pick your setup and paste three commands into your terminal.
         </p>
         <QuickStart />
       </section>
 
       <section className="section">
         <div className="section-head">
-          <p className="eyebrow">three steps, one evening</p>
+          <p className="eyebrow">three steps, ten minutes</p>
           <h2>How It Works</h2>
         </div>
         <div className="step-list">
           <div className="step">
             <span className="step-num">1</span>
-            <strong>Pick your tenant (city)</strong>
-            <span>WilmAI ships with a list of all Wilma tenants.</span>
+            <strong>Find your city&apos;s Wilma</strong>
+            <span>WilmAI knows every Wilma address in Finland. Pick yours from the list.</span>
           </div>
           <div className="step">
             <span className="step-num">2</span>
-            <strong>Authenticate once</strong>
-            <span>Your credentials are stored locally for fast re-use.</span>
+            <strong>Log in once</strong>
+            <span>Your credentials stay in one file on your machine — never on a server.</span>
           </div>
           <div className="step">
             <span className="step-num">3</span>
-            <strong>Query your kids</strong>
-            <span>Use JSON output or let your agent do the filtering.</span>
+            <strong>Ask about your kids</strong>
+            <span>Plain language in, one briefing out. Your agent picks the right command.</span>
           </div>
         </div>
       </section>
@@ -224,11 +229,11 @@ Summary for Kiia (2025-03-10)
       <section className="section">
         <div className="section-head">
           <p className="eyebrow">you ask, your agent runs it</p>
-          <h2>What can I do with Wilma CLI?</h2>
+          <h2>What can you ask?</h2>
         </div>
         <p className="lead">
-          Run the CLI interactively or let your AI agent call the right command automatically.
-          Every command works with multiple students and returns structured JSON for agents.
+          Run the CLI yourself or let your agent call it. Every command works with
+          multiple students and returns structured JSON for agents.
         </p>
         <div className="cards">
           <div className="note note-yellow">
@@ -287,29 +292,42 @@ Summary for Kiia (2025-03-10)
         <div className="faq">
           <details>
             <summary>Where do my credentials live?</summary>
-            <p>Locally on your machine. Nothing is stored on a server.</p>
+            <p>In one file on your computer: <code>~/.config/wilmai/config.json</code>, readable only by your user account. Remove it any time with <code>wilma config clear</code>.</p>
           </details>
           <details>
             <summary>Do I need a backend?</summary>
-            <p>No. WilmAI is a CLI and skill you run on your own machine.</p>
-          </details>
-          <details>
-            <summary>What if my tenant changes?</summary>
-            <p>Run login again and select a different tenant.</p>
-          </details>
-          <details>
-            <summary>Is this officially endorsed by Wilma or Visma?</summary>
-            <p>No. This is a hobby project made by a parent who was frustrated with the Wilma app. It is not officially supported or endorsed by Visma or the Wilma service.</p>
+            <p>No. WilmAI runs entirely on your machine. There is no server, no account, and nothing to sign up for.</p>
           </details>
           <details>
             <summary>Is this secure?</summary>
-            <p>Your credentials are stored locally on your computer. We don&apos;t store any information outside of your control. It&apos;s up to you to decide how to handle them.</p>
+            <p>WilmAI talks only to your school&apos;s official Wilma servers, using your own login. There is no middleman, no analytics, and no telemetry. It is also read-only — it can&apos;t send messages or change anything in Wilma.</p>
           </details>
           <details>
-            <summary>What about data security and compliance?</summary>
-            <p>The CLI accesses the same data as the official Wilma app or website that parents already use. It&apos;s up to you to decide how it is appropriate to use that data.</p>
+            <summary>Does school data end up with an AI company?</summary>
+            <p>Not from the CLI — it sends data nowhere except Wilma. If you connect an agent, that agent reads the CLI&apos;s output, the same as if you pasted it into a chat. Pick a provider you trust, or stay terminal-only.</p>
+          </details>
+          <details>
+            <summary>What data can it see?</summary>
+            <p>Exactly what you already see as a parent in the Wilma app, fetched with your own login. Nothing extra, nothing scraped.</p>
+          </details>
+          <details>
+            <summary>What if my tenant changes?</summary>
+            <p>Run login again and pick the new city — you can keep several profiles side by side.</p>
+          </details>
+          <details>
+            <summary>Is this officially endorsed by Wilma or Visma?</summary>
+            <p>No. This is a hobby project made by a parent who wanted a better way to keep up. It is not officially supported or endorsed by Visma or the Wilma service.</p>
           </details>
         </div>
+      </section>
+
+      <section className="closing">
+        <p className="eyebrow">why this exists</p>
+        <p className="closing-text">
+          Parents keep telling me the same thing: they&apos;ve never been this up to
+          date with what&apos;s happening at school. It brings more joy than you&apos;d
+          expect. I hope it does the same for your family.
+        </p>
       </section>
 
       <footer className="footer">
