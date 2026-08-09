@@ -1,5 +1,5 @@
 import { WilmaSession, MfaRequiredError } from "./session.js";
-import type { Exam, Message, MessageFolder, NewsItem, OverviewData, WilmaProfile, StudentInfo, LessonNote } from "./types.js";
+import type { Exam, Message, MessageFolder, NewsItem, NewsResource, OverviewData, WilmaProfile, StudentInfo, LessonNote } from "./types.js";
 import { parseWilmaTimestamp } from "./parsers/dates.js";
 import { parseMessagesList, parseMessageDetailHtml } from "./parsers/messages.js";
 import {
@@ -13,6 +13,12 @@ import { parseAttendanceHtml } from "./parsers/attendance.js";
 import { parseOverview } from "./parsers/overview.js";
 import { parseScheduleHtml } from "./parsers/schedule.js";
 import { parseStudentsFromHome } from "./parsers/students.js";
+import { CookieJar } from "tough-cookie";
+import { fetch, Headers, type Response } from "undici";
+
+const EXTERNAL_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+  "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0 Safari/537.36";
 
 export type MfaCallback = (formkey: string) => Promise<string>;
 
@@ -119,10 +125,41 @@ export class WilmaClient {
       if (!contentType.includes("text/html")) {
         const data = safeJson(text) as Record<string, unknown>;
         if (Object.keys(data).length) {
-          return parseNewsDetailJson(newsId, data);
+          return parseNewsDetailJson(newsId, data, resp.url);
         }
       }
-      return parseNewsDetailHtml(text, newsId);
+      return parseNewsDetailHtml(text, newsId, resp.url);
+    },
+
+    fetchResource: async (
+      newsId: number,
+      resourceId: string,
+      options?: { item?: NewsItem }
+    ): Promise<
+      | { resource: NewsResource; response: Response; status: "fetched" }
+      | { resource: NewsResource; response: null; status: "not_a_file" }
+    > => {
+      const item = options?.item ?? (await this.news.get(newsId));
+      const resource = item.resources?.find((candidate) => candidate.id === resourceId);
+      if (!resource) {
+        throw new Error(`News resource "${resourceId}" not found`);
+      }
+
+      if (resource.authContext === "wilma") {
+        const url = new URL(resource.url);
+        const response = await this.session.get(`${url.pathname}${url.search}`);
+        if (isHtmlResponse(response)) {
+          await response.body?.cancel();
+          return { resource, response: null, status: "not_a_file" };
+        }
+        return { resource, response: response as unknown as Response, status: "fetched" };
+      }
+
+      const response = await fetchExternalFile(resource.url);
+      if (!response) {
+        return { resource, response: null, status: "not_a_file" };
+      }
+      return { resource, response, status: "fetched" };
     },
   };
 
@@ -177,6 +214,93 @@ export class WilmaClient {
       return parseOverview(safeJson(text));
     },
   };
+}
+
+// Some document hosts serve an HTML viewer page for a sharing URL but return
+// the file itself when a conventional download parameter is present. These are
+// generic retry variants, not provider detection: the original URL is always
+// attempted first, and a variant is tried only after an HTML answer.
+const DOWNLOAD_PARAM_VARIANTS: Array<[string, string]> = [
+  ["download", "1"],
+  ["dl", "1"],
+];
+
+function buildDownloadCandidates(rawUrl: string): URL[] {
+  const original = new URL(rawUrl);
+  const candidates = [original];
+  for (const [param, value] of DOWNLOAD_PARAM_VARIANTS) {
+    if (!original.searchParams.has(param)) {
+      const variant = new URL(original.href);
+      variant.searchParams.set(param, value);
+      candidates.push(variant);
+    }
+  }
+  return candidates;
+}
+
+function isHtmlResponse(response: { headers: { get(name: string): string | null } }): boolean {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  return contentType.startsWith("text/html") || contentType.startsWith("application/xhtml");
+}
+
+// Fetch an external URL the way a signed-out browser would: an isolated
+// in-memory cookie jar, redirects followed across hosts, and no Wilma
+// credentials anywhere. Returns null when every candidate answered with an
+// HTML page instead of a file.
+async function fetchExternalFile(rawUrl: string): Promise<Response | null> {
+  for (const candidate of buildDownloadCandidates(rawUrl)) {
+    const response = await fetchFollowingRedirects(candidate);
+    if (!response) {
+      continue;
+    }
+    if (response.ok && isHtmlResponse(response)) {
+      await response.body?.cancel();
+      continue;
+    }
+    return response;
+  }
+  return null;
+}
+
+async function fetchFollowingRedirects(initialUrl: URL): Promise<Response | null> {
+  const cookieJar = new CookieJar();
+  let currentUrl = initialUrl;
+  for (let redirectCount = 0; redirectCount <= 10; redirectCount += 1) {
+    const headers = new Headers({
+      "User-Agent": EXTERNAL_USER_AGENT,
+      "Accept": "*/*",
+    });
+    const cookieHeader = cookieJar.getCookieStringSync(currentUrl.href);
+    if (cookieHeader) {
+      headers.set("Cookie", cookieHeader);
+    }
+
+    const response = await fetch(currentUrl, { headers, redirect: "manual" });
+    const setCookies = (response.headers as unknown as { getSetCookie?: () => string[] })
+      .getSetCookie?.() ?? [];
+    for (const cookie of setCookies) {
+      cookieJar.setCookieSync(cookie, currentUrl.href, { ignoreError: true });
+    }
+    if (!setCookies.length) {
+      const cookie = response.headers.get("set-cookie");
+      if (cookie) cookieJar.setCookieSync(cookie, currentUrl.href, { ignoreError: true });
+    }
+
+    if (response.status < 300 || response.status >= 400) {
+      return response;
+    }
+    const location = response.headers.get("location");
+    await response.body?.cancel();
+    if (!location) {
+      return null;
+    }
+    const nextUrl = new URL(location, currentUrl);
+    if (nextUrl.protocol !== "https:" && nextUrl.protocol !== "http:") {
+      return null;
+    }
+    currentUrl = nextUrl;
+  }
+  throw new Error("External resource exceeded the redirect limit");
 }
 
 function safeJson(text: string): unknown {

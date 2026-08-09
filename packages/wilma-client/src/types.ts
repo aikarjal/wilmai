@@ -26,7 +26,22 @@ export interface NewsItem {
   author?: string | null;
   published?: Date | null;
   content?: string | null;
+  resources?: NewsResource[];
   fetchedAt: Date;
+}
+
+export type NewsResourceAuthContext = "external" | "wilma";
+
+export interface NewsResource {
+  id: string;
+  label: string;
+  url: string;
+  // "wilma": downloads use the authenticated Wilma session.
+  // "external": downloads use an isolated, unauthenticated fetch that never
+  // carries Wilma credentials. Every resource supports a download attempt;
+  // the attempt's status reports whether the URL actually served a file.
+  authContext: NewsResourceAuthContext;
+  fileName?: string | null;
 }
 
 export interface Exam {

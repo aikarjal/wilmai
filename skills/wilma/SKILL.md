@@ -1,7 +1,7 @@
 ---
 name: wilma
-version: 1.5.0
-description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, attendance/lesson notes (merkinnät), messages, and news via the wilma CLI. Start with `wilma summary --json` for a full daily briefing, or drill into specific data with individual commands.
+version: 1.6.0
+description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, attendance/lesson notes (merkinnät), messages, news, and linked news resources via the wilma CLI. Start with `wilma summary --json`, drill into news with `news read --json`, and download any linked resource with `news resource download`.
 metadata:
   {
     "openclaw":
@@ -103,6 +103,32 @@ wilma news read <id> --student <id|name> --json
 wilma messages list --student <id|name> --folder inbox --json
 wilma messages read <id> --student <id|name> --json
 ```
+
+#### News resources and attachments
+
+Always inspect the `resources` array returned by `wilma news read <id> --json`. Each resource has:
+
+- `id` — stable within the bulletin (`resource-1`, `resource-2`, …); the download command also accepts the bare number (`1`).
+- `label` — the link text from the bulletin.
+- `url` — absolute URL.
+- `authContext` — `"wilma"`: a download uses the authenticated Wilma session. `"external"`: a download uses an isolated, unauthenticated fetch that never sends Wilma credentials (like opening the link in a signed-out browser).
+- `fileName` — naming hint when the URL path looks like a file; may be null even for real files.
+
+**Any resource can be attempted with the download command.** There is no reliable way to know in advance whether a URL serves a file publicly, requires sign-in, or is a plain web page — so the CLI does not guess: it attempts the download and reports what actually happened. When a document is relevant to the user's request, attempt it:
+
+```bash
+wilma news resource download <news-id> <resource-id> --student <id|name> --output <directory> --json
+```
+
+Handle the returned `status`:
+
+- `downloaded` — the file was written. Use the returned absolute `path`, and trust `contentType`/`sizeBytes` over any guess from the bulletin label.
+- `not_a_file` — every attempt answered with a web page instead of a file. This usually means the document requires signing in (for example a private SharePoint or OneDrive sharing link), or the link is simply a web page. Report this to the user; if access matters, open the `url` in a user-authorized browser session that has the external service's authentication. Never retry the download in a loop.
+- `error` (exit code 1) — the attempt itself failed (HTTP error, network problem, size limit). Report the `message`.
+
+Keep downloads in a task-scoped directory via `--output` (defaults to the current working directory). Existing files are never overwritten — a numeric suffix is appended.
+
+Prefer resource metadata over URLs embedded in `content`; `content` is prose and can be null for link-only bulletins.
 
 ### Fetch data for all students
 All list commands support `--all-students`:

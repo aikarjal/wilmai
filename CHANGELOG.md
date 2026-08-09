@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`wilma news read`** no longer drops link-only bulletin payloads. Some Wilma bulletins hide their real `#news-content` while rendering an external document in an iframe. The parser now returns those links as structured `resources` instead of losing the `href` or mixing URLs into prose.
+
+### New commands
+
+- **`wilma news resource download <news-id> <resource-id>`** downloads any bulletin resource to an output directory (default: current directory). The resource id accepts the bare number (`1` for `resource-1`). The CLI never guesses whether a URL is a downloadable file and carries no provider-specific URL rules — it attempts the download and reports the outcome: `downloaded`, `not_a_file` (the URL answered with a web page, e.g. a sharing link behind a sign-in wall — open it in a browser instead), or an `error` (as JSON with `--json`). Wilma-hosted files download through the authenticated session; external URLs are fetched with an isolated, unauthenticated request (fresh in-memory cookie jar, browser-style redirects) that never sends Wilma credentials. Downloads are capped at 50 MB, filenames are sanitized, and existing files are never overwritten.
+- The interactive CLI offers the same downloads: reading a bulletin with resources shows a per-resource download menu with a directory prompt.
+
+### New in wilma-client
+
+- `NewsItem.resources` exposes resource IDs, labels, absolute URLs, an `authContext` (`"wilma"` session download vs `"external"` isolated public fetch), and a `fileName` naming hint. Resources are extracted on both the HTML and JSON news-detail paths.
+- `client.news.fetchResource(newsId, resourceId, { item? })` attempts any resource and resolves to `status: "fetched"` with the response, or `status: "not_a_file"` when every attempt answered with an HTML page. For external URLs it retries with conventional download parameters (`download=1`, `dl=1`) after an HTML answer.
+- Added parser, client, and CLI end-to-end coverage for link-only bulletins, safe URL filtering, deduplication, external file downloads, RFC 5987 filename decoding, collision-safe naming, the size cap, and the `not_a_file` handoff.
+
 ## 1.5.3 (2026-07-11)
 
 ### Fixed

@@ -1,6 +1,8 @@
 import * as cheerio from "cheerio";
 import { parseWilmaTimestamp } from "./dates.js";
-import type { NewsItem } from "../types.js";
+import type { NewsItem, NewsResource } from "../types.js";
+
+const FILE_EXTENSION_RE = /\.(?:pdf|docx?|xlsx?|pptx?|odt|ods|odp|rtf|txt|csv|zip|7z|png|jpe?g|gif|webp)$/i;
 
 export function parseNewsList(data: unknown): NewsItem[] {
   if (Array.isArray(data)) {
@@ -26,19 +28,30 @@ export function parseNewsList(data: unknown): NewsItem[] {
   return [];
 }
 
-export function parseNewsDetailJson(newsId: number, data: Record<string, unknown>): NewsItem {
+export function parseNewsDetailJson(
+  newsId: number,
+  data: Record<string, unknown>,
+  baseUrl?: string
+): NewsItem {
+  const content = (data["content"] ?? data["Content"]) as string | null;
+  let resources: NewsResource[] = [];
+  if (content && content.includes("<a")) {
+    const $ = cheerio.load(content);
+    resources = extractNewsResources($, $.root(), baseUrl);
+  }
   return {
     wilmaId: newsId,
     title: String(data["title"] ?? data["Title"] ?? ""),
     subtitle: (data["subtitle"] ?? data["Subtitle"]) as string | null,
     author: (data["author"] ?? data["Author"]) as string | null,
     published: parseWilmaTimestamp(data["Published"] ?? data["published"]),
-    content: (data["content"] ?? data["Content"]) as string | null,
+    content,
+    resources,
     fetchedAt: new Date(),
   };
 }
 
-export function parseNewsDetailHtml(html: string, newsId: number): NewsItem {
+export function parseNewsDetailHtml(html: string, newsId: number, baseUrl?: string): NewsItem {
   const $ = cheerio.load(html);
 
   let title = $("title").text().trim();
@@ -54,10 +67,25 @@ export function parseNewsDetailHtml(html: string, newsId: number): NewsItem {
   const subtitle = subtitleElem.length ? subtitleElem.text().trim() : null;
 
   let content: string | null = null;
-  const contentElem = $(".panel-body, .news-content, .content, .ckeditor, article").first();
+  let resources: NewsResource[] = [];
+  // Wilma can hide link-only bulletin content when it renders the target in an
+  // iframe. Prefer the dedicated container even when it carries .hidden.
+  const dedicatedContent = $("#news-content").first();
+  const contentElem = dedicatedContent.length
+    ? dedicatedContent
+    : $(".news-content, .content, .ckeditor, article, .panel-body").first();
   if (contentElem.length) {
-    contentElem.find("script, style").remove();
-    content = contentElem.text().trim();
+    resources = extractNewsResources($, contentElem, baseUrl);
+
+    const cleanContent = contentElem.clone();
+    cleanContent.find("script, style").remove();
+    const text = cleanContent.text().trim();
+
+    // A container made entirely from resource anchors has no prose body. Keep
+    // the labels in resources instead of duplicating them in content.
+    const proseOnly = cleanContent.clone();
+    proseOnly.find("a[href]").remove();
+    content = proseOnly.text().trim() ? text : null;
   }
 
   return {
@@ -67,8 +95,71 @@ export function parseNewsDetailHtml(html: string, newsId: number): NewsItem {
     author: null,
     published: null,
     content,
+    resources,
     fetchedAt: new Date(),
   };
+}
+
+function extractNewsResources(
+  $: cheerio.CheerioAPI,
+  contentElem: cheerio.Cheerio<any>,
+  baseUrl?: string
+): NewsResource[] {
+  const resources: NewsResource[] = [];
+  const seen = new Set<string>();
+
+  contentElem.find("a[href]").each((_, element) => {
+    const anchor = $(element);
+    const rawHref = (anchor.attr("href") ?? "").trim();
+    const url = resolveSafeHttpUrl(rawHref, baseUrl);
+    if (!url || seen.has(url.href)) {
+      return;
+    }
+    seen.add(url.href);
+
+    const authContext = baseUrl && url.origin === new URL(baseUrl).origin ? "wilma" : "external";
+    // Only a naming hint — never used to decide whether a download may be
+    // attempted. The download attempt itself reveals whether a URL is a file.
+    const fileName = FILE_EXTENSION_RE.test(decodeURIComponentSafely(url.pathname))
+      ? fileNameFromUrl(url)
+      : null;
+    const label = anchor.text().trim() || fileName || url.host;
+
+    resources.push({
+      id: `resource-${resources.length + 1}`,
+      label,
+      url: url.href,
+      authContext,
+      fileName,
+    });
+  });
+
+  return resources;
+}
+
+function resolveSafeHttpUrl(rawHref: string, baseUrl?: string): URL | null {
+  if (!rawHref || rawHref.startsWith("#")) {
+    return null;
+  }
+  try {
+    const url = baseUrl ? new URL(rawHref, baseUrl) : new URL(rawHref);
+    return url.protocol === "http:" || url.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function fileNameFromUrl(url: URL): string | null {
+  const lastSegment = url.pathname.split("/").filter(Boolean).at(-1);
+  return lastSegment ? decodeURIComponentSafely(lastSegment) : null;
+}
+
+function decodeURIComponentSafely(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 export function parseNewsListHtml(html: string): NewsItem[] {

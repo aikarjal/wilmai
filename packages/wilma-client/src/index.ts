@@ -7,6 +7,8 @@ export type {
   MessageFolder,
   Municipality,
   NewsItem,
+  NewsResource,
+  NewsResourceAuthContext,
   OverviewData,
   ScheduleLesson,
   TenantDiscoveryResponse,
