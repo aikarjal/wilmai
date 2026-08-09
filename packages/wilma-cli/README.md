@@ -65,7 +65,7 @@ wilma messages list [--folder inbox] [--limit 20] [--student <id|name>] [--all-s
 wilma messages read <id> [--student <id|name>] [--json]
 ```
 
-`news read --json` includes a `resources` array for document links and attachments. Only resources with `availableActions` containing `download` can be downloaded with the Wilma session. External links such as SharePoint sharing URLs expose `open` and return `external_access_required` if passed to the download command; open those URLs in their separately authenticated browser context.
+`news read --json` includes a `resources` array for document links and attachments. Resources with `availableActions` containing `download` can be downloaded directly. This includes Wilma-hosted files and recognized SharePoint sharing links. Other external links expose only `open` and return `external_access_required` if passed to the download command.
 
 ### Attendance / lesson notes
 ```bash

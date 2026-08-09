@@ -12,7 +12,7 @@ const linkOnly = parseNewsDetailHtml(
         <div class="panel-body">
           <h2>Lukuvuositiedote 2026-27</h2>
           <div class="margin-bottom hidden" id="news-content">
-            <p><a href="https://example.sharepoint.com/doc">Lukuvuositiedote 2026-27</a></p>
+            <p><a href="https://example.sharepoint.com/:b:/g/personal/example/token?e=abc">Lukuvuositiedote 2026-27</a></p>
           </div>
           <div class="panel-body-padding-remover">
             <iframe id="content-wrapper"></iframe>
@@ -35,10 +35,10 @@ assert.deepEqual(linkOnly.resources, [
   {
     id: "resource-1",
     label: "Lukuvuositiedote 2026-27",
-    url: "https://example.sharepoint.com/doc",
-    kind: "external_link",
+    url: "https://example.sharepoint.com/:b:/g/personal/example/token?e=abc",
+    kind: "external_attachment",
     authContext: "external",
-    availableActions: ["open"],
+    availableActions: ["open", "download"],
     fileName: null,
   },
 ]);

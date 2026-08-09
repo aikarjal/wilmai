@@ -108,13 +108,19 @@ function extractNewsResources(
     seen.add(url.href);
 
     const authContext = baseUrl && url.origin === new URL(baseUrl).origin ? "wilma" : "external";
-    const downloadable =
+    const wilmaDownloadable =
       authContext === "wilma" &&
       (anchor.is("[download]") ||
         ATTACHMENT_PATH_RE.test(url.pathname) ||
         ATTACHMENT_EXTENSION_RE.test(decodeURIComponentSafely(url.pathname)));
-    const kind = downloadable ? "wilma_attachment" : "external_link";
-    const fileName = downloadable ? fileNameFromUrl(url) : null;
+    const sharePointDownloadable = authContext === "external" && isSharePointSharingUrl(url);
+    const downloadable = wilmaDownloadable || sharePointDownloadable;
+    const kind = wilmaDownloadable
+      ? "wilma_attachment"
+      : sharePointDownloadable
+        ? "external_attachment"
+        : "external_link";
+    const fileName = wilmaDownloadable ? fileNameFromUrl(url) : null;
     const label = anchor.text().trim() || fileName || url.host;
 
     resources.push({
@@ -129,6 +135,12 @@ function extractNewsResources(
   });
 
   return resources;
+}
+
+function isSharePointSharingUrl(url: URL): boolean {
+  return url.protocol === "https:" &&
+    url.hostname.toLowerCase().endsWith(".sharepoint.com") &&
+    /^\/:\w:\/[a-z]\//i.test(url.pathname);
 }
 
 function resolveSafeHttpUrl(rawHref: string, baseUrl?: string): URL | null {

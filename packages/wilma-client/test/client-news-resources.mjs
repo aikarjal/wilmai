@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
+import { MockAgent, setGlobalDispatcher } from "undici";
 import { WilmaClient } from "../dist/index.js";
 
 const requests = [];
@@ -26,6 +27,16 @@ const server = createServer((req, res) => {
       <div id="news-content">
         <p>Palauta lupa perjantaihin mennessa.</p>
         <a href="/files/retkilupa.pdf" download>Retkilupa</a>
+      </div>
+    `);
+    return;
+  }
+  if (req.method === "GET" && req.url === "/!123/news/43") {
+    res.writeHead(200, { "Content-Type": "text/html" });
+    res.end(`
+      <title>SharePoint-tiedote - Wilma</title>
+      <div id="news-content" class="hidden">
+        <a href="https://example.sharepoint.com/:b:/g/personal/example/token?e=abc">Tiedote</a>
       </div>
     `);
     return;
@@ -64,6 +75,36 @@ try {
   assert.equal(response.headers.get("content-type"), "application/pdf");
   assert.equal(await response.text(), "test-pdf-bytes");
   assert(requests.includes("/!123/files/retkilupa.pdf"));
+
+  const mockAgent = new MockAgent();
+  mockAgent.enableNetConnect(/^127\.0\.0\.1:/);
+  setGlobalDispatcher(mockAgent);
+  const sharePoint = mockAgent.get("https://example.sharepoint.com");
+  sharePoint.intercept({
+    method: "GET",
+    path: "/:b:/g/personal/example/token?e=abc&download=1",
+  }).reply(302, "", {
+    headers: {
+      location: "/personal/example/document.pdf",
+      "set-cookie": "SharePointSession=test-cookie; Path=/; Secure",
+    },
+  });
+  sharePoint.intercept({
+    method: "GET",
+    path: "/personal/example/document.pdf",
+    headers: { cookie: "SharePointSession=test-cookie" },
+  }).reply(200, "sharepoint-pdf-bytes", {
+    headers: { "content-type": "application/pdf" },
+  });
+
+  const externalItem = await client.news.get(43);
+  assert.equal(externalItem.resources?.[0]?.kind, "external_attachment");
+  assert.deepEqual(externalItem.resources?.[0]?.availableActions, ["open", "download"]);
+  const externalFetch = await client.news.fetchResource(43, "resource-1");
+  assert.equal(externalFetch.status, "fetched");
+  assert.equal(externalFetch.response?.headers.get("content-type"), "application/pdf");
+  assert.equal(await externalFetch.response?.text(), "sharepoint-pdf-bytes");
+  await mockAgent.close();
 } finally {
   await new Promise((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));

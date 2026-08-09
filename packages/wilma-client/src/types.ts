@@ -30,7 +30,7 @@ export interface NewsItem {
   fetchedAt: Date;
 }
 
-export type NewsResourceKind = "external_link" | "wilma_attachment";
+export type NewsResourceKind = "external_link" | "external_attachment" | "wilma_attachment";
 export type NewsResourceAuthContext = "external" | "wilma";
 export type NewsResourceAction = "open" | "download";
 

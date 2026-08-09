@@ -1140,7 +1140,9 @@ async function outputNewsItem(client: WilmaClient, id: number, json?: boolean) {
     item.resources.forEach((resource, index) => {
       const type = resource.kind === "wilma_attachment"
         ? "Wilma attachment"
-        : "External link";
+        : resource.kind === "external_attachment"
+          ? "External attachment"
+          : "External link";
       console.log(`\n[${index + 1}] ${resource.label}`);
       console.log(`    Type: ${type}`);
       console.log(`    Open: ${resource.url}`);
@@ -1191,7 +1193,28 @@ async function outputNewsResourceDownload(
     throw new Error("Missing --output <directory> for resource download");
   }
 
-  const { response } = await client.news.fetchResource(newsId, resourceId);
+  const fetched = await client.news.fetchResource(newsId, resourceId);
+  if (fetched.status === "external_access_required" || !fetched.response) {
+    const result = {
+      status: "external_access_required",
+      newsId,
+      resource,
+      availableActions: ["open_in_authenticated_browser"],
+      message: "The external provider requires authentication that is not available to the CLI.",
+    };
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(result.message);
+      console.log(resource.url);
+    }
+    return;
+  }
+  const { response } = fetched;
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error(`News resource download failed with HTTP ${response.status}`);
+  }
   const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim() || null;
   const declaredLength = Number(response.headers.get("content-length") ?? "0");
   if (Number.isFinite(declaredLength) && declaredLength > MAX_NEWS_RESOURCE_BYTES) {

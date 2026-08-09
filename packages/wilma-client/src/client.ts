@@ -13,6 +13,12 @@ import { parseAttendanceHtml } from "./parsers/attendance.js";
 import { parseOverview } from "./parsers/overview.js";
 import { parseScheduleHtml } from "./parsers/schedule.js";
 import { parseStudentsFromHome } from "./parsers/students.js";
+import { CookieJar } from "tough-cookie";
+import { fetch, Headers, type Response } from "undici";
+
+const EXTERNAL_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+  "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0 Safari/537.36";
 
 export type MfaCallback = (formkey: string) => Promise<string>;
 
@@ -131,13 +137,24 @@ export class WilmaClient {
       if (!resource) {
         throw new Error(`News resource "${resourceId}" not found`);
       }
-      if (resource.kind !== "wilma_attachment" || resource.authContext !== "wilma") {
+      if (!resource.availableActions.includes("download")) {
         throw new Error(`News resource "${resourceId}" is not downloadable with the Wilma session`);
       }
 
+      if (resource.kind === "external_attachment") {
+        const response = await fetchSharePointDownload(resource.url);
+        if (!response) {
+          return { resource, response: null, status: "external_access_required" as const };
+        }
+        return { resource, response, status: "fetched" as const };
+      }
+
+      if (resource.kind !== "wilma_attachment" || resource.authContext !== "wilma") {
+        throw new Error(`News resource "${resourceId}" is not downloadable with the Wilma session`);
+      }
       const url = new URL(resource.url);
       const response = await this.session.get(`${url.pathname}${url.search}`);
-      return { resource, response };
+      return { resource, response, status: "fetched" as const };
     },
   };
 
@@ -192,6 +209,58 @@ export class WilmaClient {
       return parseOverview(safeJson(text));
     },
   };
+}
+
+async function fetchSharePointDownload(rawUrl: string): Promise<Response | null> {
+  const initialUrl = new URL(rawUrl);
+  if (!isSharePointHost(initialUrl) || !/^\/:\w:\/[a-z]\//i.test(initialUrl.pathname)) {
+    throw new Error("External resource is not a supported SharePoint sharing URL");
+  }
+  initialUrl.searchParams.set("download", "1");
+
+  const cookieJar = new CookieJar();
+  const sharePointHost = initialUrl.hostname.toLowerCase();
+  let currentUrl = initialUrl;
+  for (let redirectCount = 0; redirectCount <= 10; redirectCount += 1) {
+    const headers = new Headers({
+      "User-Agent": EXTERNAL_USER_AGENT,
+      "Accept": "application/pdf,application/octet-stream;q=0.9,*/*;q=0.8",
+    });
+    const cookieHeader = cookieJar.getCookieStringSync(currentUrl.href);
+    if (cookieHeader) {
+      headers.set("Cookie", cookieHeader);
+    }
+
+    const response = await fetch(currentUrl, { headers, redirect: "manual" });
+    const setCookies = (response.headers as unknown as { getSetCookie?: () => string[] })
+      .getSetCookie?.() ?? [];
+    for (const cookie of setCookies) {
+      cookieJar.setCookieSync(cookie, currentUrl.href);
+    }
+    if (!setCookies.length) {
+      const cookie = response.headers.get("set-cookie");
+      if (cookie) cookieJar.setCookieSync(cookie, currentUrl.href);
+    }
+
+    if (response.status < 300 || response.status >= 400) {
+      return response;
+    }
+    const location = response.headers.get("location");
+    await response.body?.cancel();
+    if (!location) {
+      return null;
+    }
+    const nextUrl = new URL(location, currentUrl);
+    if (nextUrl.protocol !== "https:" || nextUrl.hostname.toLowerCase() !== sharePointHost) {
+      return null;
+    }
+    currentUrl = nextUrl;
+  }
+  throw new Error("SharePoint resource exceeded the redirect limit");
+}
+
+function isSharePointHost(url: URL): boolean {
+  return url.protocol === "https:" && url.hostname.toLowerCase().endsWith(".sharepoint.com");
 }
 
 function safeJson(text: string): unknown {

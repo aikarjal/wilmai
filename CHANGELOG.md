@@ -8,11 +8,11 @@
 
 ### New commands
 
-- **`wilma news resource download <news-id> <resource-id>`** downloads Wilma-hosted attachments to an explicit output directory. External resources such as protected SharePoint links return an `external_access_required` handoff with their original URL instead of pretending Wilma credentials can download them.
+- **`wilma news resource download <news-id> <resource-id>`** downloads Wilma-hosted attachments and recognized SharePoint sharing links to an explicit output directory. Other external resources return an `external_access_required` handoff instead of being fetched automatically.
 
 ### New in wilma-client
 
-- `NewsItem.resources` exposes stable resource IDs, labels, absolute URLs, authentication context, and available actions.
+- `NewsItem.resources` exposes stable resource IDs, labels, absolute URLs, authentication context, and available actions. SharePoint sharing links are classified as downloadable `external_attachment` resources.
 - Added parser and client coverage for link-only bulletins, safe URL filtering, resource deduplication, and authenticated Wilma attachment retrieval.
 
 ## 1.5.3 (2026-07-11)

@@ -112,8 +112,9 @@ Always inspect the `resources` array returned by `wilma news read <id> --json`. 
   wilma news resource download <news-id> <resource-id> --student <id|name> --output <directory> --json
   ```
   Use the returned absolute `path` to inspect or summarize the file. Keep downloads in a task-scoped directory and do not overwrite existing files.
+- For `external_attachment` with `download` in `availableActions`, use the same CLI download command. Recognized SharePoint sharing links are fetched directly by the CLI with an isolated temporary cookie jar; do not open a browser first.
 - For `external_link`, use the passed-through `url`. Do not call the download command or fetch the URL automatically. If access is necessary, open it in a user-authorized browser session that has the external service's authentication.
-- If a download returns `external_access_required`, report that the Wilma session cannot authenticate to the external service and use `availableActions` to choose the next step.
+- If an external attachment download returns `external_access_required`, report that direct access failed and only then use `availableActions` to choose an authenticated-browser fallback.
 - Never infer that an external link is a PDF solely from its bulletin label. Use returned content metadata after a successful download.
 
 Prefer resource metadata over URLs embedded in `content`; `content` is prose and can be null for link-only bulletins.
