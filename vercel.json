@@ -2,13 +2,5 @@
   "framework": "nextjs",
   "installCommand": "pnpm install",
   "buildCommand": "pnpm --filter @wilm-ai/site build",
-  "outputDirectory": ".next",
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.wilm.ai" }],
-      "destination": "https://wilm.ai/:path*",
-      "permanent": true
-    }
-  ]
+  "outputDirectory": ".next"
 }
