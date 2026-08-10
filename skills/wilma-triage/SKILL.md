@@ -1,7 +1,7 @@
 ---
 name: wilma-triage
-version: 1.2.0
-description: Daily triage of Wilma school notifications for Finnish parents. Fetches exams, messages, news, schedules, homework, and lesson notes (merkinnät) — filters for actionable items, syncs exams to Google Calendar, and reports via chat. Requires the `wilma` skill and `gog` CLI (or `gog` skill from ClawHub) for calendar access.
+version: 1.3.0
+description: Daily triage of Wilma school notifications for Finnish parents. Fetches exams, messages, news, schedules, homework, and lesson notes (merkinnät) — filters for actionable items, downloads and reads important bulletin attachments, syncs exams to Google Calendar, and reports via chat. Requires the `wilma` skill and `gog` CLI (or `gog` skill from ClawHub) for calendar access.
 metadata:
   {
     "openclaw":
@@ -30,7 +30,7 @@ Automated daily triage of Wilma school data for parents. Filters noise, surfaces
 
 ## Dependencies
 
-- **wilma skill** — install from ClawHub (`clawhub install wilma`) for Wilma CLI commands and setup
+- **wilma skill** — install from ClawHub (`clawhub install wilma`) for Wilma CLI commands and setup; attachment download requires wilma-cli 1.6.0+
 - **gog skill** — install from ClawHub (`clawhub install gog`) for Google Calendar sync
 
 ## First Run Setup
@@ -69,14 +69,36 @@ Over time, the user will give feedback on what to report and what to skip — st
    wilma news read <id> --student <name> --json
    ```
 
-2. **Filter** — apply triage rules below plus any kid-specific rules from MEMORY.md
+2. **Download and read important attachments** — many bulletins are link-only: the `content` field is empty (or just defers to an attachment), and the actionable information — dates, deadlines, forms, required materials, schedule details — lives inside the attached document. Skipping these means missing exactly the items triage exists to catch.
 
-3. **Calendar sync** — add missing exams and actionable events using gog CLI commands from TOOLS.md
+   After reading a bulletin or message, inspect the `resources` array in the JSON. Attempt a download when **all** of these hold:
+   - the resource looks like a document (a `fileName` hint, a document-like URL, or otherwise clearly a file rather than a web page), and
+   - the bulletin is high-value (annual/term info sheets, teacher letters, school office bulletins, permission slips), and
+   - the bulletin text is empty or defers to the attachment.
+
+   ```bash
+   wilma news resource download <news-id> <resource-id> --student <name> --output <dir> --json
+   ```
+
+   Handle the returned `status`:
+   - `downloaded` — read the file (use the PDF reader for PDFs) and extract actionable items into the report.
+   - `not_a_file` — the link is a web page or requires external sign-in. Report the URL so the parent can open it themselves. Do **not** retry in a loop.
+   - `error` — report the message.
+
+   **What NOT to download:**
+   - Generic informational web links, social-media pages, and multilingual duplicates of the same notice — a single bulletin may carry many of these.
+   - Do not iterate the whole `resources` array; target only genuine document attachments on high-value, actionable bulletins.
+
+   **Sandbox note:** image/PDF reader tools may reject files in certain temp paths (e.g. system temp dirs). Download attachments into a workspace-relative directory (e.g. `./attachments/`) before reading, and clean up afterward if desired.
+
+3. **Filter** — apply triage rules below plus any kid-specific rules from MEMORY.md
+
+4. **Calendar sync** — add missing exams and actionable events using gog CLI commands from TOOLS.md
    - **ALWAYS check for existing events before adding** to avoid duplicates
    - Use naming conventions stored in TOOLS.md
    - Remove cancelled events from calendar
 
-4. **Report** — if actionable items found, send details. If nothing actionable, stay silent or send a brief confirmation. Check MEMORY.md for the user's notification preference.
+5. **Report** — if actionable items found, send details. If nothing actionable, stay silent or send a brief confirmation. Check MEMORY.md for the user's notification preference.
 
 ## Calendar Sync
 
@@ -99,6 +121,8 @@ Wilma messages come from different sources and have very different signal-to-noi
 - **Parent union / vanhempainyhdistys** — Low signal by default (fundraising, volunteer calls). However, check MEMORY.md — if the parent is actively involved in the union, these become high priority.
 
 **Rule of thumb:** If a message is from a teacher (class teacher or subject teacher), always read it. If it's from the school office or city, skim the subject and skip unless it's clearly actionable.
+
+If a high-value message or bulletin references or attaches a document, download and read it per workflow step 2 — the actionable details are often only in the attachment.
 
 ## Understanding Lesson Notes (merkinnät)
 
@@ -132,7 +156,7 @@ The `typeLabel` field in the JSON is the full Finnish reason; `subject` is the c
 - Explained absences logged in lesson notes (confirmation only)
 
 ### Important: Always Read Weekly Letters (viikkoviesti)
-Weekly letters from class teachers often contain actionable items buried in the text: exams, materials to bring, schedule changes, field trips. **Always read the full content** of viikkoviesti messages — do not skip based on subject line alone.
+Weekly letters from class teachers often contain actionable items buried in the text: exams, materials to bring, schedule changes, field trips. **Always read the full content** of viikkoviesti messages — do not skip based on subject line alone. If the letter references or attaches a document (info sheet, schedule, form), download and read it too per workflow step 2.
 
 ### Day-Before Logistics (critical!)
 
