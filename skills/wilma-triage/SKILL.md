@@ -1,6 +1,6 @@
 ---
 name: wilma-triage
-version: 1.3.0
+version: 1.3.1
 description: Daily triage of Wilma school notifications for Finnish parents. Fetches exams, messages, news, schedules, homework, and lesson notes (merkinnät) — filters for actionable items, downloads and reads important bulletin attachments, syncs exams to Google Calendar, and reports via chat. Requires the `wilma` skill and `gog` CLI (or `gog` skill from ClawHub) for calendar access.
 metadata:
   {
@@ -117,7 +117,7 @@ Wilma messages come from different sources and have very different signal-to-noi
 - **Teacher messages** (from subject teachers) — Usually about specific exams, homework, or class events. High signal.
 - **School office / rehtori messages** — Administrative: schedule changes, events, policy updates. Medium signal — skim for actions.
 - **Kuukausitiedote / monthly newsletter** (from school office) — **Read these.** They typically contain important dates: holidays, school year start/end, event schedules, enrollment deadlines. Don't skip based on the generic subject line.
-- **City-wide notices** (from Helsinki/municipality) — Health campaigns, transport info, surveys. Usually noise for daily triage. Skim subject, skip unless clearly actionable.
+- **Municipality notices** (from the city/municipality education department) — Health campaigns, transport info, surveys. Usually noise for daily triage. Skim subject, skip unless clearly actionable.
 - **Parent union / vanhempainyhdistys** — Low signal by default (fundraising, volunteer calls). However, check MEMORY.md — if the parent is actively involved in the union, these become high priority.
 
 **Rule of thumb:** If a message is from a teacher (class teacher or subject teacher), always read it. If it's from the school office or city, skim the subject and skip unless it's clearly actionable.
@@ -168,7 +168,7 @@ Viikkoviestit and teacher messages often contain **operational details for upcom
 - **Pickup/return time changes** (e.g., "paluu koululle noin klo 15")
 - **Order of the day** (e.g., "exam first, then trip immediately after")
 
-**These details are just as important as exams and schedule changes.** A parent who knows there's a Superpark trip but doesn't know school starts at 9:30 instead of 8:30 has incomplete information.
+**These details are just as important as exams and schedule changes.** A parent who knows there's a field trip but doesn't know school starts at 9:30 instead of 8:30 has incomplete information.
 
 **Workflow:**
 1. When reading viikkoviestit, extract ALL day-specific logistics for the next 2-3 school days
@@ -176,7 +176,7 @@ Viikkoviestit and teacher messages often contain **operational details for upcom
 3. Include: modified times, what to bring, cancelled lessons, transport details, return times
 4. Don't assume calendar sync = job done — the calendar has the event but not the logistics
 
-**Example of what gets missed without this:** Calendar shows "Superpark trip" and "History exam" on Friday. But the viikkoviesti says school starts at 9:30 (not 8:30), history exam is first, bring water bottle + snacks, no ET or electives, return around 15:00. All of that is critical for the parent to know the evening before.
+**Example of what gets missed without this:** Calendar shows "Activity park trip" and "History exam" on Friday. But the viikkoviesti says school starts at 9:30 (not 8:30), history exam is first, bring water bottle + snacks, no ET or electives, return around 15:00. All of that is critical for the parent to know the evening before.
 
 ### Skip Silently
 - Concerts, cultural performances (FYI only)
