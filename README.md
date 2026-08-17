@@ -58,6 +58,41 @@ News JSON includes structured `resources` for every link in a bulletin. Any reso
 
 Config is stored in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`). Override with `WILMAI_CONFIG_PATH`.
 
+## Troubleshooting
+
+### `fetch failed` on a managed or corporate laptop
+
+If any command fails with a TLS certificate error, your network is very likely
+intercepting TLS ("break-and-inspect") and re-signing certificates with a private
+root CA — standard on devices behind a corporate secure web gateway. Node ships its
+own CA bundle and ignores the operating system trust store, so a root your browser
+already trusts is invisible to Node.
+
+The CLI reports the underlying cause code (for example
+`UNABLE_TO_GET_ISSUER_CERT_LOCALLY`) and the fix. In order of preference:
+
+```bash
+# 1. Node >=22.19 / >=24.6
+NODE_USE_SYSTEM_CA=1 wilma summary --json
+
+# 2. Node >=22.15 (the flag has wider version support than the env var)
+node --use-system-ca "$(command -v wilma)" summary --json
+
+# 3. Point Node at the proxy root explicitly
+NODE_EXTRA_CA_CERTS=/path/to/root-ca.pem wilma summary --json
+```
+
+Never set `NODE_TLS_REJECT_UNAUTHORIZED=0`. It disables certificate verification
+entirely, on a network that is already inspecting your traffic.
+
+Two things that make this hard to recognise:
+
+- **A working `npm install` proves nothing.** Inspection policies commonly exempt
+  `registry.npmjs.org`, so installing the CLI succeeds while every Wilma request
+  fails.
+- **`curl` and your browser work fine**, because they use the OS trust store. Only
+  Node is affected, which makes the network look healthy.
+
 ## Credentials & Privacy
 
 Your Wilma credentials are stored locally in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`) after first login. The password is obfuscated (not encrypted) for convenience — this is a personal productivity tool, not a vault.

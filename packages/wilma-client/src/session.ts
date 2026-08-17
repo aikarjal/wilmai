@@ -1,5 +1,6 @@
 import { CookieJar, type Cookie } from "tough-cookie";
 import { fetch, type RequestInit, type Response } from "undici";
+import { wrapNetworkError } from "./network-error.js";
 
 export class AuthenticationError extends Error {}
 export class MfaRequiredError extends Error {
@@ -262,10 +263,17 @@ export class WilmaSession {
       console.log(`[wilmai] ${method} ${url}`);
     }
 
-    const resp = await fetch(url, {
-      ...init,
-      headers,
-    });
+    let resp: Response;
+    try {
+      resp = await fetch(url, {
+        ...init,
+        headers,
+      });
+    } catch (err) {
+      // `fetch failed` on its own is undiagnosable; re-throw with the cause code
+      // and remediation attached.
+      throw wrapNetworkError(err, url);
+    }
 
     const headersAny = resp.headers as unknown as { getSetCookie?: () => string[] };
     const setCookies = headersAny.getSetCookie?.() ?? [];

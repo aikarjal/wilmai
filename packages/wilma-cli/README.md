@@ -99,6 +99,34 @@ If you've saved your TOTP secret via interactive setup, `--totp-secret` is not n
 Local config is stored in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`).
 Use `wilma config clear` to remove it. Override with `WILMAI_CONFIG_PATH`.
 
+## Troubleshooting: TLS errors on a managed laptop
+
+A TLS certificate error means the network is intercepting TLS and re-signing with a
+private root CA (common behind a corporate secure web gateway). Node ignores the OS
+trust store, so `curl` and your browser keep working while every Wilma request fails.
+A successful `npm install` is not evidence that TLS is healthy — the npm registry is
+commonly exempt from inspection.
+
+```bash
+NODE_USE_SYSTEM_CA=1 wilma summary --json                        # Node >=22.19 / >=24.6
+node --use-system-ca "$(command -v wilma)" summary --json        # Node >=22.15
+NODE_EXTRA_CA_CERTS=/path/to/root-ca.pem wilma summary --json    # explicit root
+```
+
+Never use `NODE_TLS_REJECT_UNAUTHORIZED=0` — it turns verification off entirely.
+
+With `--json`, transport failures carry a `code` and a `hint` alongside `status` and
+`message`, so agents can branch on the cause:
+
+```json
+{
+  "status": "error",
+  "message": "TLS certificate verification failed for https://example.inschool.fi (UNABLE_TO_GET_ISSUER_CERT_LOCALLY)",
+  "code": "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+  "hint": "..."
+}
+```
+
 ## Notes
 - Credentials and TOTP secrets are stored with lightweight obfuscation for convenience.
 - For multi-child accounts, you can pass `--student <id|name>` or `--all-students`.

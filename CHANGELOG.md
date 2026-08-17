@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Transport failures are no longer reported as a bare `fetch failed`.** `fetch` rejects with an opaque `TypeError: fetch failed` and puts the real reason on `error.cause`, which the CLI discarded — so the most common real cause on a managed laptop, a TLS-intercepting proxy re-signing certificates with a private root CA, was indistinguishable from being offline. Failures now report the underlying cause code (`UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, `ENOTFOUND`, `ECONNREFUSED`, timeouts, …) together with remediation. With `--json`, `code` and `hint` accompany the existing `status` and `message`.
+
+### New in wilma-client
+
+- `NetworkError` (exported) carries `code`, `hint` and `origin` for any request that never produced an HTTP response, preserving the original error as `cause`. Both fetch call sites raise it — the authenticated session, and the isolated external-resource fetch used by `news resource download`. Non-transport errors pass through untouched.
+- `describeNetworkCode()`, `extractCauseCode()` and `wrapNetworkError()` are exported for reuse. The classifier is pure and covered by offline tests. Only a request's origin is ever placed in a message, never the path, since Wilma paths embed student numbers.
+
 ## 1.6.0 (2026-08-09)
 
 _Releases: wilma-cli 1.6.0, wilma-client 1.5.0._

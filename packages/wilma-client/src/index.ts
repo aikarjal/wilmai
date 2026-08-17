@@ -21,6 +21,12 @@ export { WilmaClient } from "./client.js";
 export type { MfaCallback } from "./client.js";
 export { WilmaSession, AuthenticationError, MfaRequiredError, APIError } from "./session.js";
 export {
+  NetworkError,
+  describeNetworkCode,
+  extractCauseCode,
+  wrapNetworkError,
+} from "./network-error.js";
+export {
   loadTenantDiscovery,
   listTenants,
   searchTenantsByMunicipality,
