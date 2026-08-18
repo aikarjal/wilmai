@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.6.1 (2026-08-19)
+
+_Releases: wilma-cli 1.6.1, wilma-client 1.5.1._
 
 ### Fixed
 
