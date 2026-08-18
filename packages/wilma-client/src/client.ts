@@ -15,6 +15,7 @@ import { parseScheduleHtml } from "./parsers/schedule.js";
 import { parseStudentsFromHome } from "./parsers/students.js";
 import { CookieJar } from "tough-cookie";
 import { fetch, Headers, type Response } from "undici";
+import { wrapNetworkError } from "./network-error.js";
 
 const EXTERNAL_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
@@ -275,7 +276,12 @@ async function fetchFollowingRedirects(initialUrl: URL): Promise<Response | null
       headers.set("Cookie", cookieHeader);
     }
 
-    const response = await fetch(currentUrl, { headers, redirect: "manual" });
+    let response: Response;
+    try {
+      response = await fetch(currentUrl, { headers, redirect: "manual" });
+    } catch (err) {
+      throw wrapNetworkError(err, currentUrl.href);
+    }
     const setCookies = (response.headers as unknown as { getSetCookie?: () => string[] })
       .getSetCookie?.() ?? [];
     for (const cookie of setCookies) {

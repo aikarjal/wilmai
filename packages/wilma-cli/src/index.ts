@@ -9,6 +9,7 @@ import { dirname, resolve } from "node:path";
 import {
   WilmaClient,
   MfaRequiredError,
+  NetworkError,
   listTenants,
   type MfaCallback,
   type MessageFolder,
@@ -2307,10 +2308,26 @@ main().catch((err) => {
     process.exit(1);
   }
   const message = err instanceof Error ? err.message : String(err);
+  const isNetwork = err instanceof NetworkError;
   if (process.argv.includes("--json")) {
-    console.log(JSON.stringify({ status: "error", message }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          status: "error",
+          message,
+          ...(isNetwork && err.code ? { code: err.code } : {}),
+          ...(isNetwork && err.hint ? { hint: err.hint } : {}),
+        },
+        null,
+        2
+      )
+    );
   } else {
     console.error("CLI error:", message);
+    if (isNetwork && err.hint) {
+      console.error("");
+      console.error(err.hint);
+    }
   }
   process.exit(1);
 });

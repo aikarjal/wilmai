@@ -1,6 +1,6 @@
 ---
 name: wilma
-version: 1.6.0
+version: 1.6.1
 description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, attendance/lesson notes (merkinnät), messages, news, and linked news resources via the wilma CLI. Start with `wilma summary --json`, drill into news with `news read --json`, and download any linked resource with `news resource download`.
 metadata:
   {
@@ -158,6 +158,7 @@ If the TOTP secret has been saved via interactive setup, `--totp-secret` is not 
 - When the account has multiple students, `--student` is **required** for read commands.
 - If auth expires or the CLI says no saved profile, re-run `wilma` interactively or use `wilma config clear` to reset.
 - Run `wilma update` to update the CLI to the latest version.
+- **TLS errors on managed machines.** If a command fails with a `code` such as `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, the network is intercepting TLS and re-signing certificates with a private root CA that Node does not trust. With `--json` the failure carries `code` and `hint` fields — read the `hint` and report it rather than retrying. The fix is to run the CLI with `NODE_USE_SYSTEM_CA=1` (Node >=22.19/>=24.6), or `node --use-system-ca "$(command -v wilma)"` (Node >=22.15). Never suggest `NODE_TLS_REJECT_UNAUTHORIZED=0`; it disables verification entirely. Note that a working `npm install` does not prove TLS is healthy — the npm registry is commonly exempt from inspection.
 
 ## Actionability guidance (for parents)
 
