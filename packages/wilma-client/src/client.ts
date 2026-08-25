@@ -12,7 +12,7 @@ import { parseExamsHtml } from "./parsers/exams.js";
 import { parseAttendanceHtml } from "./parsers/attendance.js";
 import { parseOverview } from "./parsers/overview.js";
 import { parseScheduleHtml } from "./parsers/schedule.js";
-import { parseStudentsFromHome } from "./parsers/students.js";
+import { parseStudentsFromAccountsRoles, parseStudentsFromHome, parseStudentsFromRolesIndex } from "./parsers/students.js";
 import { CookieJar } from "tough-cookie";
 import { fetch, Headers, type Response } from "undici";
 import { wrapNetworkError } from "./network-error.js";
@@ -49,7 +49,9 @@ export class WilmaClient {
   }
 
   static async listStudents(profile: WilmaProfile, onMfaRequired?: MfaCallback): Promise<StudentInfo[]> {
-    const session = new WilmaSession(profile.baseUrl);
+    const session = new WilmaSession(profile.baseUrl, {
+      debug: profile.debug ?? false,
+    });
     try {
       await session.login(profile.username, profile.password);
     } catch (err) {
@@ -60,9 +62,37 @@ export class WilmaClient {
         throw err;
       }
     }
+    try {
+      const accountsResp = await session.get("/api/v1/accounts/me/roles");
+      const accountsText = await accountsResp.text();
+      const fromAccounts = parseStudentsFromAccountsRoles(safeJson(accountsText));
+      if (fromAccounts.length > 0) {
+        return fromAccounts;
+      }
+    } catch {
+      // API missing or not JSON (e.g. 404 on older Wilma)
+    }
     const resp = await session.get("/");
     const html = await resp.text();
-    return parseStudentsFromHome(html);
+    const fromHome = parseStudentsFromHome(html, resp.url);
+    if (fromHome.length > 0) {
+      return fromHome;
+    }
+    try {
+      const rolesResp = await session.get("/roles/index");
+      const text = await rolesResp.text();
+      try {
+        const fromRoles = parseStudentsFromRolesIndex(JSON.parse(text) as unknown);
+        if (fromRoles.length > 0) {
+          return fromRoles;
+        }
+      } catch {
+        // not JSON
+      }
+      return parseStudentsFromHome(text, rolesResp.url);
+    } catch {
+      return [];
+    }
   }
 
   messages = {
