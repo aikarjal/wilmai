@@ -1,6 +1,6 @@
 ---
 name: wilma
-version: 1.6.1
+version: 1.6.2
 description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, attendance/lesson notes (merkinnät), messages, news, and linked news resources via the wilma CLI. Start with `wilma summary --json`, drill into news with `news read --json`, and download any linked resource with `news resource download`.
 metadata:
   {

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import {
   parseStudentsFromHome,
   parseStudentFromUrl,
-  parseStudentsFromRolesIndex,
   parseStudentsFromAccountsRoles,
 } from "../dist/parsers/students.js";
 
@@ -32,13 +31,6 @@ assert.equal(fromUrl.length, 1);
 assert.equal(fromUrl[0].studentNumber, "12345678");
 
 assert.equal(parseStudentFromUrl("https://example.inschool.fi/!12345678/")?.studentNumber, "12345678");
-
-const roles = parseStudentsFromRolesIndex({
-  Roles: [{ Name: "Ada Example", Type: 1, Slug: "!12345678" }],
-});
-assert.equal(roles.length, 1);
-assert.equal(roles[0].studentNumber, "12345678");
-assert.equal(roles[0].name, "Ada Example");
 
 const noTrailingSlash = parseStudentsFromHome(`
   <a href="/!12345678">Ada Example</a>

@@ -120,60 +120,6 @@ export function parseStudentsFromAccountsRoles(data: unknown): StudentInfo[] {
   return [...students.values()];
 }
 
-export function parseStudentsFromRolesIndex(data: unknown): StudentInfo[] {
-  const students = new Map<string, StudentInfo>();
-
-  const visit = (value: unknown) => {
-    if (!value) {
-      return;
-    }
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        visit(item);
-      }
-      return;
-    }
-    if (typeof value !== "object") {
-      return;
-    }
-    const rec = value as Record<string, unknown>;
-    const type = roleType(rec);
-    if (isPasswdAccountRole(type)) {
-      for (const key of ["Roles", "roles", "Students", "students", "Index", "index", "payload", "Payload"]) {
-        if (key in rec) {
-          visit(rec[key]);
-        }
-      }
-      return;
-    }
-    const slug = String(rec.Slug ?? rec.slug ?? rec.Id ?? rec.id ?? "");
-    const studentNumber = studentNumberFromSlug(slug);
-    const name = roleName(rec, studentNumber ?? "");
-    const looksLikeStudent = Boolean(
-      studentNumber &&
-        (type === undefined ||
-          type === 1 ||
-          type === "1" ||
-          type === "Student" ||
-          type === "guardian" ||
-          /oppilas|student|huollettava|guardian/i.test(String(type)) ||
-          /oppilas|student/i.test(name) ||
-          Boolean(studentNumber))
-    );
-    if (studentNumber && looksLikeStudent && name) {
-      collectStudent(students, studentNumber, name);
-    }
-    for (const key of ["Roles", "roles", "Students", "students", "Index", "index", "payload", "Payload"]) {
-      if (key in rec) {
-        visit(rec[key]);
-      }
-    }
-  };
-
-  visit(data);
-  return [...students.values()];
-}
-
 export function parseStudentsFromHome(html: string, pageUrl?: string): StudentInfo[] {
   const $ = cheerio.load(html);
   const named = new Map<string, StudentInfo>();

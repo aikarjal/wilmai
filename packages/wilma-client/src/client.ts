@@ -12,10 +12,10 @@ import { parseExamsHtml } from "./parsers/exams.js";
 import { parseAttendanceHtml } from "./parsers/attendance.js";
 import { parseOverview } from "./parsers/overview.js";
 import { parseScheduleHtml } from "./parsers/schedule.js";
-import { parseStudentsFromAccountsRoles, parseStudentsFromHome, parseStudentsFromRolesIndex } from "./parsers/students.js";
+import { parseStudentsFromAccountsRoles, parseStudentsFromHome } from "./parsers/students.js";
 import { CookieJar } from "tough-cookie";
 import { fetch, Headers, type Response } from "undici";
-import { wrapNetworkError } from "./network-error.js";
+import { NetworkError, wrapNetworkError } from "./network-error.js";
 
 const EXTERNAL_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
@@ -69,7 +69,10 @@ export class WilmaClient {
       if (fromAccounts.length > 0) {
         return fromAccounts;
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof NetworkError) {
+        throw err;
+      }
       // API missing or not JSON (e.g. 404 on older Wilma)
     }
     const resp = await session.get("/");
@@ -78,21 +81,7 @@ export class WilmaClient {
     if (fromHome.length > 0) {
       return fromHome;
     }
-    try {
-      const rolesResp = await session.get("/roles/index");
-      const text = await rolesResp.text();
-      try {
-        const fromRoles = parseStudentsFromRolesIndex(JSON.parse(text) as unknown);
-        if (fromRoles.length > 0) {
-          return fromRoles;
-        }
-      } catch {
-        // not JSON
-      }
-      return parseStudentsFromHome(text, rolesResp.url);
-    } catch {
-      return [];
-    }
+    return [];
   }
 
   messages = {
