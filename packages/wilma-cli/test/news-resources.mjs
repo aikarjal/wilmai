@@ -55,7 +55,8 @@ const server = createServer((req, res) => {
   }
   if (req.method === "GET" && req.url === "/") {
     res.writeHead(200, { "Content-Type": "text/html" });
-    res.end('<a href="/!123/">Test Student</a>');
+    // Exact numeric selectors must work even when live student enumeration is empty.
+    res.end("<html></html>");
     return;
   }
   if (req.method === "GET" && req.url === "/!123/news/42") {
@@ -156,6 +157,15 @@ try {
       throw error;
     }
   };
+
+  // Empty live enumeration preserves and returns the cached student list.
+  const kids = await runJson(["kids", "list", "--json"]);
+  assert.equal(kids.exitCode, 0);
+  assert.deepEqual(kids.output, [{
+    studentNumber: "123",
+    name: "Test Student",
+    href: "/!123/",
+  }]);
 
   // Every resource is attemptable; no kind guessing in the schema.
   const read = await runJson(["news", "read", "42", "--student", "123", "--json"]);

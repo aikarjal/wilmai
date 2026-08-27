@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.2 (2026-08-27)
+
+_Releases: wilma-cli 1.6.2, wilma-client 1.5.2._
+
+### Fixed
+
+- Guardian child discovery now prefers `GET /api/v1/accounts/me/roles` and accepts homepage role links without a trailing slash, fixing empty `kids list` results on Wilma 2.36.
+- Exact numeric `--student` selectors no longer depend on a fresh child-list response. Empty refreshes preserve the saved child list, so `messages read` and `news read` consistently accept IDs previously returned by the CLI.
+
 ## 1.6.1 (2026-08-19)
 
 _Releases: wilma-cli 1.6.1, wilma-client 1.5.1._

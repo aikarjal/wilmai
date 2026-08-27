@@ -2028,12 +2028,18 @@ async function getStudentsForCommand(
   config: { profiles: StoredProfile[]; lastProfileId?: string | null }
 ): Promise<StudentInfo[]> {
   const stored = config.profiles.find((p) => p.id === config.lastProfileId);
-  const fresh = await WilmaClient.listStudents(profile);
-  if (stored) {
+  const fresh = await WilmaClient.listStudents({ ...profile, studentNumber: null });
+  if (stored && fresh.length > 0) {
     stored.students = fresh.map((s) => ({ studentNumber: s.studentNumber, name: s.name }));
     await saveConfig(config);
   }
-  return fresh;
+  if (fresh.length > 0) {
+    return fresh;
+  }
+  return (stored?.students ?? []).map((student) => ({
+    ...student,
+    href: `/!${student.studentNumber}/`,
+  }));
 }
 
 async function resolveStudentForFlags(
@@ -2042,16 +2048,24 @@ async function resolveStudentForFlags(
   student?: string
 ): Promise<StudentInfo | null> {
   if (student) {
+    const normalized = student.trim();
+    if (/^\d+$/.test(normalized)) {
+      const stored = config.profiles.find((p) => p.id === config.lastProfileId);
+      const cached = stored?.students?.find((item) => item.studentNumber === normalized);
+      return {
+        studentNumber: normalized,
+        name: cached?.name ?? normalized,
+        href: `/!${normalized}/`,
+      };
+    }
     const students = await getStudentsForCommand(profile, config);
-    const exact = students.find((s) => s.studentNumber === student);
-    if (exact) return exact;
-    const needle = student.toLowerCase();
+    const needle = normalized.toLowerCase();
     const substring = students.find((s) => s.name.toLowerCase().includes(needle));
     if (substring) return substring;
-    const match = students.find((s) => fuzzyIncludes(s.name, student));
+    const match = students.find((s) => fuzzyIncludes(s.name, normalized));
     if (match) return match;
     // No match found - show available students and exit
-    console.error(`Error: No student matching "${student}" found.`);
+    console.error(`Error: No student matching "${normalized}" found.`);
     if (students.length > 0) {
       console.error("Available students:");
       students.forEach((s) => console.error(`  ${s.studentNumber}  ${s.name}`));
