@@ -1541,7 +1541,8 @@ async function outputAttendance(
     const type = note.typeLabel ? ` [${note.typeLabel}]` : "";
     const teacher = note.teacher ? ` ${note.teacher}` : "";
     const subject = note.subject ? ` [${note.subject}]` : "";
-    console.log(`-${time}${type}${teacher}${subject}`);
+    const remark = note.note ? ` "${note.note}"` : "";
+    console.log(`-${time}${type}${teacher}${subject}${remark}`);
   });
 }
 
@@ -2192,7 +2193,8 @@ async function outputAllAttendance(
       const type = note.typeLabel ? ` [${note.typeLabel}]` : "";
       const teacher = note.teacher ? ` ${note.teacher}` : "";
       const subject = note.subject ? ` [${note.subject}]` : "";
-      console.log(`-${time}${type}${teacher}${subject}`);
+      const remark = note.note ? ` "${note.note}"` : "";
+      console.log(`-${time}${type}${teacher}${subject}${remark}`);
     });
   }
 }

@@ -89,7 +89,7 @@ wilma attendance list --all-students --json
 ```
 Returns Wilma's per-lesson notes ("merkinnät") for a single day: positive feedback, behavioral remarks, missing materials, and absence categorizations (medical, explained, unexplained). Defaults to today if `--date` is omitted; teachers usually fill notes during or after class, so for a morning agent run prefer `--date <yesterday>`.
 
-Each note has `start`/`end` times derived from Wilma's hour-grid headers — accurate to the lesson hour, with 45-minute period assumed. `subject` is the Wilma course code (e.g. `MA_8LV` = math, 8th grade), and `typeLabel` is the human-readable Finnish reason or remark.
+Each note has `start`/`end` times derived from Wilma's hour-grid headers — accurate to the lesson hour, with 45-minute period assumed. `subject` is the Wilma course code (e.g. `MA_8LV` = math, 8th grade), `typeLabel` is the human-readable Finnish reason or remark, and `note` carries the teacher's free-text comment when one was attached (empty otherwise). `typeClass` is `at-tp-other` for free-text remarks and `at-tpN` for absence categories.
 
 ### List students
 ```bash

@@ -14,8 +14,17 @@ import type { LessonNote } from "../types.js";
  * three grid columns but consumes one index, so by the third or fourth cell
  * the index has drifted from the true grid column.
  *
- * Title attribute on event cells: "TypeLabel /TeacherName" or
- * "SubjectCode; TypeLabel /TeacherName".
+ * Two kinds of event cells exist. Absence-type marks are `<td class="at-tpN">`
+ * whose text is the teacher code. Free-text remarks (positive feedback,
+ * behavioural notes) are `<td class="at-tp-other">` whose text is a `<small>`
+ * label, optionally followed by a `<sup>` footnote marker that points at the
+ * trailing "Huomioita" column. Both must be accepted.
+ *
+ * Title attribute on event cells carries up to three `;`-separated segments
+ * before the teacher: "TypeLabel /TeacherName",
+ * "SubjectCode; TypeLabel /TeacherName" or
+ * "SubjectCode; TypeLabel; Remark /TeacherName". The remark is exposed as
+ * `note`; it is the same text the footnote column repeats.
  */
 export function parseAttendanceHtml(html: string, date: string): LessonNote[] {
   const $ = cheerio.load(html);
@@ -52,35 +61,44 @@ export function parseAttendanceHtml(html: string, date: string): LessonNote[] {
       for (let i = 2; i < cells.length; i++) {
         const $cell = $(cells[i]);
         const colspan = parseInt($cell.attr("colspan") ?? "1", 10) || 1;
-        const tpClass = (($cell.attr("class") ?? "").match(/\bat-tp\d+\b/) ?? [])[0];
+        const tpClass = (($cell.attr("class") ?? "").match(/\bat-tp(?:\d+|-other)\b/) ?? [])[0];
 
         if (tpClass) {
+          const isOther = tpClass === "at-tp-other";
           const title = ($cell.attr("title") ?? "").trim();
-          const cellText = $cell.text().trim();
+          // Visible label: the <small> text for remark cells, otherwise the
+          // cell text with any <sup> footnote marker removed.
+          const $small = $cell.find("small");
+          const cellLabel = ($small.length ? $small.text() : $cell.clone().find("sup").remove().end().text()).trim();
 
           // Title formats observed:
           //   "TypeLabel /TeacherFullName"
           //   "SubjectCode; TypeLabel /TeacherFullName"
-          //   "SubjectCode; TypeLabel; ExtraNote /TeacherFullName"
+          //   "SubjectCode; TypeLabel; Remark /TeacherFullName"
+          // The type label itself may contain " / " (e.g. "pari- / ryhmätyö"),
+          // so the teacher is split off at the last " /".
           let subject = "";
           let typeLabel = "";
-          let teacher = cellText;
+          let note = "";
+          let teacher = "";
 
           if (title) {
             let rest = title;
-            const semiIdx = rest.indexOf(";");
-            if (semiIdx > 0) {
-              subject = rest.slice(0, semiIdx).trim();
-              rest = rest.slice(semiIdx + 1).trim();
-            }
             const slashIdx = rest.lastIndexOf(" /");
             if (slashIdx > 0) {
-              const afterSlash = rest.slice(slashIdx + 2);
-              const spaceAfter = afterSlash.startsWith(" ") ? 1 : 0;
-              typeLabel = rest.slice(0, slashIdx).trim();
-              teacher = rest.slice(slashIdx + 2 + spaceAfter).trim();
+              teacher = rest.slice(slashIdx + 2).trim();
+              rest = rest.slice(0, slashIdx).trim();
             }
+            const segments = rest.split(";").map((seg) => seg.trim()).filter(Boolean);
+            if (segments.length > 1) subject = segments.shift() ?? "";
+            typeLabel = segments.shift() ?? "";
+            note = segments.join("; ");
           }
+
+          if (!typeLabel) typeLabel = isOther ? cellLabel : tpClass.replace("at-tp", "Type ");
+          // Absence cells show the teacher code as their text; remark cells
+          // show the label, which must never be mistaken for a teacher.
+          if (!teacher && !isOther) teacher = cellLabel;
 
           // Map cell's grid range to start/end via the thead-derived map.
           // start = hour at the cell's first grid column.
@@ -101,9 +119,10 @@ export function parseAttendanceHtml(html: string, date: string): LessonNote[] {
             start,
             end,
             subject,
-            typeLabel: typeLabel || tpClass.replace("at-tp", "Type "),
+            typeLabel,
             typeClass: tpClass,
             teacher,
+            note,
           });
         }
         gridCol += colspan;

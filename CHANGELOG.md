@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`attendance list` no longer drops teachers' free-text lesson notes.** Wilma renders absence-type marks as `at-tpN` cells but positive feedback and behavioural remarks (e.g. "Hyvää tuntityöskentelyä") as `at-tp-other` cells, which the parser rejected, so days with only remarks reported "No lesson notes found". Both kinds are now parsed. When a remark carries a comment ("Subject; Label; Comment /Teacher"), the label stays in `typeLabel` instead of having the comment glued onto it, and the footnote marker in the cell text no longer leaks into any field.
+
+### New in wilma-client
+
+- `LessonNote.note` carries the teacher's free-text comment attached to a lesson note (empty string when there is none). `typeClass` is `at-tp-other` for such remarks. The CLI prints the comment after the subject in the human-readable output.
+
 ## 1.6.2 (2026-08-27)
 
 _Releases: wilma-cli 1.6.2, wilma-client 1.5.2._

@@ -155,7 +155,11 @@ export interface LessonNote {
   start: string | null;
   end: string | null;
   subject: string;
+  /** Human-readable Finnish type or remark label, e.g. "SAIRAUS" or "Hyvää tuntityöskentelyä". */
   typeLabel: string;
+  /** Wilma's cell class: "at-tpN" for absence types, "at-tp-other" for free-text remarks. */
   typeClass: string;
   teacher: string;
+  /** Teacher's free-text remark attached to the note; empty when there is none. */
+  note: string;
 }

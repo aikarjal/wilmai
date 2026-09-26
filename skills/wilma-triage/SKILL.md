@@ -134,7 +134,7 @@ Lesson notes are short per-lesson remarks teachers leave in Wilma. They fall int
 - **Positive feedback** ("Hyvä!", "Osasit toimia ryhmän vastuullisena jäsenenä") — **Skip by default.** Mention occasionally if MEMORY.md indicates the parent wants positive notes too.
 - **Note with parenthetical detail** (e.g. "Muu selvitetty poissaolo; Lähti 13.00" = "left at 13:00") — the extra clause after the semicolon is often the most useful part. Surface it.
 
-The `typeLabel` field in the JSON is the full Finnish reason; `subject` is the course code (e.g. `MA_8LV`). Group consecutive same-subject same-type notes when reporting (one absence often spans multiple periods).
+The `typeLabel` field in the JSON is the full Finnish reason; `subject` is the course code (e.g. `MA_8LV`); `note` is the teacher's free-text comment when present, and is usually the most informative part of a positive remark. Group consecutive same-subject same-type notes when reporting (one absence often spans multiple periods).
 
 ## Triage Rules
 
