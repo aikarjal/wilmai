@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`attendance list --date` now finds days older than four weeks.** The client requested `/attendance/view?date=YYYY-MM-DD`, but Wilma ignores that parameter and always serves the default four-week view, so older dates silently returned "No lesson notes found". The page's own custom-range parameters (`range=-3&first=D.M.YYYY&last=D.M.YYYY`) are used instead, requesting exactly the asked day.
+- **`attendance list` without `--date` now really means today.** The empty date was passed to the parser and matched no row, so the command could never return anything unless a date was given.
+
 ## 1.6.2 (2026-08-27)
 
 _Releases: wilma-cli 1.6.2, wilma-client 1.5.2._

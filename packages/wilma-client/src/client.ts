@@ -202,15 +202,19 @@ export class WilmaClient {
 
   attendance = {
     list: async (opts?: { date?: string }): Promise<LessonNote[]> => {
+      // Wilma ignores a `date` query parameter on this page and always serves
+      // the default four-week view. The page's own custom-range option is
+      // `range=-3&first=D.M.YYYY&last=D.M.YYYY` and accepts a single day, so
+      // request exactly that day. The parser still filters rows by date as a
+      // safety net.
+      const date = opts?.date ?? localIsoDate();
       const params = new URLSearchParams();
-      if (opts?.date) {
-        params.set("date", opts.date);
-      }
-      const query = params.toString();
-      const path = query ? `/attendance/view?${query}` : "/attendance/view";
-      const resp = await this.session.get(path);
+      params.set("range", "-3");
+      params.set("first", isoDateToFinnish(date));
+      params.set("last", isoDateToFinnish(date));
+      const resp = await this.session.get(`/attendance/view?${params.toString()}`);
       const text = await resp.text();
-      return parseAttendanceHtml(text, opts?.date ?? "");
+      return parseAttendanceHtml(text, date);
     },
   };
 
@@ -334,6 +338,13 @@ function safeJson(text: string): unknown {
   } catch {
     return {};
   }
+}
+
+/** Today's calendar date in local time as YYYY-MM-DD (toISOString would give the UTC day). */
+function localIsoDate(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
 function isoDateToFinnish(date: string): string {

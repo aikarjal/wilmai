@@ -927,6 +927,13 @@ function parseIsoDateOrExit(raw: string): string {
   return value;
 }
 
+/** Today's calendar date in local time as YYYY-MM-DD. */
+function localIsoDate(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 function normalizeWeekdayOrExit(raw: string): number {
   const v = (raw ?? "").trim().toLowerCase();
   const map: Record<string, number> = {
@@ -1529,7 +1536,8 @@ async function outputAttendance(
     console.log(JSON.stringify(notes, null, 2));
     return;
   }
-  const date = opts.date ?? new Date().toISOString().slice(0, 10);
+  // The client defaults to today's local date; label the output the same way.
+  const date = opts.date ?? localIsoDate();
   const prefix = opts.label ? `[${opts.label}] ` : "";
   console.log(`\n${prefix}Lesson notes for ${date} (${notes.length})`);
   if (!notes.length) {
