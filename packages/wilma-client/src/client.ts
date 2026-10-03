@@ -35,12 +35,12 @@ export class WilmaClient {
       studentNumber: profile.studentNumber ?? null,
       debug: profile.debug ?? false,
     });
+    session.setMfaCallback(onMfaRequired);
     try {
       await session.login(profile.username, profile.password);
     } catch (err) {
       if (err instanceof MfaRequiredError && onMfaRequired) {
-        const otpCode = await onMfaRequired(err.formkey);
-        await session.submitMfaCode(err.formkey, otpCode);
+        await session.answerMfa(err.formkey, onMfaRequired);
       } else {
         throw err;
       }
@@ -49,19 +49,22 @@ export class WilmaClient {
   }
 
   static async listStudents(profile: WilmaProfile, onMfaRequired?: MfaCallback): Promise<StudentInfo[]> {
-    const session = new WilmaSession(profile.baseUrl, {
-      debug: profile.debug ?? false,
-    });
-    try {
-      await session.login(profile.username, profile.password);
-    } catch (err) {
-      if (err instanceof MfaRequiredError && onMfaRequired) {
-        const otpCode = await onMfaRequired(err.formkey);
-        await session.submitMfaCode(err.formkey, otpCode);
-      } else {
-        throw err;
-      }
-    }
+    const client = await WilmaClient.login({ ...profile, studentNumber: null }, onMfaRequired);
+    return client.students();
+  }
+
+  /**
+   * A client for one of the account's students that reuses this client's
+   * login. Log in once, then call this per child instead of logging in again.
+   */
+  forStudent(studentNumber: string | null | undefined): WilmaClient {
+    return new WilmaClient(this.session.forStudent(studentNumber || null));
+  }
+
+  /** The guardian's students, discovered with this client's login. */
+  async students(): Promise<StudentInfo[]> {
+    // Discovery pages live outside any student's "/!<number>/" prefix.
+    const session = this.session.forStudent(null);
     try {
       const accountsResp = await session.get("/api/v1/accounts/me/roles");
       const accountsText = await accountsResp.text();
