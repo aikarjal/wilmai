@@ -9,12 +9,26 @@ npm i -g @wilm-ai/wilma-cli
 pnpm add -g @wilm-ai/wilma-cli
 ```
 
+## Log in
+```bash
+wilma login
+```
+Opens a one-time login page in your browser: pick your school's Wilma and log in. The login is saved to `~/.config/wilmai/config.json`.
+
+Without a browser: `wilma login --tenant <url|city> --username <name>` with the password in `WILMA_PASSWORD` or piped via `--password-stdin`. Or set `WILMA_TENANT`, `WILMA_USERNAME`, `WILMA_PASSWORD` (and `WILMA_TOTP_SECRET`) and skip the saved login.
+
 ## Run
 ```bash
 wilma
 # or
 wilmai
 ```
+
+## Use with AI assistants (MCP)
+```bash
+wilma mcp
+```
+Starts a stdio MCP server with read-only Wilma tools (`wilma_summary`, `wilma_schedule`, `wilma_read_news`, …). Add it to any MCP client as `npx -y @wilm-ai/wilma-cli mcp`. Setup guides for Claude, ChatGPT, Grok Bot and OpenClaw: https://wilm.ai
 
 ## Commands
 

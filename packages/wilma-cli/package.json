@@ -1,6 +1,6 @@
 {
   "name": "@wilm-ai/wilma-cli",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,16 +11,21 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "echo 'add lint'",
-    "test": "pnpm --filter @wilm-ai/wilma-client build && pnpm run build && node test/news-resources.mjs",
+    "test": "pnpm --filter @wilm-ai/wilma-client build && pnpm run build && node test/news-resources.mjs && node test/mcp-login.mjs && node test/mfa.mjs",
     "start": "node dist/index.js",
     "prepack": "pnpm --filter @wilm-ai/wilma-client build && pnpm --filter @wilm-ai/wilma-cli build",
-    "test:live": "tsc -p tsconfig.json && node test/live.spec.mjs"
+    "test:live": "tsc -p tsconfig.json && node test/live.spec.mjs",
+    "build:mcpb": "pnpm run build && node scripts/build-mcpb.mjs"
   },
   "dependencies": {
     "@inquirer/prompts": "^5.3.8",
-    "@wilm-ai/wilma-client": "^1.5.2"
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "@wilm-ai/wilma-client": "^1.5.3",
+    "zod": "^4.1.0"
   },
   "devDependencies": {
+    "@anthropic-ai/mcpb": "^2.1.2",
+    "esbuild": "^0.25.0",
     "typescript": "^5.6.3"
   },
   "files": [
