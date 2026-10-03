@@ -3,12 +3,12 @@
     {
       "name": "wilma",
       "path": "skills/wilma",
-      "description": "Use the Wilma CLI to fetch kids, messages, news resources, attachments, and exams for Finnish Wilma accounts."
+      "description": "Read a family's Wilma (Finnish school system): schedule, homework, exams, grades, messages, news and attachments, through the WilmAI MCP tools or the wilma CLI."
     },
     {
       "name": "wilma-triage",
       "path": "skills/wilma-triage",
-      "description": "Daily triage of Wilma school notifications: filters for actionable items, syncs exams to Google Calendar, and reports via chat. Requires the wilma skill and gog CLI."
+      "description": "Daily triage of Wilma school notifications: filters for actionable items, adds exam dates to the family calendar when a calendar tool is available, and reports via chat. Requires the wilma skill."
     }
   ]
 }

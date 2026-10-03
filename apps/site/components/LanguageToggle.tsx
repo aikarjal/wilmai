@@ -10,7 +10,7 @@ export default function LanguageToggle({ lang }: { lang: Lang }) {
   };
 
   return (
-    <div className="lang-toggle" aria-label="Language">
+    <div className="lang-toggle" role="group" aria-label="Language">
       {(Object.keys(labels) as Lang[]).map((code) => (
         <a
           key={code}

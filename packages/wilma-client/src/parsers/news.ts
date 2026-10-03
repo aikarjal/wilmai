@@ -10,6 +10,7 @@ export function parseNewsList(data: unknown): NewsItem[] {
     return data.flatMap((item) => {
       try {
         const wilmaId = Number(item["id"] ?? item["Id"]);
+        if (!Number.isInteger(wilmaId) || wilmaId <= 0) return [];
         const title = String(item["Title"] ?? item["title"] ?? "");
         const published = parseWilmaTimestamp(item["Published"] ?? item["published"]);
         return [
@@ -33,7 +34,8 @@ export function parseNewsDetailJson(
   data: Record<string, unknown>,
   baseUrl?: string
 ): NewsItem {
-  const content = (data["content"] ?? data["Content"]) as string | null;
+  const rawContent = data["content"] ?? data["Content"];
+  const content = typeof rawContent === "string" ? rawContent : null;
   let resources: NewsResource[] = [];
   if (content && content.includes("<a")) {
     const $ = cheerio.load(content);
@@ -42,7 +44,7 @@ export function parseNewsDetailJson(
   return {
     wilmaId: newsId,
     title: String(data["title"] ?? data["Title"] ?? ""),
-    subtitle: (data["subtitle"] ?? data["Subtitle"]) as string | null,
+    subtitle: typeof (data["subtitle"] ?? data["Subtitle"]) === "string" ? ((data["subtitle"] ?? data["Subtitle"]) as string) : null,
     author: (data["author"] ?? data["Author"]) as string | null,
     published: parseWilmaTimestamp(data["Published"] ?? data["published"]),
     content,

@@ -354,7 +354,7 @@ export const agents: Agent[] = [
         steps: [
           {
             title: "Install",
-            body: "Needs Node.js 18 or newer.",
+            body: "Needs Node.js 20 or newer.",
             action: { kind: "command", text: "npm install -g @wilm-ai/wilma-cli" }
           },
           {
@@ -376,7 +376,7 @@ export const agents: Agent[] = [
         steps: [
           {
             title: "Asenna",
-            body: "Vaatii Node.js:n version 18 tai uudemman.",
+            body: "Vaatii Node.js:n version 20 tai uudemman.",
             action: { kind: "command", text: "npm install -g @wilm-ai/wilma-cli" }
           },
           {

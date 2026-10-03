@@ -33,5 +33,6 @@ export {
   findTenantByUrl,
 } from "./tenants.js";
 export { parseWilmaTimestamp } from "./parsers/dates.js";
+export { finnishDateString, finnishParts, finnishTime } from "./finnish-time.js";
 
 export { parseStudentsFromHome } from "./parsers/students.js";

@@ -2,17 +2,15 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 
 const cli = ["node", "dist/index.js"];
-const configPath = process.env.WILMAI_CONFIG_PATH
-  ? resolve(process.env.WILMAI_CONFIG_PATH)
-  : resolve("../../.wilmai/config.json");
+// The CLI's own default (~/.config/wilmai/config.json), unless overridden.
+const env = process.env.WILMAI_CONFIG_PATH
+  ? { ...process.env, WILMAI_CONFIG_PATH: resolve(process.env.WILMAI_CONFIG_PATH) }
+  : process.env;
 
 function run(args) {
   const result = execFileSync(cli[0], [...cli.slice(1), ...args], {
     encoding: "utf-8",
-    env: {
-      ...process.env,
-      WILMAI_CONFIG_PATH: configPath,
-    },
+    env,
   });
   return result.trim();
 }

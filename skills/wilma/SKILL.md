@@ -153,7 +153,7 @@ wilma news resource download <news-id> <resource-id> --student <id|name> --outpu
 Handle the returned `status`:
 
 - `downloaded` — the file was written. Use the returned absolute `path`, and trust `contentType`/`sizeBytes` over any guess from the bulletin label.
-- `not_a_file` — every attempt answered with a web page instead of a file. This usually means the document requires signing in (for example a private SharePoint or OneDrive sharing link), or the link is simply a web page. Report this to the user; if access matters, open the `url` in a user-authorized browser session that has the external service's authentication. Never retry the download in a loop.
+- `not_a_file` — every attempt answered with a web page instead of a file. This usually means the document requires signing in (for example a private cloud-drive sharing link), or the link is simply a web page. Report this to the user; if access matters, open the `url` in a user-authorized browser session that has the external service's authentication. Never retry the download in a loop.
 - `error` (exit code 1) — the attempt itself failed (HTTP error, network problem, size limit). Report the `message`.
 
 Keep downloads in a task-scoped directory via `--output` (defaults to the current working directory). Existing files are never overwritten — a numeric suffix is appended.

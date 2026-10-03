@@ -4,8 +4,9 @@ import { Footer, TopBar } from "../../components/SiteChrome";
 import { agents, comingLater } from "../../lib/agents";
 import { dictionaries, isLang, type Lang } from "../../lib/i18n";
 
-export default function HomePage({ params }: { params: { lang: string } }) {
-  const lang: Lang = isLang(params.lang) ? params.lang : "en";
+export default async function HomePage({ params }: { params: Promise<{ lang: string }> }) {
+  const { lang: requested } = await params;
+  const lang: Lang = isLang(requested) ? requested : "en";
   const t = dictionaries[lang];
 
   return (
@@ -62,7 +63,7 @@ export default function HomePage({ params }: { params: { lang: string } }) {
             height={1024}
             className="terminal-sticker"
           />
-          <div className="chat" aria-label={t.hero.chatTitle}>
+          <div className="chat" role="figure" aria-label={t.hero.chatTitle}>
             <div className="chat-chrome">
               <span className="dot red" />
               <span className="dot yellow" />

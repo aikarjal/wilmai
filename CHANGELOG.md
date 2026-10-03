@@ -15,7 +15,7 @@ _Releases: wilma-cli 1.7.0, wilma-client 1.5.3._
 
 - **Several Wilmas per family:** children on different Wilmas (a city school and a private school or lukio, say) work together. The login page offers *Add another Wilma*; every saved login is used at once by the MCP tools, `--student` and `--all-students`, and children are labelled with their Wilma. If one Wilma is down, the others still answer and the problem is reported. `wilma accounts` lists saved logins and `wilma accounts remove <number>` removes one.
 - **Environment-variable accounts:** `WILMA_TENANT`, `WILMA_USERNAME`, `WILMA_PASSWORD` (and `WILMA_TOTP_SECRET`) work for every command without a saved login — for agents that keep secrets in their own store.
-- **Claude Desktop extension:** `pnpm --filter @wilm-ai/wilma-cli build:mcpb` builds `wilmai.mcpb`; a release workflow attaches it to each GitHub release (`wilm.ai/get/claude`).
+- **Claude Desktop extension:** `pnpm --filter @wilm-ai/wilma-cli build:mcpb` builds `wilmai.mcpb`; a release workflow attaches it to each CLI release and to a rolling `claude-desktop` release, which `wilm.ai/get/claude` points to (so a newer wilma-client release can't break the link).
 - **Plugin marketplace:** `.claude-plugin/marketplace.json` publishes the `skills/` folder as the `wilma` plugin (both skills plus the MCP server) for Claude Code and Codex.
 - Skills: `wilma` 1.7.0 prefers the MCP tools when present and documents the new login; `wilma-triage` 1.4.0 works with any calendar tool instead of requiring `gog`.
 
@@ -32,7 +32,29 @@ _Releases: wilma-cli 1.7.0, wilma-client 1.5.3._
 ### Fixed
 
 - **Wrong usernames and passwords were accepted (wilma-client 1.5.3).** Wilma answers a failed login with a redirect to `?loginfailed` and an empty body; the client only checked the body, so any username and password "logged in" with no children. A `?loginfailed` redirect now fails with `AuthenticationError`, and a redirect only counts as a login when Wilma sets its session cookie.
+- **Messages came back empty after another login.** When another login (the parent's phone, say) cancelled the session, Wilma answers the message list with a redirect to its login page; the client followed it and read the login page as an empty inbox. A redirect to the login page now counts as a logged-out session: the client logs in again and returns the messages.
 - Wilma search now matches municipality names (the tenant list uses `name_fi`/`name_sv`, which the old search never read), and ranks a city's own Wilma first.
+
+### Security and reliability audit
+
+A review of the whole codebase before this release. Each item has a regression test (`packages/wilma-client/test/audit.mjs`, `packages/wilma-cli/test/audit.mjs`).
+
+- **Bulletin links can't reach private networks.** Links in school bulletins are written by staff (or whoever controls a staff account), and the same code runs on the hosted relay. Downloads now go only to public internet addresses on ports 80/443: loopback, private, link-local (cloud metadata) and other special ranges are refused at every redirect and again after DNS resolution (IPv6 forms that carry an IPv4 address, such as NAT64 and 6to4, are judged by that address). A download fails after a minute without progress, so big files on slow connections still finish.
+- **Wilma's cookies stay on Wilma.** Requests follow redirects hop by hop: a redirect to another site never carries the session cookie, another site can't overwrite it, and a request path can't point outside Wilma. A file Wilma hands to another site is fetched like any external link. A request fails after 30 seconds without progress, including while its body is read, and reports a timeout instead of a raw abort error.
+- **No retry storm after a password change.** Wilma's explicit "login failed" answer stops further login attempts for that session (each one could count towards an account lockout). Other refusals — an outage (HTTP 5xx, also from the login token and two-step check), a rate limit, a firewall, a maintenance page — are reported as such, never as a wrong password, and the session recovers once Wilma does. A Wilma address that sends its login page to another site says which address to use.
+- **Dates follow Finnish time on any computer.** Wilma times were read in the computer's own time zone, so an agent on a UTC cloud machine shifted every message, bulletin and exam by 2–3 hours, and the CLI printed dates in UTC (items between midnight and 3 a.m. showed the previous day). Lesson notes without `--date` now default to today in Finland.
+- **Download file names are safe.** A name like `" .npmrc"` could save a hidden config file into the current folder; names are now cleaned of leading dots and spaces, control and text-direction characters, and Windows device names.
+- **`--student` matches strictly**, like the agent tools: a number, the full name, or the start of a name part. `--student Ella` no longer picks "Daniella".
+- **Reliable `--json`.** Every error is JSON with exit code 1 (unknown commands, options and subcommands, missing values, several students, missing ids, two-step verification). Unknown options are refused instead of ignored; `--limit`, `--days`, `--when`, `--folder` and `--date` are validated; `--student --json` no longer reads `--json` as a name. Debug output goes to stderr.
+- **A damaged config is never overwritten.** It was read as empty, so the next login replaced every saved login; now the CLI stops and says how to fix it. The config file and folder are tightened to the user's own access when found open.
+- **Text from Wilma can't control the terminal:** escape sequences (window title changes, screen clearing, clipboard writes) and carriage returns are removed from printed output and menu choices; `--json` keeps the text intact, escaped.
+- **Interactive two-step verification:** switching between logins no longer reuses another login's key or typed code, and a setup key typed during a new login is saved with that login. New logins in the interactive menu are saved like `wilma login` (one entry per account, any username case).
+- `wilma --version` and update notices work when the install path has spaces or non-ASCII letters, and on Windows. `wilma update` works on Windows. The daily update check no longer delays commands (a failed check also counts, for agents without internet access).
+- Parsers skip messages and bulletins without a valid id, accept non-string bulletin content, keep students with an empty role name, and no longer mistake menu links or names containing menu words for students (a child linked only through a deeper link is still found).
+- **Requirements:** Node.js 20.18.1 or newer (already required by the HTML parser; the site and extension said 18). Packages declare `engines`, a license and repository links, and importing `@wilm-ai/wilma-cli` no longer runs the CLI.
+- **Dependencies:** undici 6.29 and 7.30, Next.js 15.5 for the site and relay (Next 14 is no longer patched), and patched transitive packages; `pnpm audit` is down from 63 advisories to 2 in build tools (no fixed versions yet).
+- **Site:** security headers (content security policy, no framing, no MIME sniffing, referrer policy), a sandboxed GitHub button, and accessibility fixes.
+- **CI:** a GitHub Actions workflow builds, type-checks and runs every offline test on Node 20 and 22, and builds the site.
 
 ## 1.6.2 (2026-08-27)
 

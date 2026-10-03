@@ -3,6 +3,7 @@
 Command line interface for Wilma (Finnish school system), built for parents and AI agents.
 
 ## Install
+Needs Node.js 20.18.1 or newer.
 ```bash
 npm i -g @wilm-ai/wilma-cli
 # or
@@ -88,6 +89,18 @@ wilma attendance list [--date YYYY-MM-DD] [--student <id|name>] [--all-students]
 
 Shows lesson notes (type labels, subjects, teachers) for a given date. Defaults to today if --date is omitted.
 
+### Several Wilmas
+Children at schools on different Wilmas need one login per Wilma. Run `wilma login` again (or press "Add another Wilma" on the login page); commands then cover every child.
+```bash
+wilma accounts [--json]            # saved logins, numbered
+wilma accounts remove <number>     # or the Wilma name or username
+```
+
+### Find your Wilma
+```bash
+wilma tenants <city or school> [--json]
+```
+
 ### Other
 ```bash
 wilma kids list [--json]
@@ -99,15 +112,9 @@ wilma config clear
 
 If your Wilma account has MFA/TOTP enabled:
 
-**Interactive (recommended):** Run `wilma` and choose "Save TOTP secret for automatic login" when prompted. Paste your base32 key or `otpauth://` URI from your authenticator app. Future logins auto-authenticate.
+**Recommended:** run `wilma login`. When Wilma asks for a code, the login page asks for your authenticator's setup key (base32 or `otpauth://` URI) and saves it with the login, so later logins make their own codes. In the interactive menu (`wilma`), choose "Save TOTP secret for automatic login".
 
-**Non-interactive:** Pass the secret directly:
-```bash
-wilma schedule list --totp-secret <base32-key> --json
-wilma schedule list --totp-secret 'otpauth://totp/...' --json
-```
-
-If you've saved your TOTP secret via interactive setup, `--totp-secret` is not needed.
+**Without a saved login:** set `WILMA_TOTP_SECRET` along with the other `WILMA_*` variables. `--totp-secret <key>` also works, but a key on the command line ends up in shell history and is visible to other programs on the computer.
 
 ## Config
 Local config is stored in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`).
@@ -142,6 +149,7 @@ With `--json`, transport failures carry a `code` and a `hint` alongside `status`
 ```
 
 ## Notes
-- Credentials and TOTP secrets are stored with lightweight obfuscation for convenience.
+- Credentials and TOTP secrets are stored with lightweight obfuscation (not encryption) in a file only your user can read.
+- Bulletin links are fetched only from public websites (never local or private network addresses), without your Wilma login.
 - For multi-child accounts, you can pass `--student <id|name>` or `--all-students`.
 - All list commands support `--json` for agent-friendly structured output.

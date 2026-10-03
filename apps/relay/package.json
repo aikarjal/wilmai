@@ -8,20 +8,21 @@
     "build": "next build",
     "start": "next start --port 3200",
     "vercel-build": "pnpm --filter @wilm-ai/wilma-client build && pnpm --filter @wilm-ai/wilma-cli build && next build",
-    "test": "node test/oauth-mcp.mjs"
+    "test": "node test/oauth-mcp.mjs && node test/pressure.mjs",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",
     "@wilm-ai/wilma-cli": "workspace:*",
-    "next": "14.2.24",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "next": "15.5.27",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {
     "@types/node": "20.14.12",
-    "@types/react": "18.3.5",
-    "@types/react-dom": "18.3.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "typescript": "5.6.3"
   }
 }

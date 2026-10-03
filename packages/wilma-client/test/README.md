@@ -1,19 +1,19 @@
 # wilma-client tests
 
-## Offline tests (fixtures)
-Add fixture-based parser tests here (no secrets needed).
+## Offline (fixtures and mock servers)
+
+```bash
+pnpm --filter @wilm-ai/wilma-client test
+```
+
+Parser tests use the files in `fixtures/`. `audit.mjs` covers the private-network guard for bulletin links, Wilma-only redirects and cookies, stopping after a refused login, and Finnish time on machines in other time zones.
 
 ## Live test (opt-in)
-1. Copy `test/.env.example` to `test/.env.local` and fill in credentials.
-2. Build the client:
+
+1. Copy `test/.env.example` to `test/.env.local` and fill in your login.
+2. Run:
    ```bash
-   pnpm --filter @wilmai/wilma-client build
-   ```
-3. Run:
-   ```bash
-   node test/live.spec.mjs
+   pnpm --filter @wilm-ai/wilma-client test:live
    ```
 
-You can also point to a different env file with `WILMA_ENV_PATH=/path/to/.env`.
-
-**Note:** `.env.local` should never be committed.
+Point to a different env file with `WILMA_ENV_PATH=/path/to/.env`. Never commit `.env.local`.

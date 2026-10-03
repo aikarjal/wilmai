@@ -238,10 +238,12 @@ const en: Dictionary = {
         q: "Is this secure?",
         a: (
           <p>
-            WilmAI talks only to your school&apos;s official Wilma servers, using
-            your own login. There is no middleman, no analytics, and no telemetry.
-            It is also read-only — it can&apos;t send messages or change anything
-            in Wilma.
+            WilmAI logs in only to your school&apos;s own Wilma, with your own
+            login. There is no middleman, no analytics, and no telemetry. Besides
+            Wilma, it opens links in school bulletins when you ask for an
+            attachment, and checks once a day whether a newer version is out. It
+            is also read-only — it can&apos;t send messages or change anything in
+            Wilma.
           </p>
         )
       },
@@ -462,10 +464,11 @@ const fi: Dictionary = {
         q: "Onko tämä turvallinen?",
         a: (
           <p>
-            WilmAI keskustelee vain koulusi virallisten Wilma-palvelinten kanssa
-            omilla tunnuksillasi. Ei välikäsiä, ei analytiikkaa, ei telemetriaa.
-            Se on myös vain lukeva — se ei voi lähettää viestejä tai muuttaa
-            mitään Wilmassa.
+            WilmAI kirjautuu vain koulusi omaan Wilmaan omilla tunnuksillasi.
+            Ei välikäsiä, ei analytiikkaa, ei telemetriaa. Wilman lisäksi se
+            avaa tiedotteissa olevia linkkejä, kun pyydät liitettä, ja tarkistaa
+            kerran päivässä, onko uudempi versio saatavilla. Se on myös vain
+            lukeva — se ei voi lähettää viestejä tai muuttaa mitään Wilmassa.
           </p>
         )
       },

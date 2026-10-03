@@ -5,6 +5,7 @@ import { readFile, writeFile, mkdir, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   WilmaClient,
   MfaRequiredError,
@@ -26,7 +27,7 @@ import {
   saveConfig,
   type StoredProfile,
 } from "./config.js";
-import { buildSummaryData, resolveScheduleDateSelection } from "./agent-data.js";
+import { buildSummaryData, finnishDate, matchStudents, parseIsoDate, resolveScheduleDateSelection } from "./agent-data.js";
 import {
   ENV_VARS,
   mfaCallbackFor,
@@ -43,7 +44,7 @@ import {
 } from "./downloads.js";
 import { openBrowser, startLoginServer } from "./login-server.js";
 import { runMcpServer } from "./mcp.js";
-import { fuzzyIncludes, resolveTenant, searchTenants } from "./tenant-search.js";
+import { resolveTenant, searchTenants } from "./tenant-search.js";
 import { generateTOTP, parseTotpSecret } from "./totp.js";
 
 // Enable keypress events for escape key detection
@@ -72,8 +73,26 @@ async function main() {
     return;
   }
 
-  // Fire version check early (non-blocking)
-  const updateCheck = checkForUpdate();
+  // School data is printed in many places; filter every printed line so a
+  // message can't smuggle terminal escape sequences. With --json the data is
+  // kept and only escaped. Prompts write to the terminal directly (and keep
+  // their colours); their choices go through compactText.
+  const clean = args.includes("--json") ? jsonSafe : terminalSafe;
+  for (const method of ["log", "error"] as const) {
+    const print = console[method].bind(console);
+    console[method] = (...parts: unknown[]) => print(...parts.map((part) => (typeof part === "string" ? clean(part) : part)));
+  }
+
+  // Fire version check early (non-blocking); it never outlives the command.
+  const updateCheck = startUpdateCheck();
+  try {
+    await runCommand(args, updateCheck);
+  } finally {
+    updateCheck.cancel();
+  }
+}
+
+async function runCommand(args: string[], updateCheck: UpdateCheck) {
 
   if (args.includes("--help") || args.includes("-h")) {
     printUsage();
@@ -129,9 +148,9 @@ async function main() {
 
 async function chooseProfile(
   config: { profiles: StoredProfile[]; lastProfileId?: string | null },
-  onMfa?: MfaCallback,
-  onStoredProfileResolved?: (sp: StoredProfile) => void
+  mfa: InteractiveMfa
 ): Promise<WilmaProfile | null> {
+  const onMfa = mfa.callback;
   if (config.profiles.length) {
     const choices = config.profiles.map((p) => ({
       value: p.id,
@@ -151,7 +170,8 @@ async function chooseProfile(
       if (!stored) {
         throw new Error("Stored profile not found");
       }
-      onStoredProfileResolved?.(stored);
+      mfa.profile = stored;
+      mfa.typedSecret = null;
       const secret = revealSecret(stored.passwordObfuscated);
       if (!secret) {
         throw new Error("Stored password could not be decoded");
@@ -185,53 +205,43 @@ async function chooseProfile(
   const passwordValue = await passwordOrCancel({ message: "Wilma password" });
   if (passwordValue === null) return null;
 
-  const profileBase: WilmaProfile = {
-    baseUrl: tenant.url,
-    username,
-    password: passwordValue,
-  };
-
-  const students = await WilmaClient.listStudents(profileBase, onMfa);
+  // Codes for a new login can't come from another saved login's key.
+  mfa.profile = undefined;
+  mfa.typedSecret = null;
+  const students = await WilmaClient.listStudents({ baseUrl: tenant.url, username, password: passwordValue }, onMfa);
   const student = await chooseStudent(students);
   if (!student) return null;
 
-  const finalProfile: WilmaProfile = {
-    ...profileBase,
-    studentNumber: student?.studentNumber ?? undefined,
-  };
-
-  const stored: StoredProfile = {
-    id: `${tenant.url}|${username}`,
+  // Same rules as `wilma login`: one entry per account, whatever the username's case.
+  const stored = await saveLogin(config, {
     tenantUrl: tenant.url,
     tenantName: tenant.name,
     username,
-    passwordObfuscated: obfuscateSecret(passwordValue),
-    students: students.map((s) => ({ studentNumber: s.studentNumber, name: s.name })),
-    lastStudentNumber: student?.studentNumber ?? null,
-    lastStudentName: student?.name ?? null,
-    lastUsedAt: new Date().toISOString(),
-  };
-
-  config.profiles = config.profiles.filter((p) => p.id !== stored.id).concat(stored);
-  config.lastProfileId = stored.id;
-  onStoredProfileResolved?.(stored);
+    password: passwordValue,
+    totpSecret: mfa.typedSecret,
+    students,
+  });
+  stored.lastStudentNumber = student.studentNumber;
+  stored.lastStudentName = student.name;
   await saveConfig(config);
+  mfa.profile = stored;
 
-  return finalProfile;
+  return {
+    baseUrl: stored.tenantUrl,
+    username,
+    password: passwordValue,
+    studentNumber: student.studentNumber,
+  };
 }
 
 async function runInteractive(config: { profiles: StoredProfile[]; lastProfileId?: string | null }) {
-  const mfaState = { storedProfile: undefined as StoredProfile | undefined };
-  const interactiveMfa = createInteractiveMfaCallback(
-    () => mfaState.storedProfile,
-    () => saveConfig(config)
-  );
+  const mfa = createInteractiveMfa(() => saveConfig(config));
   while (true) {
-    const profile = await chooseProfile(config, interactiveMfa, (sp) => { mfaState.storedProfile = sp; });
+    const profile = await chooseProfile(config, mfa);
     if (!profile) {
       return;
     }
-    const client = await WilmaClient.login(profile, interactiveMfa);
+    const client = await WilmaClient.login(profile, mfa.callback);
 
     let nextAction = await selectOrCancel({
       message: "What do you want to view?",
@@ -391,7 +401,7 @@ async function chooseStudent(students: StudentInfo[]): Promise<StudentInfo | nul
     message: "Select student",
     choices: students.map((s) => ({
       value: s.studentNumber,
-      name: `${s.name} (${s.studentNumber})`,
+      name: `${compactText(s.name)} (${s.studentNumber})`,
     })),
   });
   if (selected === null) return null;
@@ -433,7 +443,7 @@ async function chooseStudentFromProfile(
     default: defaultStudent?.studentNumber,
     choices: students.map((s) => ({
       value: s.studentNumber,
-      name: `${s.name} (${s.studentNumber})`,
+      name: `${compactText(s.name)} (${s.studentNumber})`,
     })),
   });
   if (selected === null) return null;
@@ -446,16 +456,17 @@ async function handleCommand(
   config: { profiles: StoredProfile[]; lastProfileId?: string | null }
 ) {
   const { command, subcommand, resourceAction, flags } = parseArgs(args);
-  if (command === "config" && subcommand === "clear") {
-    await clearConfig();
-    console.log(`Cleared config at ${getConfigPath()}`);
-    return;
+  const subcommands = COMMANDS[command];
+  if (!subcommands) {
+    throw new Error(`Unknown command "${command}". See wilma --help.`);
+  }
+  if (!subcommands.includes(subcommand)) {
+    throw new Error(`Unknown subcommand "${subcommand}" for ${command}. See wilma --help.`);
   }
 
   const account = await resolveAccount(config);
   if (!account) {
-    console.error("No saved Wilma login found. Run `wilma login` first.");
-    process.exit(1);
+    throw new Error("No saved Wilma login found. Run `wilma login` first.");
   }
   const profile: WilmaProfile = { ...account.profile, debug: Boolean(flags.debug) };
   // An env-var account must not pick up the saved profile's students.
@@ -497,18 +508,10 @@ async function handleCommand(
       if (!resourceId) {
         throw new Error("Missing news resource id (for example, resource-1 or just 1)");
       }
-      if (!flags.student) {
-        const students = await getStudentsForCommand(profile, config);
-        if (students.length > 1) {
-          console.error("Multiple students found. Use --student <id> to specify which one:");
-          students.forEach((s) => console.error(`  ${s.studentNumber}  ${s.name}`));
-          process.exit(1);
-        }
-      }
+      if (!flags.student) await requireOneStudent(profile, config);
       const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
       if (!studentInfo && !profile.studentNumber) {
-        await printStudentSelectionHelp(profile, config);
-        return;
+        throw await studentChoiceError(profile, config);
       }
       const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
       await outputNewsResourceDownload(perStudentClient, newsId, resourceId, {
@@ -517,20 +520,12 @@ async function handleCommand(
       });
       return;
     }
-    if (subcommand === "read" && flags.id) {
+    if (subcommand === "read") {
       const newsId = parseReadId(flags.id, "news");
-      if (!flags.student) {
-        const students = await getStudentsForCommand(profile, config);
-        if (students.length > 1) {
-          console.error("Multiple students found. Use --student <id> to specify which one:");
-          students.forEach((s) => console.error(`  ${s.studentNumber}  ${s.name}`));
-          process.exit(1);
-        }
-      }
+      if (!flags.student) await requireOneStudent(profile, config);
       const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
       if (!studentInfo && !profile.studentNumber) {
-        await printStudentSelectionHelp(profile, config);
-        return;
+        throw await studentChoiceError(profile, config);
       }
       const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
       await outputNewsItem(perStudentClient, newsId, flags.json, {
@@ -544,8 +539,7 @@ async function handleCommand(
     }
     const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
     if (!studentInfo && !profile.studentNumber) {
-      await printStudentSelectionHelp(profile, config);
-      return;
+      throw await studentChoiceError(profile, config);
     }
     const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
     await outputNews(perStudentClient, {
@@ -557,20 +551,12 @@ async function handleCommand(
   }
 
   if (command === "messages") {
-    if (subcommand === "read" && flags.id) {
+    if (subcommand === "read") {
       const messageId = parseReadId(flags.id, "message");
-      if (!flags.student) {
-        const students = await getStudentsForCommand(profile, config);
-        if (students.length > 1) {
-          console.error("Multiple students found. Use --student <id> to specify which one:");
-          students.forEach((s) => console.error(`  ${s.studentNumber}  ${s.name}`));
-          process.exit(1);
-        }
-      }
+      if (!flags.student) await requireOneStudent(profile, config);
       const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
       if (!studentInfo && !profile.studentNumber) {
-        await printStudentSelectionHelp(profile, config);
-        return;
+        throw await studentChoiceError(profile, config);
       }
       const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
       await outputMessageItem(perStudentClient, messageId, flags.json);
@@ -578,7 +564,7 @@ async function handleCommand(
     }
     if (flags.allStudents) {
       await outputAllMessages(profile, config, {
-        folder: (flags.folder as MessageFolder | undefined) ?? "inbox",
+        folder: flags.folder ?? "inbox",
         limit: flags.limit ?? 20,
         json: flags.json,
       }, mfaCallback);
@@ -586,12 +572,11 @@ async function handleCommand(
     }
     const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
     if (!studentInfo && !profile.studentNumber) {
-      await printStudentSelectionHelp(profile, config);
-      return;
+      throw await studentChoiceError(profile, config);
     }
     const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
     await outputMessages(perStudentClient, {
-      folder: (flags.folder as MessageFolder | undefined) ?? "inbox",
+      folder: flags.folder ?? "inbox",
       limit: flags.limit ?? 20,
       json: flags.json,
       label: studentInfo?.name ?? undefined,
@@ -606,8 +591,7 @@ async function handleCommand(
     }
     const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
     if (!studentInfo && !profile.studentNumber) {
-      await printStudentSelectionHelp(profile, config);
-      return;
+      throw await studentChoiceError(profile, config);
     }
     const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
     await outputAttendance(perStudentClient, {
@@ -625,8 +609,7 @@ async function handleCommand(
     }
     const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
     if (!studentInfo && !profile.studentNumber) {
-      await printStudentSelectionHelp(profile, config);
-      return;
+      throw await studentChoiceError(profile, config);
     }
     const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
     await outputUpcomingExams(perStudentClient, {
@@ -644,12 +627,11 @@ async function handleCommand(
     }
     const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
     if (!studentInfo && !profile.studentNumber) {
-      await printStudentSelectionHelp(profile, config);
-      return;
+      throw await studentChoiceError(profile, config);
     }
     const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
     await outputSchedule(perStudentClient, {
-      when: (flags.when as "today" | "tomorrow" | "week") ?? "week",
+      when: flags.when ?? "week",
       date: flags.date,
       weekday: flags.weekday,
       json: flags.json,
@@ -665,8 +647,7 @@ async function handleCommand(
     }
     const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
     if (!studentInfo && !profile.studentNumber) {
-      await printStudentSelectionHelp(profile, config);
-      return;
+      throw await studentChoiceError(profile, config);
     }
     const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
     await outputHomework(perStudentClient, {
@@ -684,8 +665,7 @@ async function handleCommand(
     }
     const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
     if (!studentInfo && !profile.studentNumber) {
-      await printStudentSelectionHelp(profile, config);
-      return;
+      throw await studentChoiceError(profile, config);
     }
     const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
     await outputGrades(perStudentClient, {
@@ -703,8 +683,7 @@ async function handleCommand(
     }
     const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
     if (!studentInfo && !profile.studentNumber) {
-      await printStudentSelectionHelp(profile, config);
-      return;
+      throw await studentChoiceError(profile, config);
     }
     const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
     await outputSummary(perStudentClient, {
@@ -714,8 +693,6 @@ async function handleCommand(
     });
     return;
   }
-
-  printUsage();
 }
 
 function printUsage() {
@@ -818,8 +795,7 @@ async function handleLogin(args: string[]) {
   // Browser: a one-time page on 127.0.0.1 where the parent logs in.
   if (flags.browser && openBrowser("about:blank", { dryRun: true }) === "headless") {
     // A cloud computer: the parent can't reach a page served here.
-    console.error(HEADLESS_LOGIN_HELP);
-    process.exit(1);
+    throw new Error(HEADLESS_LOGIN_HELP);
   }
   const server = await startLoginServer({
     onSaved: (stored) => {
@@ -956,6 +932,22 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf-8");
 }
 
+/** Commands and the subcommands each accepts (undefined = none given). */
+const COMMANDS: Record<string, Array<string | undefined>> = {
+  summary: [undefined],
+  schedule: [undefined, "list"],
+  homework: [undefined, "list"],
+  exams: [undefined, "list"],
+  grades: [undefined, "list"],
+  kids: [undefined, "list"],
+  news: [undefined, "list", "read", "resource"],
+  messages: [undefined, "list", "read"],
+  attendance: [undefined, "list"],
+};
+
+const MESSAGE_FOLDERS: MessageFolder[] = ["inbox", "archive", "outbox", "drafts", "appointments"];
+const WHEN_VALUES = ["today", "tomorrow", "week"] as const;
+
 function parseArgs(args: string[]) {
   const [command, rawSubcommand, ...rawRest] = args;
   // If "subcommand" is actually a flag, push it back into rest
@@ -964,12 +956,12 @@ function parseArgs(args: string[]) {
   const flags: {
     json?: boolean;
     limit?: number;
-    folder?: string;
+    folder?: MessageFolder;
     id?: string;
     student?: string;
     allStudents?: boolean;
     debug?: boolean;
-    when?: string;
+    when?: (typeof WHEN_VALUES)[number];
     date?: string;
     weekday?: string;
     totpSecret?: string;
@@ -978,79 +970,76 @@ function parseArgs(args: string[]) {
     output?: string;
   } = {};
   const positionals: string[] = [];
+  // A flag's value is the next argument, unless that is another flag
+  // (`--student --json` must not read "--json" as a name).
+  const value = (i: number): string => {
+    const next = rest[i + 1];
+    if (next === undefined || next.startsWith("--")) {
+      throw new Error(`${rest[i]} needs a value. See wilma --help.`);
+    }
+    return next;
+  };
+  const positiveInt = (i: number, max: number): number => {
+    const raw = value(i);
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1 || n > max) {
+      throw new Error(`${rest[i]} must be a whole number from 1 to ${max} (got "${raw}").`);
+    }
+    return n;
+  };
   let i = 0;
   while (i < rest.length) {
     const arg = rest[i];
     if (arg === "--json") {
       flags.json = true;
       i += 1;
-      continue;
-    }
-    if (arg === "--all-students" || arg === "--all") {
+    } else if (arg === "--all-students" || arg === "--all") {
       flags.allStudents = true;
       i += 1;
-      continue;
-    }
-    if (arg === "--debug") {
+    } else if (arg === "--debug") {
       flags.debug = true;
       i += 1;
-      continue;
-    }
-    if (arg === "--limit") {
-      const value = Number(rest[i + 1]);
-      if (!Number.isNaN(value)) {
-        flags.limit = value;
+    } else if (arg === "--limit") {
+      flags.limit = positiveInt(i, 1000);
+      i += 2;
+    } else if (arg === "--days") {
+      flags.days = positiveInt(i, 60);
+      i += 2;
+    } else if (arg === "--student") {
+      flags.student = value(i);
+      i += 2;
+    } else if (arg === "--folder") {
+      const folder = value(i) as MessageFolder;
+      if (!MESSAGE_FOLDERS.includes(folder)) {
+        throw new Error(`--folder must be one of ${MESSAGE_FOLDERS.join(", ")} (got "${folder}").`);
       }
+      flags.folder = folder;
       i += 2;
-      continue;
-    }
-    if (arg === "--student") {
-      flags.student = rest[i + 1];
-      i += 2;
-      continue;
-    }
-    if (arg === "--folder") {
-      flags.folder = rest[i + 1];
-      i += 2;
-      continue;
-    }
-    if (arg === "--when") {
-      flags.when = rest[i + 1];
-      i += 2;
-      continue;
-    }
-    if (arg === "--days") {
-      const value = Number(rest[i + 1]);
-      if (!Number.isNaN(value)) {
-        flags.days = value;
+    } else if (arg === "--when") {
+      const when = value(i) as (typeof WHEN_VALUES)[number];
+      if (!WHEN_VALUES.includes(when)) {
+        throw new Error(`--when must be one of ${WHEN_VALUES.join(", ")} (got "${when}").`);
       }
+      flags.when = when;
       i += 2;
-      continue;
-    }
-    if (arg === "--date") {
-      flags.date = rest[i + 1];
+    } else if (arg === "--date") {
+      flags.date = parseIsoDate(value(i));
       i += 2;
-      continue;
-    }
-    if (arg === "--weekday") {
-      flags.weekday = rest[i + 1];
+    } else if (arg === "--weekday") {
+      flags.weekday = value(i);
       i += 2;
-      continue;
-    }
-    if (arg === "--totp-secret") {
-      flags.totpSecret = rest[i + 1];
+    } else if (arg === "--totp-secret") {
+      flags.totpSecret = value(i);
       i += 2;
-      continue;
-    }
-    if (arg === "--output") {
-      flags.output = rest[i + 1];
+    } else if (arg === "--output") {
+      flags.output = value(i);
       i += 2;
-      continue;
-    }
-    if (!arg.startsWith("--")) {
+    } else if (arg.startsWith("--")) {
+      throw new Error(`Unknown option "${arg}". See wilma --help.`);
+    } else {
       positionals.push(arg);
+      i += 1;
     }
-    i += 1;
   }
   const resourceAction = command === "news" && subcommand === "resource"
     ? positionals[0]
@@ -1066,19 +1055,18 @@ function parseArgs(args: string[]) {
 
 function parseReadId(raw: string | undefined, entity: string): number {
   if (!raw) {
-    console.error(`Missing ${entity} id.`);
-    process.exit(1);
+    throw new Error(`Missing ${entity} id. See wilma --help.`);
   }
   const id = Number(raw);
   if (!Number.isInteger(id) || id <= 0) {
-    console.error(`Invalid ${entity} id "${raw}". Expected a positive integer.`);
-    process.exit(1);
+    throw new Error(`Invalid ${entity} id "${raw}". Expected a positive integer.`);
   }
   return id;
 }
 
 async function readPackageVersion(): Promise<string> {
-  const pkgPath = resolve(dirname(new URL(import.meta.url).pathname), "..", "package.json");
+  // fileURLToPath: install paths can have spaces, non-ASCII letters or a Windows drive.
+  const pkgPath = resolve(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
   const raw = await readFile(pkgPath, "utf-8");
   const data = JSON.parse(raw) as { version?: string };
   return data.version ?? "unknown";
@@ -1089,30 +1077,24 @@ async function handleUpdate(): Promise<void> {
   console.log(`Current version: ${currentVersion}`);
   console.log("Updating @wilm-ai/wilma-cli...\n");
 
-  return new Promise((resolve, reject) => {
-    const child = spawn("npm", ["install", "-g", "@wilm-ai/wilma-cli@latest"], {
-      stdio: "inherit",
-    });
-
+  // npm is npm.cmd on Windows, which only runs through a shell. The command is a
+  // fixed string, so the shell sees no user input.
+  const command = "npm install -g @wilm-ai/wilma-cli@latest";
+  const child = process.platform === "win32"
+    ? spawn(command, { stdio: "inherit", shell: true })
+    : spawn("npm", command.split(" ").slice(1), { stdio: "inherit" });
+  const code = await new Promise<number | null>((resolve, reject) => {
     child.on("error", (err) => {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-        console.error("Error: npm not found. Please install npm and try again.");
-      } else {
-        console.error("Update failed:", err.message);
-      }
-      reject(err);
+      reject((err as NodeJS.ErrnoException).code === "ENOENT"
+        ? new Error("npm wasn't found. Install Node.js (it includes npm) from https://nodejs.org and run `wilma update` again.")
+        : err);
     });
-
-    child.on("close", (code) => {
-      if (code === 0) {
-        console.log("\nUpdate complete.");
-        resolve();
-      } else {
-        console.error(`\nnpm exited with code ${code}`);
-        reject(new Error(`npm exited with code ${code}`));
-      }
-    });
+    child.on("close", resolve);
   });
+  if (code !== 0) {
+    throw new Error(`npm couldn't update WilmAI (exit code ${code}); see npm's message above.`);
+  }
+  console.log("\nUpdate complete.");
 }
 
 // --- Version check / update notification ---
@@ -1124,7 +1106,7 @@ function getVersionCachePath(): string {
 }
 
 interface VersionCache {
-  latestVersion: string;
+  latestVersion: string | null;
   checkedAt: number;
 }
 
@@ -1139,44 +1121,51 @@ async function readVersionCache(): Promise<VersionCache | null> {
 
 async function writeVersionCache(cache: VersionCache): Promise<void> {
   const cachePath = getVersionCachePath();
-  await mkdir(dirname(cachePath), { recursive: true });
-  await writeFile(cachePath, JSON.stringify(cache), "utf-8");
+  await mkdir(dirname(cachePath), { recursive: true, mode: 0o700 });
+  await writeFile(cachePath, JSON.stringify(cache), { encoding: "utf-8", mode: 0o600 });
 }
 
-async function checkForUpdate(): Promise<string | null> {
-  try {
+interface UpdateCheck {
+  result: Promise<string | null>;
+  /** Stop a check still in flight, so it never keeps the command running. */
+  cancel(): void;
+}
+
+/**
+ * Ask npm for the latest version at most once a day. A failed check counts as
+ * a check too: agents in sandboxes without internet access shouldn't pay for
+ * a timeout on every command.
+ */
+function startUpdateCheck(): UpdateCheck {
+  const controller = new AbortController();
+  let cancelled = false;
+  const result = (async (): Promise<string | null> => {
     const cache = await readVersionCache();
     if (cache && Date.now() - cache.checkedAt < VERSION_CHECK_INTERVAL_MS) {
       return cache.latestVersion;
     }
-
-    const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
-
     try {
-      const response = await fetch(
-        "https://registry.npmjs.org/@wilm-ai/wilma-cli/latest",
-        { signal: controller.signal }
-      );
-      clearTimeout(timeout);
-
-      if (!response.ok) return cache?.latestVersion ?? null;
-
-      const data = (await response.json()) as { version?: string };
-      const latestVersion = data.version ?? null;
-
-      if (latestVersion) {
-        await writeVersionCache({ latestVersion, checkedAt: Date.now() });
-      }
-
+      const response = await fetch("https://registry.npmjs.org/@wilm-ai/wilma-cli/latest", { signal: controller.signal });
+      const data = response.ok ? ((await response.json()) as { version?: string }) : {};
+      const latestVersion = data.version ?? cache?.latestVersion ?? null;
+      await writeVersionCache({ latestVersion, checkedAt: Date.now() });
       return latestVersion;
     } catch {
-      clearTimeout(timeout);
+      // Cancelled because the command finished: try again next time.
+      if (!cancelled) await writeVersionCache({ latestVersion: cache?.latestVersion ?? null, checkedAt: Date.now() }).catch(() => {});
       return cache?.latestVersion ?? null;
+    } finally {
+      clearTimeout(timeout);
     }
-  } catch {
-    return null;
-  }
+  })().catch(() => null);
+  return {
+    result,
+    cancel() {
+      cancelled = true;
+      controller.abort();
+    },
+  };
 }
 
 function isNewerVersion(latest: string, current: string): boolean {
@@ -1191,13 +1180,14 @@ function isNewerVersion(latest: string, current: string): boolean {
   return false;
 }
 
-async function showUpdateNotice(
-  versionCheckPromise: Promise<string | null>
-): Promise<void> {
+async function showUpdateNotice(check: UpdateCheck): Promise<void> {
+  let timer: NodeJS.Timeout | undefined;
   try {
     const latestVersion = await Promise.race([
-      versionCheckPromise,
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+      check.result,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), 1000);
+      }),
     ]);
     if (!latestVersion) return;
 
@@ -1210,6 +1200,8 @@ async function showUpdateNotice(
     }
   } catch {
     // Silently ignore any errors
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -1225,7 +1217,7 @@ async function outputNews(
   }
   console.log(`\nNews (${news.length})`);
   slice.forEach((item) => {
-    const date = item.published ? item.published.toISOString().slice(0, 10) : "";
+    const date = item.published ? finnishDate(item.published) : "";
     const prefix = opts.label ? `[${opts.label}] ` : "";
     console.log(`- ${prefix}${date} ${compactText(item.title)} (id:${item.wilmaId})`.trim());
   });
@@ -1244,7 +1236,7 @@ async function outputNewsItem(
   }
   console.log(`\n${item.title}`);
   if (item.subtitle) console.log(item.subtitle);
-  if (item.published) console.log(item.published.toISOString());
+  if (item.published) console.log(finnishDateTime(item.published));
   if (item.content) console.log(`\n${formatContent(item.content)}`);
   if (item.resources?.length) {
     console.log(`\nResources (${item.resources.length})`);
@@ -1310,7 +1302,9 @@ async function outputNewsResourceDownload(
     throw new Error("News resource exceeds the 50 MB download limit");
   }
 
-  const outputDirectory = resolve(opts.output ?? process.cwd());
+  // "~/Downloads" typed at the interactive prompt (no shell to expand it).
+  const output = opts.output?.replace(/^~(?=$|[\\/])/, homedir());
+  const outputDirectory = resolve(output ?? process.cwd());
   await mkdir(outputDirectory, { recursive: true });
   const preferredName = fileNameFromResponse(resource, response.headers.get("content-disposition"), contentType);
   const { path, handle } = await createUniqueDownloadFile(outputDirectory, preferredName);
@@ -1358,24 +1352,6 @@ async function outputNewsResourceDownload(
     console.log(`Downloaded ${resource.label} to ${path}`);
   }
   return result;
-}
-
-async function outputExams(
-  client: WilmaClient,
-  opts: { limit: number; json?: boolean; label?: string }
-) {
-  const exams = await client.exams.list();
-  const slice = exams.slice(0, opts.limit);
-  if (opts.json) {
-    console.log(JSON.stringify(slice, null, 2));
-    return;
-  }
-  console.log(`\nExams (${exams.length})`);
-  slice.forEach((exam) => {
-    const date = exam.examDate.toISOString().slice(0, 10);
-    const prefix = opts.label ? `[${opts.label}] ` : "";
-    console.log(`- ${prefix}${date} ${compactText(exam.subject)}`);
-  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -1479,7 +1455,7 @@ async function outputAttendance(
     console.log(JSON.stringify(notes, null, 2));
     return;
   }
-  const date = opts.date ?? new Date().toISOString().slice(0, 10);
+  const date = opts.date ?? finnishDate();
   const prefix = opts.label ? `[${opts.label}] ` : "";
   console.log(`\n${prefix}Lesson notes for ${date} (${notes.length})`);
   if (!notes.length) {
@@ -1594,7 +1570,7 @@ async function outputMessages(
   }
   console.log(`\nMessages (${messages.length})`);
   slice.forEach((msg) => {
-    const date = msg.sentAt.toISOString().slice(0, 10);
+    const date = finnishDate(msg.sentAt);
     const prefix = opts.label ? `[${opts.label}] ` : "";
     console.log(`- ${prefix}${date} ${compactText(msg.subject)} (id:${msg.wilmaId})`);
   });
@@ -1608,7 +1584,7 @@ async function outputMessageItem(client: WilmaClient, id: number, json?: boolean
   }
   console.log(`\n${msg.subject}`);
   if (msg.senderName) console.log(`From: ${msg.senderName}`);
-  console.log(`Sent: ${msg.sentAt.toISOString()}`);
+  console.log(`Sent: ${finnishDateTime(msg.sentAt)}`);
   if (msg.content) console.log(`\n${formatContent(msg.content)}`);
 }
 
@@ -1616,7 +1592,7 @@ async function selectNewsToRead(client: WilmaClient) {
   const news = await client.news.list();
   if (!news.length) return;
   const choices = news.slice(0, 30).map((item) => {
-    const date = item.published ? item.published.toISOString().slice(0, 10) : "";
+    const date = item.published ? finnishDate(item.published) : "";
     return {
       value: String(item.wilmaId),
       name: `${date} ${compactText(item.title)}`.trim(),
@@ -1677,7 +1653,7 @@ async function selectMessageToRead(client: WilmaClient, folder: MessageFolder) {
     return;
   }
   const choices = messages.slice(0, 30).map((msg) => {
-    const date = msg.sentAt.toISOString().slice(0, 10);
+    const date = finnishDate(msg.sentAt);
     return {
       value: String(msg.wilmaId),
       name: `${date} ${compactText(msg.subject)}`.trim(),
@@ -1719,69 +1695,85 @@ async function selectOrCancel<T>(opts: Parameters<typeof select>[0], clearScreen
   }
 }
 
-function createInteractiveMfaCallback(
-  getStoredProfile?: () => StoredProfile | undefined,
-  saveProfile?: () => Promise<void>
-): MfaCallback {
+interface InteractiveMfa {
+  callback: MfaCallback;
+  /** The saved login being used (undefined while logging in with a new one). */
+  profile: StoredProfile | undefined;
+  /** A setup key typed during a new login, saved with that login. */
+  typedSecret: string | null;
+}
+
+function createInteractiveMfa(saveProfile: () => Promise<void>): InteractiveMfa {
   let lastCode: string | null = null;
   let lastCodeTime = 0;
+  let lastCodeFor: StoredProfile | undefined;
   let lastFormkey: string | null = null;
-  let fromSecret: MfaCallback | undefined;
-  return async (formkey: string): Promise<string> => {
-    // Asked again for the same challenge means Wilma rejected the code.
-    const retry = formkey === lastFormkey;
-    lastFormkey = formkey;
+  // One code generator per key: switching logins must not reuse another login's key.
+  const generators = new Map<string, MfaCallback>();
+  const state: InteractiveMfa = {
+    profile: undefined,
+    typedSecret: null,
+    callback: async (formkey: string): Promise<string> => {
+      // Asked again for the same challenge means Wilma rejected the code.
+      const retry = formkey === lastFormkey;
+      lastFormkey = formkey;
 
-    // If a TOTP secret is stored, generate codes (a retry waits for the next one).
-    const stored = getStoredProfile?.();
-    if (stored?.totpSecretObfuscated) {
-      const secret = revealSecret(stored.totpSecretObfuscated);
+      // A saved or just-typed key generates codes (a retry waits for the next one).
+      const secret = state.profile?.totpSecretObfuscated
+        ? revealSecret(state.profile.totpSecretObfuscated)
+        : state.typedSecret;
       if (secret) {
-        fromSecret ??= mfaCallbackFor(secret);
-        return fromSecret!(formkey);
+        if (!generators.has(secret)) generators.set(secret, mfaCallbackFor(secret)!);
+        return generators.get(secret)!(formkey);
       }
-    }
 
-    // TOTP codes are valid for 30s: a second login in the same window reuses the typed code.
-    const now = Math.floor(Date.now() / 30000);
-    if (!retry && lastCode && now === lastCodeTime) {
-      return lastCode;
-    }
-    if (retry) {
-      console.log("That code wasn't accepted. Wait for the next code in your authenticator app.");
-    }
+      // TOTP codes are valid for 30s: a second login in the same window reuses the typed code.
+      const now = Math.floor(Date.now() / 30000);
+      if (!retry && lastCode && now === lastCodeTime && lastCodeFor === state.profile) {
+        return lastCode;
+      }
+      if (retry) {
+        console.log("That code wasn't accepted. Wait for the next code in your authenticator app.");
+      }
 
-    const choice = await select({
-      message: "MFA required. Choose how to authenticate:",
-      choices: [
-        { value: "code", name: "Enter one-time code from authenticator app" },
-        { value: "secret", name: "Save TOTP secret for automatic login" },
-      ],
-    });
-
-    if (choice === "secret") {
-      const secretInput = await input({
-        message: "Paste TOTP secret (base32 key or otpauth:// URI)",
+      const choice = await select({
+        message: "MFA required. Choose how to authenticate:",
+        choices: [
+          { value: "code", name: "Enter one-time code from authenticator app" },
+          { value: "secret", name: "Save TOTP secret for automatic login" },
+        ],
       });
-      if (!secretInput) throw new Error("MFA cancelled");
-      const secret = parseTotpSecret(secretInput.trim());
-      // Save to config
-      if (stored && saveProfile) {
-        stored.totpSecretObfuscated = obfuscateSecret(secretInput.trim());
-        await saveProfile();
-      }
-      const code = generateTOTP(secret);
-      lastCode = code;
-      lastCodeTime = now;
-      return code;
-    }
 
-    const code = await input({ message: "Enter MFA code from authenticator app" });
-    if (!code) throw new Error("MFA cancelled");
-    lastCode = code.trim();
-    lastCodeTime = now;
-    return lastCode;
+      if (choice === "secret") {
+        const secretInput = (await input({
+          message: "Paste TOTP secret (base32 key or otpauth:// URI)",
+        })).trim();
+        if (!secretInput) throw new Error("MFA cancelled");
+        const parsed = parseTotpSecret(secretInput);
+        if (state.profile) {
+          state.profile.totpSecretObfuscated = obfuscateSecret(secretInput);
+          await saveProfile();
+        } else {
+          // A new login: saved together with the login once it succeeds.
+          state.typedSecret = secretInput;
+        }
+        generators.set(secretInput, mfaCallbackFor(secretInput)!);
+        const code = generateTOTP(parsed);
+        lastCode = code;
+        lastCodeTime = now;
+        lastCodeFor = state.profile;
+        return code;
+      }
+
+      const code = await input({ message: "Enter MFA code from authenticator app" });
+      if (!code) throw new Error("MFA cancelled");
+      lastCode = code.trim();
+      lastCodeTime = now;
+      lastCodeFor = state.profile;
+      return lastCode;
+    },
   };
+  return state;
 }
 
 async function inputOrCancel(opts: Parameters<typeof input>[0]): Promise<string | null> {
@@ -1848,8 +1840,36 @@ function isPromptCancel(err: unknown): boolean {
   );
 }
 
+/**
+ * Remove terminal escape sequences and control characters (keeping newlines
+ * and tabs), so text from Wilma or a bulletin link can't retitle the window,
+ * clear the screen, write the clipboard or overwrite a line.
+ */
+function terminalSafe(value: string): string {
+  return value
+    .replace(/\u001b(\[[0-?]*[ -/]*[@-~]|\][^\u0007\u001b]*(\u0007|\u001b\\)?|[@-Z\\-_])/g, "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, "");
+}
+
+/**
+ * JSON output keeps every character: JSON.stringify already escapes control
+ * characters except DEL and the C1 range, which some terminals act on, so
+ * escape those too (inside JSON they can only occur in strings).
+ */
+function jsonSafe(value: string): string {
+  return value.replace(/[\u007f-\u009f]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+}
+
+/** Date and time in Finnish time, e.g. "2026-02-05 14:00". */
+function finnishDateTime(d: Date): string {
+  const time = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Helsinki", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
+  return `${finnishDate(d)} ${time}`;
+}
+
+/** One line of text from Wilma, safe for the terminal (prompts don't go through the console filter). */
 function compactText(value: string | null | undefined): string {
-  return (value ?? "").replace(/\s+/g, " ").trim();
+  return terminalSafe(value ?? "").replace(/\s+/g, " ").trim();
 }
 
 function formatContent(value: string): string {
@@ -2008,19 +2028,8 @@ async function resolveStudentForFlags(
         href: `/!${normalized}/`,
       };
     }
-    const students = await getStudentsForCommand(profile, config);
-    const needle = normalized.toLowerCase();
-    const substring = students.find((s) => s.name.toLowerCase().includes(needle));
-    if (substring) return substring;
-    const match = students.find((s) => fuzzyIncludes(s.name, normalized));
-    if (match) return match;
-    // No match found - show available students and exit
-    console.error(`Error: No student matching "${normalized}" found.`);
-    if (students.length > 0) {
-      console.error("Available students:");
-      students.forEach((s) => console.error(`  ${s.studentNumber}  ${s.name}`));
-    }
-    process.exit(1);
+    // Strict, like the agent tools: "Ella" must not pick "Daniella".
+    return matchStudents(await getStudentsForCommand(profile, config), normalized)[0];
   }
   const stored = config.profiles.find((p) => p.id === config.lastProfileId);
   if (stored?.lastStudentNumber) {
@@ -2055,7 +2064,7 @@ async function outputAllNews(
   results.forEach((entry) => {
     console.log(`\n[${entry.student.name}]`);
     entry.items.forEach((item) => {
-      const date = item.published ? item.published.toISOString().slice(0, 10) : "";
+      const date = item.published ? finnishDate(item.published) : "";
       console.log(`- ${date} ${item.title} (id:${item.wilmaId})`.trim());
     });
   });
@@ -2081,7 +2090,7 @@ async function outputAllMessages(
   results.forEach((entry) => {
     console.log(`\n[${entry.student.name}]`);
     entry.items.forEach((msg) => {
-      const date = msg.sentAt.toISOString().slice(0, 10);
+      const date = finnishDate(msg.sentAt);
       console.log(`- ${date} ${msg.subject} (id:${msg.wilmaId})`);
     });
   });
@@ -2247,31 +2256,43 @@ async function outputAllOverviewCommand(
   }
 }
 
-async function printStudentSelectionHelp(
+/** The error for a command that needs one student when the login has several (or none). */
+async function studentChoiceError(
   profile: WilmaProfile,
   config: { profiles: StoredProfile[]; lastProfileId?: string | null }
-) {
+): Promise<Error> {
   const students = await getStudentsForCommand(profile, config);
-  console.error("Multiple students found. Use --student <id|name> or --all-students.");
-  students.forEach((s) => {
-    console.error(`- ${s.studentNumber} ${s.name}`);
-  });
+  if (!students.length) return new Error("No students found on this Wilma login.");
+  const list = students.map((s) => `${s.studentNumber} ${s.name}`).join(", ");
+  return new Error(`Several students on this login (${list}). Use --student <number|name> or --all-students.`);
+}
+
+/** Reading one item needs the right student: refuse to guess when there are several. */
+async function requireOneStudent(
+  profile: WilmaProfile,
+  config: { profiles: StoredProfile[]; lastProfileId?: string | null }
+): Promise<void> {
+  const students = await getStudentsForCommand(profile, config);
+  if (students.length > 1) {
+    const list = students.map((s) => `${s.studentNumber} ${s.name}`).join(", ");
+    throw new Error(`Several students on this login (${list}). Use --student <number|name> to say whose item this is.`);
+  }
 }
 
 main().catch((err) => {
   if (isPromptCancel(err)) {
     process.exit(0);
   }
-  if (err instanceof MfaRequiredError) {
-    console.error("MFA is enabled on this Wilma account.");
-    console.error("For non-interactive use, provide your TOTP secret:");
-    console.error("  --totp-secret <base32-key>");
-    console.error("  --totp-secret 'otpauth://totp/...'");
-    console.error("Tip: export the key from your authenticator app (base32 string or otpauth:// URI).");
+  if (err instanceof MfaRequiredError && !process.argv.includes("--json")) {
+    console.error("Two-step verification is on for this Wilma account.");
+    console.error("Run `wilma login` and give the authenticator setup key on the login page,");
+    console.error(`or set ${ENV_VARS.totpSecret} to the key (base32 or otpauth:// URI).`);
     console.error("For interactive use, run 'wilma' without arguments.");
     process.exit(1);
   }
-  const message = err instanceof Error ? err.message : String(err);
+  const message = err instanceof MfaRequiredError
+    ? `Two-step verification is on for this Wilma account. Run \`wilma login\` and give the authenticator setup key, or set ${ENV_VARS.totpSecret}.`
+    : err instanceof Error ? err.message : String(err);
   const isNetwork = err instanceof NetworkError;
   if (process.argv.includes("--json")) {
     console.log(

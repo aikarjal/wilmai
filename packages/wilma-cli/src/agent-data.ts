@@ -273,6 +273,29 @@ function pooledSession(account: AccessAccount): Promise<WilmaClient> {
  * number or name narrows it. Uses one pooled session per Wilma login for
  * listing and for every child.
  */
+/**
+ * The students a name or number refers to. Agents and people pass names from
+ * free text, so match strictly: a student number, the full name, or the start
+ * of a name part ("Kiia" for "Kiia Example"). No fuzzy matching — a child not
+ * on the account must not match a sibling. Throws when nothing or several match.
+ */
+export function matchStudents<T extends { studentNumber: string; name: string }>(students: T[], student: string): T[] {
+  const needle = student.trim().toLowerCase();
+  const names = students.map((s) => s.name).join(", ") || "none";
+  const byNumber = students.filter((s) => s.studentNumber === student.trim());
+  if (byNumber.length === 1) return byNumber;
+  const exact = students.filter((s) => s.name.toLowerCase() === needle);
+  const matches = exact.length
+    ? exact
+    : students.filter((s) => {
+        const name = s.name.toLowerCase();
+        return name.startsWith(needle) || name.split(/[\s-]+/).some((part) => part.startsWith(needle));
+      });
+  if (matches.length === 1) return matches;
+  if (!matches.length) throw new Error(`No student matching "${student}". Students on this account: ${names}`);
+  throw new Error(`"${student}" matches several students (${matches.map((s) => s.name).join(", ")}). Use the full name or student number.`);
+}
+
 export class WilmaAccess {
   private readonly accounts: AccessAccount[];
   private studentsCache: AccountStudent[] | null = null;
@@ -356,24 +379,7 @@ export class WilmaAccess {
 
   async selectStudents(student?: string): Promise<AccountStudent[]> {
     const students = await this.students();
-    if (!student) return students;
-    // Agents pass names from free text, so match strictly: a student number,
-    // the full name, or the start of a name part ("Kiia" for "Kiia Example").
-    // No fuzzy matching — a child not on the account must not match a sibling.
-    const needle = student.trim().toLowerCase();
-    const names = students.map((s) => s.name).join(", ");
-    const byNumber = students.filter((s) => s.studentNumber === student.trim());
-    if (byNumber.length === 1) return byNumber;
-    const exact = students.filter((s) => s.name.toLowerCase() === needle);
-    const matches = exact.length
-      ? exact
-      : students.filter((s) => {
-          const name = s.name.toLowerCase();
-          return name.startsWith(needle) || name.split(/[\s-]+/).some((part) => part.startsWith(needle));
-        });
-    if (matches.length === 1) return matches;
-    if (!matches.length) throw new Error(`No student matching "${student}". Students on this account: ${names}`);
-    throw new Error(`"${student}" matches several students (${matches.map((s) => s.name).join(", ")}). Use the full name.`);
+    return student ? matchStudents(students, student) : students;
   }
 
   private async client(student: AccountStudent): Promise<WilmaClient> {

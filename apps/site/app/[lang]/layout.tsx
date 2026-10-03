@@ -36,12 +36,13 @@ export function generateStaticParams() {
   return locales.map((lang) => ({ lang }));
 }
 
-export function generateMetadata({
+export async function generateMetadata({
   params
 }: {
-  params: { lang: string };
-}): Metadata {
-  const lang: Lang = isLang(params.lang) ? params.lang : "en";
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang: requested } = await params;
+  const lang: Lang = isLang(requested) ? requested : "en";
   const dict = dictionaries[lang];
   return {
     metadataBase: new URL("https://wilm.ai"),
@@ -81,14 +82,15 @@ export function generateMetadata({
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
   params
 }: {
   children: React.ReactNode;
-  params: { lang: string };
+  params: Promise<{ lang: string }>;
 }) {
-  const lang: Lang = isLang(params.lang) ? params.lang : "en";
+  const { lang: requested } = await params;
+  const lang: Lang = isLang(requested) ? requested : "en";
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [

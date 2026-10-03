@@ -30,7 +30,7 @@ export default function CopyBlock({
   };
 
   const button = (
-    <button className="copy" onClick={copy} type="button">
+    <button className="copy" onClick={copy} type="button" aria-live="polite">
       {copied ? copiedLabel : copyLabel}
     </button>
   );

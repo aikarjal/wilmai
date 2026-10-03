@@ -1,10 +1,8 @@
 import * as cheerio from "cheerio";
 
-export interface StudentInfo {
-  studentNumber: string;
-  name: string;
-  href: string;
-}
+import type { StudentInfo } from "../types.js";
+
+export type { StudentInfo };
 
 const NAV_KEYWORDS = [
   "messages",
@@ -60,7 +58,11 @@ function roleType(rec: Record<string, unknown>): unknown {
 }
 
 function roleName(rec: Record<string, unknown>, fallback: string): string {
-  return String(rec.Name ?? rec.name ?? rec.Caption ?? rec.caption ?? fallback);
+  // First non-empty name; an empty Name must not drop the student.
+  for (const value of [rec.Name, rec.name, rec.Caption, rec.caption]) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return fallback;
 }
 
 function collectStudent(
@@ -123,6 +125,8 @@ export function parseStudentsFromAccountsRoles(data: unknown): StudentInfo[] {
 export function parseStudentsFromHome(html: string, pageUrl?: string): StudentInfo[] {
   const $ = cheerio.load(html);
   const named = new Map<string, StudentInfo>();
+  // Names from links deeper than a student's root: used only when a student has no root link.
+  const deepNamed = new Map<string, StudentInfo>();
   const fromHref = new Map<string, StudentInfo>();
 
   $("a[href]").each((_, anchor) => {
@@ -145,13 +149,18 @@ export function parseStudentsFromHome(html: string, pageUrl?: string): StudentIn
       return;
     }
 
-    const lower = text.toLowerCase();
-    if (NAV_KEYWORDS.some((kw) => lower.includes(kw))) {
+    // Keywords match whole words only, so a name like "Ella Newsome" isn't
+    // mistaken for "news".
+    const words = text.toLowerCase().split(/[\s()]+/);
+    if (NAV_KEYWORDS.some((kw) => words.includes(kw))) {
       return;
     }
 
-    if (!named.has(studentNumber)) {
-      named.set(studentNumber, {
+    // Menu links go deeper than the student's root (/!123/messages) and their
+    // text is usually a section name, so a root link's text wins.
+    const target = /\/!\d+\/[^/?#]+/.test(href) ? deepNamed : named;
+    if (!target.has(studentNumber)) {
+      target.set(studentNumber, {
         studentNumber,
         name: text,
         href,
@@ -159,8 +168,11 @@ export function parseStudentsFromHome(html: string, pageUrl?: string): StudentIn
     }
   });
 
-  if (named.size > 0) {
-    return [...named.values()];
+  if (named.size > 0 || deepNamed.size > 0) {
+    // Every named student, in page order; none dropped for lacking a root link.
+    return [...fromHref.keys()]
+      .map((number) => named.get(number) ?? deepNamed.get(number))
+      .filter((student): student is StudentInfo => Boolean(student));
   }
 
   if (fromHref.size > 0) {

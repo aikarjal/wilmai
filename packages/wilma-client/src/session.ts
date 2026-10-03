@@ -1,12 +1,18 @@
 import { CookieJar, type Cookie } from "tough-cookie";
 import { fetch, type RequestInit, type Response } from "undici";
-import { wrapNetworkError } from "./network-error.js";
+import { IdleTimer, asNetworkError, watchBody } from "./timeouts.js";
 
-export class AuthenticationError extends Error {}
+export class AuthenticationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthenticationError";
+  }
+}
 export class MfaRequiredError extends Error {
   formkey: string;
   constructor(formkey: string) {
     super("MFA verification required");
+    this.name = "MfaRequiredError";
     this.formkey = formkey;
   }
 }
@@ -14,9 +20,14 @@ export class APIError extends Error {
   status: number;
   constructor(message: string, status: number) {
     super(message);
+    this.name = "APIError";
     this.status = status;
   }
 }
+
+/** How long Wilma may go silent (before answering, or mid-body) before a request fails. */
+const REQUEST_TIMEOUT_MS = 30_000;
+const MAX_REDIRECTS = 10;
 
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
@@ -38,6 +49,14 @@ interface SessionAuth {
   relogin: Promise<void> | null;
   /** Bumped on every successful login, so a late 401/403 from an older login isn't mistaken for a new problem. */
   generation: number;
+  /**
+   * Set when Wilma refused the saved login itself (its explicit "login
+   * failed" answer, or a code is needed and there is no way to make one).
+   * Further requests fail at once instead of retrying — repeated failed
+   * logins can lock the Wilma account. Outages and other refusals (rate
+   * limits, firewalls, maintenance pages) don't set it.
+   */
+  failed: Error | null;
 }
 
 export class WilmaSession {
@@ -48,7 +67,7 @@ export class WilmaSession {
 
   constructor(baseUrl: string, opts?: { studentNumber?: string | null; debug?: boolean }) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
-    this.auth = { cookieJar: new CookieJar(), loggedIn: false, relogin: null, generation: 0 };
+    this.auth = { cookieJar: new CookieJar(), loggedIn: false, relogin: null, generation: 0, failed: null };
     this.studentNumber = opts?.studentNumber ?? null;
     this.debug = Boolean(opts?.debug);
   }
@@ -117,25 +136,28 @@ export class WilmaSession {
     const text = await resp.text();
     const location = resp.headers.get("location") ?? "";
 
+    // Wilma itself failing is temporary — not a verdict on the username and password.
+    if (resp.status >= 500) {
+      throw new APIError(`Wilma answered HTTP ${resp.status} while logging in`, resp.status);
+    }
+
     // Wilma answers a wrong username or password with a redirect to
-    // "?loginfailed" — empty body, no session cookie.
-    if (LOGIN_FAIL_RE.test(location)) {
+    // "?loginfailed" — empty body, no session cookie (older versions: a page
+    // saying so).
+    if (LOGIN_FAIL_RE.test(location) || (resp.status < 300 && !isLoginOk(text))) {
       throw new AuthenticationError("Wilma login failed");
     }
 
     // Check for MFA challenge by following the post-login redirect
-    if (resp.status >= 300 && resp.status < 400 && hasSessionCookie) {
-      const location = resp.headers.get("location");
-      if (location) {
-        const redirectResp = await this.rawRequest(
-          new URL(location).pathname + new URL(location).search,
-          { method: "GET" }
-        );
+    if (resp.status >= 300 && resp.status < 400 && hasSessionCookie && location) {
+      const next = new URL(location, `${this.baseUrl}/`);
+      if (next.origin === new URL(this.baseUrl).origin) {
+        const redirectResp = await this.rawRequest(next.pathname + next.search, { method: "GET" });
         const redirectText = await redirectResp.text();
         const mfaFormkeyMatch = /id="mfa-formkey"\s+value="([^"]+)"/.exec(redirectText);
         if (mfaFormkeyMatch) {
           if (this.debug) {
-            console.log(`[wilmai] MFA challenge detected`);
+            console.error(`[wilmai] MFA challenge detected`);
           }
           // Store credentials so we can complete login after MFA
           this.auth.username = username;
@@ -147,15 +169,18 @@ export class WilmaSession {
 
     // A redirect counts as a login only with a session cookie: its empty body
     // would otherwise pass the text check, accepting any username and password.
-    if (hasSessionCookie || (resp.status < 300 && isLoginOk(text))) {
+    if (resp.status < 400 && (hasSessionCookie || resp.status < 300)) {
       this.auth.loggedIn = true;
-    this.auth.generation += 1;
+      this.auth.generation += 1;
+      this.auth.failed = null;
       this.auth.username = username;
       this.auth.password = password;
       return;
     }
 
-    throw new AuthenticationError("Wilma login failed");
+    // Not Wilma's "login failed" answer (a rate limit, a firewall, a
+    // maintenance page): report it, but don't treat the password as wrong.
+    throw new APIError(`Wilma didn't accept the login right now (HTTP ${resp.status})`, resp.status);
   }
 
   async submitMfaCode(formkey: string, otpCode: string): Promise<void> {
@@ -170,7 +195,7 @@ export class WilmaSession {
     });
 
     if (this.debug) {
-      console.log(`[wilmai] POST ${path} (MFA OTP check)`);
+      console.error(`[wilmai] POST ${path} (MFA OTP check)`);
     }
 
     const resp = await this.rawRequest(path, {
@@ -181,6 +206,11 @@ export class WilmaSession {
       },
     });
 
+    // Wilma itself failing says nothing about the code.
+    if (resp.status >= 500) {
+      await resp.body?.cancel();
+      throw new APIError(`Wilma answered HTTP ${resp.status} while checking the code`, resp.status);
+    }
     const text = await resp.text();
     let success = false;
     try {
@@ -197,22 +227,49 @@ export class WilmaSession {
 
     this.auth.loggedIn = true;
     this.auth.generation += 1;
+    this.auth.failed = null;
     if (this.debug) {
-      console.log(`[wilmai] MFA verification successful`);
+      console.error(`[wilmai] MFA verification successful`);
     }
   }
 
   private async getLoginFormFields(): Promise<Record<string, string>> {
     const resp = await this.rawRequest("/login", { method: "GET" });
+    if (resp.status >= 500) {
+      await resp.body?.cancel();
+      throw new APIError(`Wilma answered HTTP ${resp.status} for its login page`, resp.status);
+    }
+    if (resp.status >= 300 && resp.status < 400) {
+      // rawRequest follows redirects within Wilma, so this one leads elsewhere.
+      await resp.body?.cancel();
+      const target = safeOrigin(resp.headers.get("location"), this.baseUrl);
+      throw new APIError(
+        `${new URL(this.baseUrl).origin} sends its login page to ${target ?? "another site"}; ` +
+          "log in with that Wilma address instead",
+        resp.status
+      );
+    }
     if (resp.status >= 400) {
+      await resp.body?.cancel();
       return {};
     }
     const html = await resp.text();
     return parseLoginFormFields(html);
   }
 
-  async request(path: string, init?: RequestInit): Promise<Response> {
+  /**
+   * An authenticated request to this Wilma. Follows redirects within Wilma
+   * only; a redirect to another site is an error unless `externalRedirect`
+   * is "return" (then the 3xx response is handed back, e.g. so a download can
+   * continue without Wilma credentials).
+   */
+  async request(
+    path: string,
+    init?: RequestInit,
+    opts: { externalRedirect?: "error" | "return"; /** Idle timeout, e.g. longer for downloads. */ timeoutMs?: number } = {}
+  ): Promise<Response> {
     const auth = this.auth;
+    if (auth.failed) throw auth.failed;
     // A re-login in progress: wait for it (and share its outcome).
     if (auth.relogin) await auth.relogin;
     if (!auth.loggedIn) {
@@ -223,30 +280,64 @@ export class WilmaSession {
 
     const prefixedPath = this.getPrefixedPath(path);
     const generation = auth.generation;
-    let resp = await this.rawRequest(prefixedPath, init);
+    // Some pages (messages) answer a cancelled session with a redirect to the
+    // login page instead of 401/403: stop there rather than read the login
+    // page as an empty answer.
+    const authed = { ...init, stopAtLogin: true };
+    let resp = await this.rawRequest(prefixedPath, authed, opts.timeoutMs);
 
-    // 401: the session expired. 403: either another login on the same account
-    // cancelled this session, or just this one item is off-limits.
-    if ((resp.status === 401 || resp.status === 403) && auth.username && auth.password) {
-      if (auth.generation !== generation || auth.relogin) {
-        // Someone already logged in again since this request was sent: just retry.
+    // 401 or a redirect to the login page: the session expired. 403: either
+    // another login on the same account cancelled this session, or just this
+    // one item is off-limits.
+    const loggedOut = (r: Response) => r.status === 401 || this.isLoginRedirect(r);
+    if ((loggedOut(resp) || resp.status === 403) && auth.username && auth.password) {
+      const someoneElseLoggedIn = () => auth.generation !== generation || auth.relogin !== null;
+      let retry = someoneElseLoggedIn();
+      if (!retry && (loggedOut(resp) || !(await this.sessionAlive()))) {
+        // Check again: another request may have logged in while we probed.
+        if (!someoneElseLoggedIn()) await this.relogin();
+        retry = true;
+      }
+      if (retry) {
         if (auth.relogin) await auth.relogin;
-        resp = await this.rawRequest(prefixedPath, init);
-      } else if (resp.status === 401 || !(await this.sessionAlive())) {
-        await this.relogin();
-        resp = await this.rawRequest(prefixedPath, init);
+        await resp.body?.cancel();
+        resp = await this.rawRequest(prefixedPath, authed, opts.timeoutMs);
       }
     }
 
     if (this.debug) {
-      console.log(`[wilmai] ${init?.method ?? "GET"} ${prefixedPath} => ${resp.status}`);
+      console.error(`[wilmai] ${init?.method ?? "GET"} ${redactPath(prefixedPath)} => ${resp.status}`);
     }
 
+    if (this.isLoginRedirect(resp)) {
+      await resp.body?.cancel();
+      throw new APIError(`Wilma asked to log in again at ${redactPath(prefixedPath)}`, 401);
+    }
+    if (resp.status >= 300 && resp.status < 400) {
+      // rawRequest follows redirects within Wilma, so this one leads elsewhere.
+      if (opts.externalRedirect === "return") return resp;
+      await resp.body?.cancel();
+      throw new APIError(`Wilma redirected to another site at ${redactPath(prefixedPath)}`, resp.status);
+    }
     if (resp.status >= 400) {
-      throw new APIError(`Wilma HTTP ${resp.status} at ${prefixedPath}`, resp.status);
+      await resp.body?.cancel();
+      throw new APIError(`Wilma HTTP ${resp.status} at ${redactPath(prefixedPath)}`, resp.status);
     }
 
     return resp;
+  }
+
+  /** A redirect to this Wilma's login page: the session is gone. */
+  private isLoginRedirect(resp: Response): boolean {
+    if (resp.status < 300 || resp.status >= 400) return false;
+    const location = resp.headers.get("location");
+    if (!location) return false;
+    try {
+      const target = new URL(location, `${this.baseUrl}/`);
+      return target.origin === new URL(this.baseUrl).origin && /^\/login\/?$/i.test(target.pathname);
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -287,12 +378,12 @@ export class WilmaSession {
   private async relogin(): Promise<void> {
     if (!this.auth.relogin) {
       const auth = this.auth;
-      auth.relogin = (async () => {
+      const attempt = (async () => {
         auth.loggedIn = false;
         // Start from a clean jar: a leftover session cookie must not make a
         // failed login look successful.
         auth.cookieJar.removeAllCookiesSync();
-        if (this.debug) console.log("[wilmai] session cancelled or expired; logging in again");
+        if (this.debug) console.error("[wilmai] session cancelled or expired; logging in again");
         try {
           await this.login(auth.username!, auth.password!);
         } catch (err) {
@@ -302,15 +393,29 @@ export class WilmaSession {
             throw err;
           }
         }
-      })().finally(() => {
-        auth.relogin = null;
-      });
+      })();
+      // No overall deadline: every request in the login has its own idle
+      // timeout, and an interactive code prompt may rightly take a while. (A
+      // deadline would also let a second re-login start under this one.)
+      auth.relogin = attempt
+        .catch((err) => {
+          // The saved login itself was refused: stop here instead of retrying on every request.
+          if (isPermanentLoginFailure(err)) auth.failed = err as Error;
+          throw err;
+        })
+        .finally(() => {
+          auth.relogin = null;
+        });
     }
     await this.auth.relogin;
   }
 
-  async get(path: string, init?: RequestInit): Promise<Response> {
-    return this.request(path, { ...init, method: "GET" });
+  async get(
+    path: string,
+    init?: RequestInit,
+    opts?: { externalRedirect?: "error" | "return"; timeoutMs?: number }
+  ): Promise<Response> {
+    return this.request(path, { ...init, method: "GET" }, opts);
   }
 
   async post(path: string, init?: RequestInit): Promise<Response> {
@@ -320,7 +425,9 @@ export class WilmaSession {
   private async getLoginToken(): Promise<string> {
     const resp = await this.rawRequest("/token", { method: "GET" });
     if (resp.status !== 200) {
-      throw new AuthenticationError("/token fetch failed");
+      // An outage or a changed login page, not a wrong password.
+      await resp.body?.cancel();
+      throw new APIError(`Wilma answered HTTP ${resp.status} for its login token`, resp.status);
     }
 
     const text = await resp.text();
@@ -335,75 +442,136 @@ export class WilmaSession {
 
     const match = /"Wilma2LoginID"\s*:\s*"([^"\s]+)"/.exec(text);
     if (!match) {
-      throw new AuthenticationError("Wilma2LoginID not found in /token response");
+      throw new APIError("Wilma's login token wasn't in the expected format", resp.status);
     }
 
     return match[1];
   }
 
-  private async rawRequest(path: string, init?: RequestInit): Promise<Response> {
-    const url = new URL(path, this.baseUrl).toString();
-    const cookieHeader = this.auth.cookieJar.getCookieStringSync(url);
+  /**
+   * One request to this Wilma, following redirects within Wilma hop by hop
+   * (cookies are stored per hop, and only for Wilma). A redirect to another
+   * origin is returned as-is: Wilma's cookies never travel there.
+   */
+  private async rawRequest(
+    path: string,
+    init?: RequestInit & { stopAtLogin?: boolean },
+    timeoutMs = REQUEST_TIMEOUT_MS
+  ): Promise<Response> {
+    const origin = new URL(this.baseUrl).origin;
+    // Paths only: "//host/x" or "https://other/x" would leave Wilma.
+    if (path.startsWith("//") || /^[a-z][a-z0-9+.-]*:/i.test(path)) {
+      throw new APIError("Refusing a request outside Wilma", 400);
+    }
+    let url = new URL(path, `${this.baseUrl}/`);
+    if (url.origin !== origin) {
+      throw new APIError("Refusing a request outside Wilma", 400);
+    }
 
-    const headers = new Headers();
+    const baseHeaders = new Headers();
     if (init?.headers) {
       const incoming = init.headers;
       if (incoming instanceof Headers) {
-        incoming.forEach((value, key) => headers.set(key, value));
+        incoming.forEach((value, key) => baseHeaders.set(key, value));
       } else if (Array.isArray(incoming)) {
         for (const entry of incoming) {
           if (entry.length >= 2) {
-            headers.set(entry[0], entry[1]);
+            baseHeaders.set(entry[0], entry[1]);
           }
         }
       } else {
         for (const [key, value] of Object.entries(incoming)) {
           if (value !== undefined) {
-            headers.set(key, String(value));
+            baseHeaders.set(key, String(value));
           }
         }
       }
     }
+    baseHeaders.set("User-Agent", USER_AGENT);
+    baseHeaders.set("Referer", `${this.baseUrl}/`);
 
-    headers.set("User-Agent", USER_AGENT);
-    headers.set("Referer", `${this.baseUrl}/`);
-    if (cookieHeader) {
-      headers.set("Cookie", cookieHeader);
-    }
+    const { stopAtLogin, ...fetchInit } = init ?? {};
+    const follow = init?.redirect !== "manual";
+    const idle = new IdleTimer(timeoutMs);
+    const signal = init?.signal ? AbortSignal.any([init.signal, idle.signal]) : idle.signal;
+    let method = (init?.method ?? "GET").toUpperCase();
+    let body = init?.body;
 
-    if (this.debug) {
-      const method = init?.method ?? "GET";
-      // Avoid logging sensitive headers or body
-      console.log(`[wilmai] ${method} ${url}`);
-    }
+    for (let hop = 0; ; hop += 1) {
+      const headers = new Headers(baseHeaders);
+      const cookieHeader = this.auth.cookieJar.getCookieStringSync(url.href);
+      if (cookieHeader) headers.set("Cookie", cookieHeader);
 
-    let resp: Response;
-    try {
-      resp = await fetch(url, {
-        ...init,
-        headers,
-      });
-    } catch (err) {
-      // `fetch failed` on its own is undiagnosable; re-throw with the cause code
-      // and remediation attached.
-      throw wrapNetworkError(err, url);
-    }
-
-    const headersAny = resp.headers as unknown as { getSetCookie?: () => string[] };
-    const setCookies = headersAny.getSetCookie?.() ?? [];
-    if (setCookies.length) {
-      for (const cookie of setCookies) {
-        this.auth.cookieJar.setCookieSync(cookie, url);
+      if (this.debug) {
+        // Method and path only: never headers, bodies or query strings.
+        console.error(`[wilmai] ${method} ${redactPath(url.pathname)}`);
       }
-    } else {
-      const single = resp.headers.get("set-cookie");
-      if (single) {
-        this.auth.cookieJar.setCookieSync(single, url);
-      }
-    }
 
-    return resp;
+      let resp: Response;
+      try {
+        idle.touch();
+        resp = await fetch(url, { ...fetchInit, method, body, headers, signal, redirect: "manual" });
+      } catch (err) {
+        idle.stop();
+        // Timeouts, and `fetch failed` with its cause code and remediation attached.
+        throw asNetworkError(err, origin);
+      }
+
+      const headersAny = resp.headers as unknown as { getSetCookie?: () => string[] };
+      const setCookies = headersAny.getSetCookie?.() ?? [];
+      const single = setCookies.length ? [] : [resp.headers.get("set-cookie")].filter((c): c is string => !!c);
+      for (const cookie of [...setCookies, ...single]) {
+        // A cookie Wilma isn't allowed to set (e.g. for another domain) is dropped, not fatal.
+        this.auth.cookieJar.setCookieSync(cookie, url.href, { ignoreError: true });
+      }
+
+      const location = resp.headers.get("location");
+      if (!follow || resp.status < 300 || resp.status >= 400 || !location) {
+        return watchBody(resp, idle, origin);
+      }
+      const next = new URL(location, url);
+      if (next.origin !== origin) {
+        return watchBody(resp, idle, origin); // hand the off-site redirect back to the caller
+      }
+      if (stopAtLogin && /^\/login\/?$/i.test(next.pathname)) {
+        return watchBody(resp, idle, origin); // logged out: the caller decides
+      }
+      if (hop >= MAX_REDIRECTS) {
+        idle.stop();
+        await resp.body?.cancel();
+        throw new APIError("Wilma redirected too many times", resp.status);
+      }
+      await resp.body?.cancel();
+      // Like browsers: 303, and 301/302 after a POST, continue as GET without a body.
+      if (resp.status === 303 || ((resp.status === 301 || resp.status === 302) && method === "POST")) {
+        method = "GET";
+        body = undefined;
+        baseHeaders.delete("Content-Type");
+      }
+      url = next;
+    }
   }
+}
+
+/** The origin of a redirect target, for messages (never its path). */
+function safeOrigin(location: string | null, base: string): string | null {
+  try {
+    return location ? new URL(location, `${base}/`).origin : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A path for messages and logs: no student number, no query string. */
+function redactPath(path: string): string {
+  return path.replace(/^\/![^/]+/, "").split("?")[0] || "/";
+}
+
+function isPermanentLoginFailure(err: unknown): boolean {
+  return (
+    err instanceof MfaRequiredError ||
+    (err instanceof AuthenticationError && /^Wilma login failed/.test(err.message))
+  );
 }
 
 function isLoginOk(text: string): boolean {

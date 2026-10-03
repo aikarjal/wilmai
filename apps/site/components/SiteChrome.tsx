@@ -33,6 +33,8 @@ export function TopBar({ lang }: { lang: Lang }) {
           scrolling="0"
           width="130"
           height="30"
+          loading="lazy"
+          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
         />
         <LanguageToggle lang={lang} />
       </div>

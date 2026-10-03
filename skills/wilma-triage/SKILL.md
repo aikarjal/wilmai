@@ -10,11 +10,7 @@ metadata:
           {
             "bins": ["wilma"],
             "skills": ["wilma"],
-            "configPaths":
-              [
-                "~/.config/wilmai/config.json",
-                "~/Library/Application Support/gogcli/",
-              ],
+            "configPaths": ["~/.config/wilmai/config.json"],
           },
         "credentials":
           {

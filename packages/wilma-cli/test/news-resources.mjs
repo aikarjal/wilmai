@@ -147,7 +147,8 @@ try {
       const { stdout } = await execFileAsync(process.execPath, [cliPath, ...args], {
         cwd: options.cwd ?? tempDirectory,
         encoding: "utf8",
-        env: { ...process.env, WILMAI_CONFIG_PATH: configPath },
+        // "External" files are served from 127.0.0.1 in this test.
+        env: { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_ALLOW_PRIVATE_NETWORK: "1" },
       });
       return { exitCode: 0, output: JSON.parse(stdout) };
     } catch (error) {

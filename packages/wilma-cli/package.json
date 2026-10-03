@@ -1,17 +1,27 @@
 {
   "name": "@wilm-ai/wilma-cli",
   "version": "1.7.0",
+  "description": "Read your children's Wilma (Finnish school system) from the terminal or an AI assistant: schedule, homework, exams, messages and news.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aikarjal/wilmai.git",
+    "directory": "packages/wilma-cli"
+  },
+  "homepage": "https://wilm.ai",
+  "bugs": "https://github.com/aikarjal/wilmai/issues",
+  "engines": {
+    "node": ">=20.18.1"
+  },
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "bin": {
     "wilmai": "dist/index.js",
     "wilma": "dist/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "lint": "echo 'add lint'",
-    "test": "pnpm --filter @wilm-ai/wilma-client build && pnpm run build && node test/news-resources.mjs && node test/mcp-login.mjs && node test/mfa.mjs",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm --filter @wilm-ai/wilma-client build && pnpm run build && node test/news-resources.mjs && node test/mcp-login.mjs && node test/mfa.mjs && node test/audit.mjs",
     "start": "node dist/index.js",
     "prepack": "pnpm --filter @wilm-ai/wilma-client build && pnpm --filter @wilm-ai/wilma-cli build",
     "test:live": "tsc -p tsconfig.json && node test/live.spec.mjs",
@@ -30,7 +40,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public"

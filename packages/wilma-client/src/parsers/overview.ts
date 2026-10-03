@@ -1,3 +1,4 @@
+import { finnishDateString } from "../finnish-time.js";
 import type {
   ScheduleLesson,
   UpcomingExam,
@@ -113,7 +114,7 @@ function firstScheduleTeacher(
 export function parseOverview(raw: unknown): OverviewData {
   const data = (raw ?? {}) as RawOverview;
   const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const today = finnishDateString(now);
 
   return {
     schedule: parseSchedule(data.Schedule ?? []),

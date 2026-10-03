@@ -18,20 +18,28 @@ export function fileNameFromResponse(
   const quoted = /filename="([^"]+)"/i.exec(contentDisposition ?? "")?.[1];
   const plain = /filename=([^;]+)/i.exec(contentDisposition ?? "")?.[1]?.trim();
   let name = encoded ? decodeURIComponentSafely(encoded) : quoted ?? plain ?? resource.fileName ?? resource.label;
-  name = sanitizeFileName(name);
+  name = sanitizeFileName(name) || "wilma-resource";
   if (!/\.[A-Za-z0-9]{1,8}$/.test(name)) {
     const extension = extensionForContentType(contentType);
     if (extension) name += extension;
   }
-  return name || "wilma-resource";
+  return name;
 }
 
+/**
+ * A file name that is safe to create in the download folder on any OS: no
+ * path separators or reserved characters, no control or text-direction
+ * characters (which can disguise an extension), no leading dot (hidden files,
+ * ".npmrc"-style config), and none of Windows' reserved device names.
+ */
 export function sanitizeFileName(value: string): string {
-  return value
-    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_")
-    .replace(/^\.+|\.+$/g, "")
-    .trim()
-    .slice(0, 180);
+  let name = value
+    .replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, "")
+    .replace(/[\\/:*?"<>|\u0000-\u001f\u007f-\u009f]/g, "_");
+  // Trim spaces and dots together until stable: " .npmrc" -> "npmrc".
+  name = name.replace(/^[\s.]+|[\s.]+$/g, "");
+  if (/^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/i.test(name)) name = `_${name}`;
+  return name.slice(0, 180).replace(/[\s.]+$/g, "");
 }
 
 function extensionForContentType(contentType: string | null): string {

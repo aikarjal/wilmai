@@ -2,6 +2,7 @@ node_modules
 .DS_Store
 .env
 .env.*
+!.env.example
 .pnpm-store
 .vscode
 .idea
@@ -19,3 +20,7 @@ coverage
 package-lock.json
 yarn.lock
 *.tsbuildinfo
+
+# Local browser-automation and agent scratch folders
+.playwright-*/
+.claude/worktrees/

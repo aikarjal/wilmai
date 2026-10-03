@@ -3,6 +3,10 @@ import { createServer } from "node:http";
 import { MockAgent, setGlobalDispatcher } from "undici";
 import { WilmaClient } from "../dist/index.js";
 
+// This test serves "external" files from 127.0.0.1 and mocked hosts; the
+// private-network guard has its own tests in audit.mjs.
+process.env.WILMAI_ALLOW_PRIVATE_NETWORK = "1";
+
 const requests = [];
 const server = createServer((req, res) => {
   requests.push(req.url);

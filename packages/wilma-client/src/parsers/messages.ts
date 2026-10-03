@@ -9,6 +9,8 @@ export function parseMessagesList(data: unknown, folder: MessageFolder): Message
   return list.flatMap((item) => {
     try {
       const wilmaId = Number(item["id"] ?? item["Id"]);
+      // Without a usable id a message can't be opened; skip it rather than carry NaN.
+      if (!Number.isInteger(wilmaId) || wilmaId <= 0) return [];
       const subject = compactText(String(item["Subject"] ?? item["subject"] ?? ""));
       // Try many possible field names for the timestamp
       const timeValue =
@@ -182,15 +184,6 @@ function normalizeMessagesList(data: unknown): Array<Record<string, unknown>> {
     if (Array.isArray(list)) {
       return list as Array<Record<string, unknown>>;
     }
-  }
-  return [];
-}
-
-/** Export for debugging - returns raw field names from first message */
-export function debugMessageFields(data: unknown): string[] {
-  const list = normalizeMessagesList(data);
-  if (list.length > 0) {
-    return Object.keys(list[0]);
   }
   return [];
 }
