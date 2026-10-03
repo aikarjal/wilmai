@@ -1,14 +1,14 @@
 ---
 name: wilma-triage
-version: 1.3.1
-description: Daily triage of Wilma school notifications for Finnish parents. Fetches exams, messages, news, schedules, homework, and lesson notes (merkinnät) — filters for actionable items, downloads and reads important bulletin attachments, syncs exams to Google Calendar, and reports via chat. Requires the `wilma` skill and `gog` CLI (or `gog` skill from ClawHub) for calendar access.
+version: 1.4.0
+description: Daily triage of Wilma school notifications for Finnish parents. Fetches exams, messages, news, schedules, homework, and lesson notes (merkinnät) — filters for actionable items, downloads and reads important bulletin attachments, syncs exams to the family calendar, and reports via chat. Requires the `wilma` skill (WilmAI MCP tools or wilma CLI); calendar sync uses whatever calendar tool the agent has (e.g. the `gog` CLI on OpenClaw, or a calendar connector).
 metadata:
   {
     "openclaw":
       {
         "requires":
           {
-            "bins": ["wilma", "gog"],
+            "bins": ["wilma"],
             "skills": ["wilma"],
             "configPaths":
               [
@@ -18,7 +18,7 @@ metadata:
           },
         "credentials":
           {
-            "note": "Requires local Wilma credentials (~/.config/wilmai/config.json) for school data access and gog CLI auth (Google OAuth) for calendar sync. Both must be set up interactively before use.",
+            "note": "Requires a Wilma login (~/.config/wilmai/config.json from `wilma login`, or WILMA_* environment variables) for school data access. Calendar sync is optional and uses the gog CLI (Google OAuth) when installed.",
           },
       },
   }
@@ -26,26 +26,27 @@ metadata:
 
 # Wilma Triage
 
-Automated daily triage of Wilma school data for parents. Filters noise, surfaces actionable items, and syncs exams/events to Google Calendar.
+Automated daily triage of Wilma school data for parents. Filters noise, surfaces actionable items, and syncs exams/events to the family calendar.
 
 ## Dependencies
 
-- **wilma skill** — install from ClawHub (`clawhub install wilma`) for Wilma CLI commands and setup; attachment download requires wilma-cli 1.6.0+
-- **gog skill** — install from ClawHub (`clawhub install gog`) for Google Calendar sync
+- **Wilma access** — the WilmAI MCP tools (`wilma_*`) or the `wilma` skill and CLI (`clawhub install wilma`; attachment download requires wilma-cli 1.6.0+). The `wilma` skill maps each MCP tool to its CLI command; use whichever is available.
+- **Calendar (optional)** — any calendar tool the agent has: the `gog` skill on OpenClaw (`clawhub install gog`), or the assistant's own calendar connector. Without one, list new dates in the report instead of syncing.
+- **Notes** — this skill stores setup and preferences in the agent's notes. On OpenClaw that is **TOOLS.md** and **MEMORY.md**; elsewhere use the assistant's memory or project instructions wherever this skill says TOOLS.md or MEMORY.md.
 
 ## First Run Setup
 
 On first use, collect and store configuration:
 
-1. **Discover kids:** Run `wilma kids list --json` to get student names, numbers, and schools
-2. **Calendar ID:** Run `gog calendar calendars` to list available calendars. Ask the user which calendar to use for school events. Store the calendar ID in **TOOLS.md** under a `## Wilma Triage` section along with naming conventions for events.
+1. **Discover kids:** Call `wilma_account` or run `wilma kids list --json` to get student names and numbers
+2. **Calendar:** List the available calendars with the agent's calendar tool (e.g. `gog calendar calendars`). Ask the user which calendar to use for school events. Store the calendar ID in **TOOLS.md** under a `## Wilma Triage` section along with naming conventions for events. Skip this step if no calendar tool is available.
 3. **Preferences:** Ask about any kid-specific rules (e.g., subject overrides like ET instead of religion). Store in **MEMORY.md** as part of the Wilma triage context.
 
 Over time, the user will give feedback on what to report and what to skip — store these preferences in MEMORY.md. The triage gets smarter with use.
 
 ## Workflow
 
-1. **Fetch data** — check TOOLS.md for student details, then start with summary:
+1. **Fetch data** — check TOOLS.md for student details, then start with summary. With the MCP tools, the equivalents are `wilma_summary`, `wilma_upcoming_exams`, `wilma_schedule`, `wilma_homework`, `wilma_grades`, `wilma_list_messages`, `wilma_list_news`, `wilma_lesson_notes`, `wilma_read_message` and `wilma_read_news` (they cover all children by default). With the CLI:
    ```bash
    # Best starting point — returns schedule, exams, homework, news, messages
    wilma summary --all-students --json
@@ -80,8 +81,10 @@ Over time, the user will give feedback on what to report and what to skip — st
    wilma news resource download <news-id> <resource-id> --student <name> --output <dir> --json
    ```
 
+   With the MCP tools, call `wilma_get_news_attachment` instead; it returns the file content directly.
+
    Handle the returned `status`:
-   - `downloaded` — read the file (use the PDF reader for PDFs) and extract actionable items into the report.
+   - `downloaded` (CLI) or `fetched` (MCP) — read the file (use the PDF reader for PDFs) and extract actionable items into the report.
    - `not_a_file` — the link is a web page or requires external sign-in. Report the URL so the parent can open it themselves. Do **not** retry in a loop.
    - `error` — report the message.
 
@@ -93,7 +96,7 @@ Over time, the user will give feedback on what to report and what to skip — st
 
 3. **Filter** — apply triage rules below plus any kid-specific rules from MEMORY.md
 
-4. **Calendar sync** — add missing exams and actionable events using gog CLI commands from TOOLS.md
+4. **Calendar sync** — add missing exams and actionable events with the calendar tool noted in TOOLS.md (skip if there is none)
    - **ALWAYS check for existing events before adding** to avoid duplicates
    - Use naming conventions stored in TOOLS.md
    - Remove cancelled events from calendar
@@ -102,7 +105,7 @@ Over time, the user will give feedback on what to report and what to skip — st
 
 ## Calendar Sync
 
-Refer to TOOLS.md for the calendar ID, naming conventions, and exact gog CLI commands.
+Refer to TOOLS.md for the calendar ID, naming conventions, and the exact calendar commands or tools to use.
 
 **NO DUPLICATES rule:**
 1. Before adding any event, check calendar for that date range
@@ -189,7 +192,7 @@ Viikkoviestit and teacher messages often contain **operational details for upcom
 
 ## Suggested Cron Setup
 
-Run daily at 07:00 local time as an isolated agentTurn job:
+Run daily at 07:00 local time. On OpenClaw, as an isolated agentTurn job; in other assistants, use their scheduled-task feature if they have one:
 
 ```
 Schedule: 07:00 daily

@@ -1,7 +1,7 @@
 ---
 name: wilma
-version: 1.6.2
-description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, attendance/lesson notes (merkinnät), messages, news, and linked news resources via the wilma CLI. Start with `wilma summary --json`, drill into news with `news read --json`, and download any linked resource with `news resource download`.
+version: 1.7.0
+description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, attendance/lesson notes (merkinnät), messages, news, and linked news resources — through the WilmAI MCP tools (`wilma_*`) when connected, or the wilma CLI. Start with a summary, drill into messages and news, and fetch linked attachments.
 metadata:
   {
     "openclaw":
@@ -23,7 +23,7 @@ metadata:
           ],
         "credentials":
           {
-            "note": "Requires a local Wilma config file (~/.config/wilmai/config.json or $XDG_CONFIG_HOME/wilmai/config.json) created by running the CLI interactively once. This stores Wilma session credentials for accessing student data.",
+            "note": "Requires a Wilma login: either the local config file (~/.config/wilmai/config.json or $XDG_CONFIG_HOME/wilmai/config.json) created by `wilma login`, or WILMA_TENANT / WILMA_USERNAME / WILMA_PASSWORD (and WILMA_TOTP_SECRET for two-step verification) set in the agent's secret settings.",
           },
       },
   }
@@ -35,7 +35,37 @@ metadata:
 
 Wilma is the Finnish school information system used by schools and municipalities to share messages, news, exams, schedules, homework, and other student-related updates with parents/guardians.
 
-Use the `wilma` / `wilmai` CLI in non-interactive mode to retrieve Wilma data for AI agents. Prefer `--json` outputs and avoid interactive prompts.
+There are two ways to reach Wilma. Both return the same data.
+
+1. **MCP tools** — if tools named `wilma_*` are available (the WilmAI connector, desktop extension or plugin), use them. No shell needed, and every tool covers all children unless you pass `student`.
+2. **CLI** — otherwise use the `wilma` / `wilmai` CLI in non-interactive mode. Prefer `--json` outputs and avoid interactive prompts.
+
+| MCP tool | CLI command |
+|---|---|
+| `wilma_summary` | `wilma summary --all-students --json` |
+| `wilma_schedule` | `wilma schedule list --json` |
+| `wilma_homework` | `wilma homework list --json` |
+| `wilma_upcoming_exams` | `wilma exams list --json` |
+| `wilma_grades` | `wilma grades list --json` |
+| `wilma_lesson_notes` | `wilma attendance list --json` |
+| `wilma_list_messages` / `wilma_read_message` | `wilma messages list` / `read <id>` |
+| `wilma_list_news` / `wilma_read_news` | `wilma news list` / `read <id>` |
+| `wilma_get_news_attachment` | `wilma news resource download` |
+| `wilma_account` | `wilma kids list --json` |
+| `wilma_find_school` | `wilma tenants <city> --json` |
+| `wilma_login` | `wilma login` |
+
+## Logging in
+
+The user logs in once; the login is saved on their computer.
+
+- **On the user's own computer:** run `wilma login` (or call `wilma_login`). It opens a page in the user's browser where they pick their school's Wilma and log in. Wait for the command to finish.
+- **On a cloud computer the user can't see** (no browser they can reach):
+  1. Ask which city or school their children's Wilma belongs to. Run `wilma tenants <city> --json` (or call `wilma_find_school`) and let the user pick from the results — one city often has several Wilmas (city schools, private schools, colleges).
+  2. Ask the user to add `WILMA_USERNAME` and `WILMA_PASSWORD` to your secret or environment settings, plus `WILMA_TOTP_SECRET` if the account uses two-step verification, and set `WILMA_TENANT` to the Wilma address they picked. Every command then works without a saved login. Alternatively: `wilma login --tenant <url> --username <name> --password-stdin`.
+- Don't run `wilma` without arguments from an agent: it opens an interactive menu that needs a person at a terminal.
+- **Never ask the user to type their Wilma password into the chat.**
+- **Children on different Wilmas** (e.g. a city school and a private school): the user adds each login on the login page ("Add another Wilma") or with another `wilma login`. All saved logins are used together; students then carry a `wilma` field naming their Wilma. `wilma accounts` lists the logins.
 
 ## Quick start
 
@@ -44,7 +74,7 @@ Use the `wilma` / `wilmai` CLI in non-interactive mode to retrieve Wilma data fo
 npm i -g @wilm-ai/wilma-cli
 ```
 
-1. Ensure the user has run the interactive CLI once to create `~/.config/wilmai/config.json`.
+1. Ensure the user has logged in once (see "Logging in" above).
 2. Use non-interactive commands with `--json`.
 
 ## Core tasks
@@ -130,6 +160,8 @@ Keep downloads in a task-scoped directory via `--output` (defaults to the curren
 
 Prefer resource metadata over URLs embedded in `content`; `content` is prose and can be null for link-only bulletins.
 
+With the MCP tools, `wilma_get_news_attachment` returns the file itself (text inline, images as images, other files such as PDFs as an embedded file) plus the same `not_a_file` handling. Pass `save: true` to also save a copy to the user's `Downloads/WilmAI` folder.
+
 ### Fetch data for all students
 All list commands support `--all-students`:
 ```bash
@@ -140,23 +172,18 @@ wilma exams list --all-students --json
 
 You can also pass a name fragment for `--student` (fuzzy match).
 
-## MFA (Multi-Factor Authentication)
-If the Wilma account has MFA/TOTP enabled:
+## MFA (two-step verification)
+If the Wilma account has MFA/TOTP enabled, logins need the authenticator setup key (a base32 key or `otpauth://` URI) so they can run unattended:
 
-**Interactive setup (recommended):** Run `wilma` interactively. When MFA is detected, choose "Save TOTP secret for automatic login" and paste your TOTP secret or `otpauth://` URI. Future logins will auto-authenticate.
-
-**Non-interactive (one-off):** Pass the TOTP secret directly:
-```bash
-wilma schedule list --totp-secret <base32-key> --student "Stella" --json
-wilma schedule list --totp-secret 'otpauth://totp/...' --student "Stella" --json
-```
-If the TOTP secret has been saved via interactive setup, `--totp-secret` is not needed — the CLI auto-authenticates from the stored config.
+- **`wilma login`:** the login page asks for the setup key when Wilma requires it and saves it with the login.
+- **Environment:** set `WILMA_TOTP_SECRET`.
+- **One-off:** pass `--totp-secret <base32-key|otpauth://...>` to any command.
 
 ## Notes
 - If no `--student` is provided, the CLI uses the last selected student from `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`).
 - If multiple students exist and no default is set, the CLI will print a helpful error with the list of students.
 - When the account has multiple students, `--student` is **required** for read commands.
-- If auth expires or the CLI says no saved profile, re-run `wilma` interactively or use `wilma config clear` to reset.
+- If auth fails or the CLI says no saved login, run `wilma login` again, or use `wilma config clear` to reset.
 - Run `wilma update` to update the CLI to the latest version.
 - **TLS errors on managed machines.** If a command fails with a `code` such as `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, the network is intercepting TLS and re-signing certificates with a private root CA that Node does not trust. With `--json` the failure carries `code` and `hint` fields — read the `hint` and report it rather than retrying. The fix is to run the CLI with `NODE_USE_SYSTEM_CA=1` (Node >=22.19/>=24.6), or `node --use-system-ca "$(command -v wilma)"` (Node >=22.15). Never suggest `NODE_TLS_REJECT_UNAUTHORIZED=0`; it disables verification entirely. Note that a working `npm install` does not prove TLS is healthy — the npm registry is commonly exempt from inspection.
 
