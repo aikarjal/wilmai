@@ -1,0 +1,38 @@
+# Builds the Claude Desktop extension (wilmai.mcpb) and attaches it to the
+# GitHub release, so https://wilm.ai/get/claude (a redirect to
+# releases/latest/download/wilmai.mcpb) always serves the newest bundle.
+name: Release Claude Desktop extension
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach the bundle to (e.g. v1.7.0)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  mcpb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Build the tagged code, also for manual runs (which default to main).
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @wilm-ai/wilma-client build
+      - run: pnpm --filter @wilm-ai/wilma-cli build:mcpb
+      - name: Attach wilmai.mcpb to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$TAG" packages/wilma-cli/build/wilmai.mcpb --clobber

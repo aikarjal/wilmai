@@ -1,0 +1,35 @@
+{
+  "manifest_version": "0.3",
+  "name": "wilmai",
+  "display_name": "WilmAI",
+  "description": "Ask Claude about your kids' school: schedules, homework, exams, messages and news from Finland's Wilma.",
+  "long_description": "WilmAI gives Claude read-only access to Wilma, the school system Finnish schools use to share schedules, homework, exams, messages and news with parents. After installing, ask something like \"What do the kids have at school tomorrow?\" — the first time, a login page opens in your browser where you pick your school's Wilma and log in. Your login is saved only on this computer. WilmAI is an independent open-source project, not affiliated with Visma or the Wilma service.",
+  "author": {
+    "name": "Antti Karjalainen",
+    "url": "https://wilm.ai"
+  },
+  "homepage": "https://wilm.ai",
+  "documentation": "https://github.com/aikarjal/wilmai#readme",
+  "support": "https://github.com/aikarjal/wilmai/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aikarjal/wilmai"
+  },
+  "icon": "icon.png",
+  "license": "MIT",
+  "keywords": ["wilma", "school", "finland", "parents", "koulu"],
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js", "mcp"]
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "win32"],
+    "runtimes": {
+      "node": ">=18.17.0"
+    }
+  }
+}

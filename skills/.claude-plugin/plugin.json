@@ -1,0 +1,30 @@
+{
+  "name": "wilma",
+  "description": "Ask about your kids' school: schedules, homework, exams, grades, lesson notes, messages and news from Finland's Wilma. Read-only; your login stays on your computer.",
+  "version": "1.7.0",
+  "author": {
+    "name": "Antti Karjalainen",
+    "url": "https://wilm.ai"
+  },
+  "homepage": "https://wilm.ai",
+  "repository": "https://github.com/aikarjal/wilmai",
+  "license": "MIT",
+  "keywords": [
+    "wilma",
+    "school",
+    "finland",
+    "parents",
+    "koulu"
+  ],
+  "mcpServers": {
+    "wilma": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@wilm-ai/wilma-cli@latest",
+        "mcp"
+      ]
+    }
+  },
+  "skills": "./"
+}
