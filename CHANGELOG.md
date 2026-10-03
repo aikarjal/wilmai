@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.7.0 (unreleased)
+
+_Releases: wilma-cli 1.7.0, wilma-client 1.5.3._
+
+### New commands
+
+- **`wilma login`** opens a one-time login page in the browser (served on `127.0.0.1` with a random path token, an Origin check and a strict CSP). Pick your school's Wilma from a search box, log in, and the verified login is saved to the config file. The password is never typed into a terminal prompt or an agent's chat. Accounts with two-step verification are asked for the authenticator setup key.
+- **`wilma login --tenant <url|city> --username <name>`** logs in without a browser, reading the password from `WILMA_PASSWORD` or `--password-stdin` (a `--password` flag is refused so it never lands in shell history).
+- **`wilma tenants <city or school>`** searches Wilma addresses, so agents can help a parent pick theirs.
+- **`wilma mcp`** runs a stdio MCP server with 14 read-only tools (summary, schedule, homework, exams, grades, lesson notes, messages, news, bulletin attachments, account status, school search, login). Tools cover all children by default. When nobody is logged in, tools open the browser login and tell the assistant what to relay.
+
+### New
+
+- **Several Wilmas per family:** children on different Wilmas (a city school and a private school or lukio, say) work together. The login page offers *Add another Wilma*; every saved login is used at once by the MCP tools, `--student` and `--all-students`, and children are labelled with their Wilma. If one Wilma is down, the others still answer and the problem is reported. `wilma accounts` lists saved logins and `wilma accounts remove <number>` removes one.
+- **Environment-variable accounts:** `WILMA_TENANT`, `WILMA_USERNAME`, `WILMA_PASSWORD` (and `WILMA_TOTP_SECRET`) work for every command without a saved login — for agents that keep secrets in their own store.
+- **Claude Desktop extension:** `pnpm --filter @wilm-ai/wilma-cli build:mcpb` builds `wilmai.mcpb`; a release workflow attaches it to each GitHub release (`wilm.ai/get/claude`).
+- **Plugin marketplace:** `.claude-plugin/marketplace.json` publishes the `skills/` folder as the `wilma` plugin (both skills plus the MCP server) for Claude Code and Codex.
+- Skills: `wilma` 1.7.0 prefers the MCP tools when present and documents the new login; `wilma-triage` 1.4.0 works with any calendar tool instead of requiring `gog`.
+
+### Changed
+
+- **One login per command instead of one per child.** Wilma allows one live session per account — every new login cancels the previous one (and logs the parent out of Wilma in their own browser). `wilma summary --all-students` for two children went from 4 logins and 26 requests (~2.8 s) to 1 login and 10 requests (~1.9 s); an unused up-front login in every CLI command is gone.
+- **MCP tool calls share a session.** Tool calls in one process (the local MCP server, a relay instance) reuse one session per account for up to 10 idle minutes, so parallel tool calls no longer cancel each other's sessions. Five parallel calls: ~0.8 s with one login, ~0.3 s on the next round with none.
+- **wilma-client 1.5.3:** `client.students()` and `client.forStudent(number)` let one login serve every child; a session cancelled by another login (HTTP 403) or expired (401) logs in again by itself — once, even when many requests notice at the same time — including the two-step verification step.
+- **Two-step verification (TOTP) is robust to code reuse.** Logins less than 30 seconds apart share one code, which a server may reject. The session the login page verifies is now kept for the first questions (no second login or code), and if Wilma rejects a code, the client asks once more and gets a fresh code from the next 30-second window — no delay unless Wilma actually refuses. The login page explains where to find the authenticator setup key. Covered by an end-to-end test against a mock Wilma that enforces TOTP (`MFA_STRICT=1` also rejects reused codes).
+- Running `wilma` without arguments outside a terminal (e.g. from an agent) prints what to run instead of hanging in an interactive prompt.
+- Student lookups for `--student` / `--all-students` now pass the two-step verification callback, so they work on MFA accounts.
+- Config writes are atomic (temp file + rename), so concurrent commands never read a half-written config.
+
+### Fixed
+
+- **Wrong usernames and passwords were accepted (wilma-client 1.5.3).** Wilma answers a failed login with a redirect to `?loginfailed` and an empty body; the client only checked the body, so any username and password "logged in" with no children. A `?loginfailed` redirect now fails with `AuthenticationError`, and a redirect only counts as a login when Wilma sets its session cookie.
+- Wilma search now matches municipality names (the tenant list uses `name_fi`/`name_sv`, which the old search never read), and ranks a city's own Wilma first.
+
 ## 1.6.2 (2026-08-27)
 
 _Releases: wilma-cli 1.6.2, wilma-client 1.5.2._
