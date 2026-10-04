@@ -26,5 +26,4 @@ jobs:
       - run: pnpm -r lint
       - run: pnpm --filter @wilm-ai/wilma-client test
       - run: pnpm --filter @wilm-ai/wilma-cli test
-      - run: pnpm --filter @wilm-ai/relay test
       - run: pnpm --filter @wilm-ai/site build

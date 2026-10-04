@@ -99,7 +99,7 @@ const COMMAND_HELP: Record<string, CommandHelp> = {
   mcp: {
     usage: ["wilma mcp"],
     about: "Run the MCP server over stdio for Claude, ChatGPT and other assistants (the same data as these commands, as tools).",
-    examples: ["npx -y @wilm-ai/wilma-cli mcp"],
+    examples: ["npx -y @wilm-ai/wilma-cli@2 mcp"],
   },
   update: { usage: ["wilma update"], about: "Update the CLI with npm.", examples: ["wilma update"] },
   config: { usage: ["wilma config clear"], about: "Delete every saved login and session on this computer.", examples: ["wilma config clear"] },

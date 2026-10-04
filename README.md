@@ -20,7 +20,7 @@ Step-by-step guides in English and Finnish: **[wilm.ai](https://wilm.ai/en#quick
 |---|---|---|
 | **Claude Desktop** (Mac, Windows) | Download [`wilmai.mcpb`](https://wilm.ai/get/claude) and open it | [wilm.ai#claude](https://wilm.ai/en#claude) |
 | **Claude Code** | `/plugin marketplace add aikarjal/wilmai` then `/plugin install wilma@wilmai` | [wilm.ai#claude](https://wilm.ai/en#claude) |
-| **ChatGPT desktop app** | Send ChatGPT one message and it installs the plugin; or add the MCP server `npx -y @wilm-ai/wilma-cli mcp` yourself | [wilm.ai#chatgpt](https://wilm.ai/en#chatgpt) |
+| **ChatGPT desktop app** | Send ChatGPT one message and it installs the plugin; or add the MCP server `npx -y @wilm-ai/wilma-cli@2 mcp` yourself | [wilm.ai#chatgpt](https://wilm.ai/en#chatgpt) |
 | **Codex** | `codex plugin marketplace add aikarjal/wilmai` then `codex plugin add wilma@wilmai` | [wilm.ai#chatgpt](https://wilm.ai/en#chatgpt) |
 | **Grok Bot** | Send one message; the bot installs the CLI and skill itself | [wilm.ai#grok](https://wilm.ai/en#grok) |
 | **OpenClaw** | `clawhub install wilma` ([ClawHub](https://clawhub.ai/aikarjal/wilma)) | [wilm.ai#openclaw](https://wilm.ai/en#openclaw) |
@@ -28,15 +28,14 @@ Step-by-step guides in English and Finnish: **[wilm.ai](https://wilm.ai/en#quick
 
 The first time you ask about school, a login page opens in your browser: pick your school's Wilma and log in. The login is saved on your computer.
 
-Coming later: Claude and ChatGPT on the web and phone (they need a hosted connection), and assistants not yet available in Finland (Meta Muse, OpenAI dots on consumer plans, Instinct).
+Not yet: Claude and ChatGPT on the web and phone (they need a hosted connection, which is being tested), and assistants not yet available in Finland (Meta Muse, OpenAI dots on consumer plans, Instinct).
 
 ## What's inside
 
 - `packages/wilma-client` – TypeScript Wilma client (auth + parsing + tenant list)
 - `packages/wilma-cli` – CLI (`wilma`), browser login (`wilma login`), and MCP server (`wilma mcp`)
 - `skills/` – Agent skills (`wilma`, `wilma-triage`); also the plugin root for Claude Code and Codex
-- `apps/site` – wilm.ai (Next.js, Vercel)
-- `apps/relay` – hosted MCP connection (OAuth + Streamable HTTP), in private testing — see [apps/relay/README.md](apps/relay/README.md)
+- `apps/site` – wilm.ai (Next.js, built as static files and served by Cloudflare Workers)
 
 ## Logging in
 
@@ -80,7 +79,7 @@ wilma mcp
 
 A stdio MCP server with read-only tools: `wilma_summary`, `wilma_schedule`, `wilma_homework`, `wilma_upcoming_exams`, `wilma_grades`, `wilma_gradebook`, `wilma_lesson_notes`, `wilma_lesson_notes_summary`, `wilma_list_messages`, `wilma_read_message`, `wilma_list_news`, `wilma_read_news`, `wilma_get_news_attachment`, `wilma_list_printouts`, `wilma_get_printout`, `wilma_account`, `wilma_find_school`, `wilma_login`. Every tool covers all children unless `student` is given, and the JSON is the same as the CLI's. If nobody is logged in, tools open the browser login and tell the assistant what to relay.
 
-Any MCP client can run it with `npx -y @wilm-ai/wilma-cli mcp`. For Claude Code directly: `claude mcp add wilma -- npx -y @wilm-ai/wilma-cli mcp`.
+Any MCP client can run it with `npx -y @wilm-ai/wilma-cli@2 mcp`. For Claude Code directly: `claude mcp add wilma -- npx -y @wilm-ai/wilma-cli@2 mcp`.
 
 Build the Claude Desktop extension locally with `pnpm --filter @wilm-ai/wilma-cli build:mcpb` (output: `packages/wilma-cli/build/wilmai.mcpb`). The release workflow attaches it to each GitHub release.
 
@@ -155,7 +154,7 @@ Two things that make this hard to recognise:
 
 Your Wilma login is stored locally in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`), readable only by your user account. The password is obfuscated (not encrypted) for convenience — this is a personal productivity tool, not a vault. The current Wilma session is kept next to it (`wilmai-sessions.json`, same protection, at most 6 hours) so commands don't log in each time; set `WILMAI_NO_SESSION_CACHE=1` to turn that off. `wilma config clear` removes both.
 
-The CLI, the MCP server and the Claude Desktop extension have no server behind them: they log in only to your school's Wilma. Besides Wilma, they open links from school bulletins when you ask for an attachment (only public websites, never with your Wilma login), and the CLI checks npm once a day for a newer version when you use it in a terminal. (The hosted relay in `apps/relay` is a separate, private test.) When an AI assistant uses WilmAI, the school information it reads goes to that assistant's provider, the same as pasting it into a chat; your password does not.
+The CLI, the MCP server and the Claude Desktop extension have no server behind them: they log in only to your school's Wilma. Besides Wilma, they open links from school bulletins when you ask for an attachment (only public websites, never with your Wilma login), and the CLI checks npm once a day for a newer version when you use it in a terminal. When an AI assistant uses WilmAI, the school information it reads goes to that assistant's provider, the same as pasting it into a chat; your password does not.
 
 **Do not share your config file.** It accesses the same data as the official Wilma app or website; it is your responsibility to handle that data appropriately.
 

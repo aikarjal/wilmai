@@ -2,7 +2,7 @@
  * Fetching files that school bulletins link to on other sites.
  *
  * Bulletin links are written by school staff (or by whoever controls a staff
- * account), and this code also runs on a hosted relay. So external fetches:
+ * account), and this code may also run on a server. So external fetches:
  *  - never carry Wilma credentials (an isolated, empty cookie jar per fetch),
  *  - only go to public internet addresses on ports 80/443: private, loopback,
  *    link-local and other special ranges are refused at every redirect hop and

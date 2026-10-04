@@ -1,57 +1,14 @@
-const dev = process.env.NODE_ENV !== "production";
-
-// The site is static: Next's own inline bootstrap scripts need 'unsafe-inline'
-// (nonces would make every page dynamic); everything else is locked down.
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  `connect-src 'self'${dev ? " ws:" : ""}`,
-  // The GitHub stars button.
-  "frame-src https://ghbtns.com",
-  "frame-ancestors 'none'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'"
-].join("; ");
+// The site is built as static files (out/) and served by Cloudflare Workers:
+// see wrangler.jsonc. Headers and redirects live in public/_headers and
+// public/_redirects; the "/" language redirect is in worker/index.ts.
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "export",
   reactStrictMode: true,
   poweredByHeader: false,
-  async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: [
-          { key: "Content-Security-Policy", value: contentSecurityPolicy },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "DENY" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" }
-        ]
-      }
-    ];
-  },
-  async redirects() {
-    return [
-      // Claude Desktop extension: the rolling "claude-desktop" release, which
-      // .github/workflows/release-mcpb.yml updates on every CLI release.
-      {
-        source: "/get/claude",
-        destination: "https://github.com/aikarjal/wilmai/releases/download/claude-desktop/wilmai.mcpb",
-        permanent: false
-      },
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "www.wilm.ai" }],
-        destination: "https://wilm.ai/:path*",
-        permanent: true
-      }
-    ];
-  }
+  // No image server on a static site; the images are small PNGs already.
+  images: { unoptimized: true }
 };
 
 export default nextConfig;

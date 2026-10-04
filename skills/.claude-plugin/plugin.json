@@ -21,7 +21,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@wilm-ai/wilma-cli@latest",
+        "@wilm-ai/wilma-cli@2",
         "mcp"
       ]
     }

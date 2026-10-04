@@ -262,15 +262,15 @@ export interface LoginPageOptions {
   configPath?: string;
   /** Extra fields posted with the login (e.g. a sealed OAuth request). */
   extra?: Record<string, string>;
-  /** Label for the finishing button (the relay says "Continue"). */
+  /** Label for the finishing button, for hosts that continue elsewhere after the login. */
   finishLabel?: { en: string; fi: string };
-  /** Shown above the form, e.g. which app is connecting (the relay's consent line). */
+  /** Shown above the form, e.g. which app is connecting. */
   notice?: { en: string; fi: string };
 }
 
 /**
  * The login page. The login API answers {status: "ok", students, redirect?};
- * with a redirect the page navigates there (the relay's OAuth callback).
+ * with a redirect the page navigates there (e.g. an OAuth callback).
  */
 export function renderLoginPage(opts: LoginPageOptions): string {
   const strings = {

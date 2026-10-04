@@ -6,8 +6,8 @@ import { normalizeResourceId } from "./downloads.js";
 import { toAgentJson } from "./output-json.js";
 
 /*
- * Wilma data tools shared by the local stdio server (`wilma mcp`) and the
- * hosted relay. Each host decides how a tool call gets a WilmaAccess.
+ * Wilma data tools for the local stdio server (`wilma mcp`) and any other
+ * host. Each host decides how a tool call gets a WilmaAccess.
  */
 
 export const INSTRUCTIONS = `Read-only access to Finland's Wilma school system for a parent/guardian.
@@ -37,7 +37,7 @@ export function textResult(text: string, isError = false): CallToolResult {
 export interface ToolHost {
   /** Run a tool with Wilma access, or return a result explaining why there is none (e.g. not logged in). */
   withAccess(run: (access: WilmaAccess) => Promise<CallToolResult>): Promise<CallToolResult>;
-  /** Largest attachment to return inline (the relay sets less: Vercel caps responses at 4.5 MB). */
+  /** Largest attachment to return inline (hosts with a response size cap set less). */
   inlineAttachmentLimit?: number;
   /** Local hosts can save attachments to disk; returns the saved path. */
   saveAttachment?: (fetched: Extract<FetchedAttachment, { status: "fetched" }>) => Promise<string>;

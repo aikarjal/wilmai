@@ -189,7 +189,7 @@ If the Wilma account has MFA/TOTP enabled, logins need the authenticator setup k
 
 ## Notes
 - If the CLI says no saved login, run `wilma login` (logging in to the same Wilma again replaces that login). `wilma accounts` lists saved logins and `wilma accounts remove <number>` removes one; `wilma config clear` deletes every saved login.
-- Run `wilma update` to update the CLI to the latest version.
+- This skill is for WilmAI CLI 2.x. If `wilma --version` prints 1.x, run `wilma update` (until then `scripts/wilma-cli.sh` runs 2.x through npx).
 - The 1.x spellings (`kids list`, `tenants`, `attendance list`, `<command> list`, `messages read <id>`, `news read <id>`, `news resource download …`, `--all-students`) still work.
 - **TLS errors on managed machines.** If a command fails with code `network` and a `cause` such as `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, the network is intercepting TLS and re-signing certificates with a private root CA that Node does not trust. Read the `hint` and report it rather than retrying. The fix is to run the CLI with `NODE_USE_SYSTEM_CA=1` (Node >=22.19/>=24.6), or `node --use-system-ca "$(command -v wilma)"` (Node >=22.15). Never suggest `NODE_TLS_REJECT_UNAUTHORIZED=0`; it disables verification entirely. A working `npm install` does not prove TLS is healthy — the npm registry is commonly exempt from inspection.
 
@@ -213,7 +213,7 @@ When in doubt, **include** and let the parent decide. Prefer a short, structured
 
 ## Scripts
 
-`scripts/wilma-cli.sh` runs the installed `wilma` (or `wilmai`), or the latest release through `npx` when neither is installed.
+`scripts/wilma-cli.sh` runs the installed `wilma` (or `wilmai`) when it is 2.x or newer, and otherwise the latest 2.x release through `npx`.
 
 ## Links
 - **GitHub:** https://github.com/aikarjal/wilmai

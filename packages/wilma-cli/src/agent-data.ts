@@ -331,7 +331,7 @@ const POOL_IDLE_MS = 10 * 60 * 1000;
 const pool = new Map<string, { client: Promise<WilmaClient>; lastUsed: number }>();
 
 // Between processes (CLI commands, the local MCP server), sessions are saved
-// in a store when the host sets one; the hosted relay doesn't.
+// in a store when the host sets one.
 let sessionStore: SessionStore | undefined;
 
 /** Continue saved sessions instead of logging in for each process (CLI and local MCP server). */

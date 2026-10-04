@@ -53,7 +53,7 @@ Running `wilma` without arguments in a terminal opens an interactive menu.
 ```bash
 wilma mcp
 ```
-Starts a stdio MCP server with read-only Wilma tools (`wilma_summary`, `wilma_schedule`, `wilma_read_news`, …) that return the same data as the commands. Add it to any MCP client as `npx -y @wilm-ai/wilma-cli mcp`. Setup guides for Claude, ChatGPT, Grok Bot and OpenClaw: https://wilm.ai
+Starts a stdio MCP server with read-only Wilma tools (`wilma_summary`, `wilma_schedule`, `wilma_read_news`, …) that return the same data as the commands. Add it to any MCP client as `npx -y @wilm-ai/wilma-cli@2 mcp`. Setup guides for Claude, ChatGPT, Grok Bot and OpenClaw: https://wilm.ai
 
 ## Bulletin attachments
 `wilma news <id>` lists every link in a bulletin (`resources`). Any resource can be downloaded with `wilma news <id> download <resource> [--output <directory>]` (the resource id also accepts a bare number, e.g. `1` for `resource-1`). Wilma-hosted files download through the session; external links are fetched without your Wilma login, and only from public websites. The result's `status` says what happened: `downloaded` (use the returned `path`) or `not_a_file` when the link answered with a web page (for example a sharing link that needs signing in — open it in a browser instead). `--output` defaults to the current directory; existing files are never overwritten.

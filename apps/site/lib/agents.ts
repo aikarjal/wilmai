@@ -108,12 +108,12 @@ Never ask me to type my Wilma password into this chat.`,
 
 const hostedLater = {
   claude: {
-    en: "Claude on the web and the Claude phone app need a hosted connection, which we're testing. Coming later.",
-    fi: "Selaimessa ja puhelinsovelluksessa toimiva Claude tarvitsee verkossa toimivan yhteyden, jota testaamme. Tulossa myöhemmin."
+    en: "Claude on the web and the Claude phone app need a hosted connection, which we're testing.",
+    fi: "Selaimessa ja puhelinsovelluksessa toimiva Claude tarvitsee verkossa toimivan yhteyden, jota testaamme."
   },
   chatgpt: {
-    en: "ChatGPT on the web and the ChatGPT phone app need a hosted connection, which we're testing. Coming later.",
-    fi: "Selaimessa ja puhelinsovelluksessa toimiva ChatGPT tarvitsee verkossa toimivan yhteyden, jota testaamme. Tulossa myöhemmin."
+    en: "ChatGPT on the web and the ChatGPT phone app need a hosted connection, which we're testing.",
+    fi: "Selaimessa ja puhelinsovelluksessa toimiva ChatGPT tarvitsee verkossa toimivan yhteyden, jota testaamme."
   }
 };
 
@@ -198,7 +198,7 @@ export const agents: Agent[] = [
             alternative: {
               title: "Prefer to add it yourself?",
               body: "Open Settings, find MCP servers and add a STDIO server named Wilma with this command. It needs Node.js (nodejs.org).",
-              action: { kind: "command", text: "npx -y @wilm-ai/wilma-cli mcp" }
+              action: { kind: "command", text: "npx -y @wilm-ai/wilma-cli@2 mcp" }
             }
           },
           {
@@ -233,7 +233,7 @@ export const agents: Agent[] = [
             alternative: {
               title: "Haluatko lisätä sen itse?",
               body: "Avaa asetukset, etsi MCP servers ja lisää STDIO-palvelin nimeltä Wilma tällä komennolla. Se vaatii Node.js:n (nodejs.org).",
-              action: { kind: "command", text: "npx -y @wilm-ai/wilma-cli mcp" }
+              action: { kind: "command", text: "npx -y @wilm-ai/wilma-cli@2 mcp" }
             }
           },
           {

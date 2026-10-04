@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "preview": "next build && wrangler dev",
+    "deploy": "next build && wrangler deploy",
+    "lint": "next lint && tsc -p worker"
   },
   "dependencies": {
     "next": "15.5.27",
@@ -20,6 +21,7 @@
     "@types/react-dom": "19.3.0",
     "eslint": "^8.57.1",
     "eslint-config-next": "15.5.27",
-    "typescript": "5.6.3"
+    "typescript": "5.6.3",
+    "wrangler": "4.147.0"
   }
 }

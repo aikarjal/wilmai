@@ -1,0 +1,24 @@
+// wilm.ai on Cloudflare Workers: the static site (out/, from `next build`)
+// plus a small Worker for the language redirect on "/".
+// Deploys: Cloudflare builds main from GitHub (Workers Builds, see README.md);
+// by hand: pnpm --filter @wilm-ai/site run deploy.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wilmai-site",
+  "account_id": "055d00c523a88d6e0c0f4056c9fc1d75",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./out",
+    "binding": "ASSETS",
+    // Only "/" runs the Worker; every other path is a static file (free and
+    // served from the nearest Cloudflare location).
+    "run_worker_first": ["/"],
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  // workers.dev stays on for previews. The custom domain (wilm.ai) is added
+  // here at the DNS cutover, once the wilm.ai zone is on this account.
+  "workers_dev": true,
+  "observability": { "enabled": false }
+}

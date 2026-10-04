@@ -13,6 +13,8 @@ coverage
 .local-tests
 .next
 .vercel
+.wrangler
+apps/site/out
 
 .wilmai
 

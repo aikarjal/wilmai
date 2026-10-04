@@ -1,0 +1,3 @@
+# Claude Desktop extension: the rolling "claude-desktop" release, which
+# .github/workflows/release-mcpb.yml updates on every CLI release.
+/get/claude https://github.com/aikarjal/wilmai/releases/download/claude-desktop/wilmai.mcpb 302

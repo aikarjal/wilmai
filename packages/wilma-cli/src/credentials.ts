@@ -248,5 +248,5 @@ export function isMfaFailure(err: unknown): boolean {
   return err instanceof AuthenticationError && /^MFA verification failed/.test(err.message);
 }
 
-// Re-exported so other hosts (the relay) use the same client classes the CLI does.
+// Re-exported so other hosts use the same client classes the CLI does.
 export { AuthenticationError } from "@wilm-ai/wilma-client";

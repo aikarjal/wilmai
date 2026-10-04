@@ -10,7 +10,6 @@ Safe for CI (`.github/workflows/ci.yml` runs them on Node 20 and 22). They use f
 pnpm install
 pnpm --filter @wilm-ai/wilma-client test   # parsers, login, sessions, downloads, audit regressions
 pnpm --filter @wilm-ai/wilma-cli test      # CLI, MCP server, login page, two-step verification
-pnpm --filter @wilm-ai/relay test          # hosted relay: OAuth + MCP flow and pressure tests
 pnpm -r lint                               # type checks (and the site's ESLint)
 ```
 
