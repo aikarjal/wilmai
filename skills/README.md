@@ -20,5 +20,5 @@ codex plugin add wilma@wilmai
 ```
 
 ## Available skills
-- `wilma` — Fetch schedules, homework, exams, grades, lesson notes, messages, and news through the WilmAI MCP tools or the Wilma CLI.
-- `wilma-triage` — Daily triage workflow: filter actionable items, sync exams to the family calendar (any calendar tool), report to chat.
+- `wilma` — Read schedules, homework, exams (with start times), grades and the gradebook, lesson notes and absences, messages with replies, bulletins and their attachments, and printouts, through the WilmAI MCP tools or the `wilma` CLI (2.0+).
+- `wilma-triage` — Daily triage: one `summary --since <last run>` call for every child, filter for actionable items, sync exams to the family calendar (any calendar tool), report to chat.

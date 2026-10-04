@@ -95,7 +95,7 @@ export function mfaCallbackFor(
   };
 }
 
-export function hasEnvAccount(env: NodeJS.ProcessEnv = process.env): boolean {
+function hasEnvAccount(env: NodeJS.ProcessEnv = process.env): boolean {
   return Boolean(env[ENV_VARS.tenant] && env[ENV_VARS.username] && env[ENV_VARS.password]);
 }
 
@@ -197,16 +197,6 @@ export async function verifyLoginSession(input: {
     if (isMfaFailure(err)) throw new TotpSecretInvalidError();
     throw err;
   }
-}
-
-/** Log in once and return the account's students. Throws TotpSecretRequiredError for MFA accounts without a key. */
-export async function verifyLogin(input: {
-  tenantUrl: string;
-  username: string;
-  password: string;
-  totpSecret?: string | null;
-}): Promise<StudentInfo[]> {
-  return (await verifyLoginSession(input)).students;
 }
 
 /** Save a verified login as the active profile, replacing any profile with the same tenant and username. */

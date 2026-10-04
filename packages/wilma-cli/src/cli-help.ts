@@ -14,7 +14,7 @@ interface CommandHelp {
 
 const STUDENT = "--student <number|name>";
 
-export const COMMAND_HELP: Record<string, CommandHelp> = {
+const COMMAND_HELP: Record<string, CommandHelp> = {
   summary: {
     usage: [`wilma summary [--since <date>] [--days 7] [${STUDENT}]`],
     about:

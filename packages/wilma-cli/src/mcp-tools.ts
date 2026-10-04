@@ -21,7 +21,7 @@ export const INSTRUCTIONS = `Read-only access to Finland's Wilma school system f
 export const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const INLINE_ATTACHMENT_LIMIT = 10 * 1024 * 1024;
 
-export const studentArg = z
+const studentArg = z
   .string()
   .optional()
   .describe("Child's name or student number. Omit to include every child on the account.");
@@ -43,7 +43,7 @@ export interface ToolHost {
   saveAttachment?: (fetched: Extract<FetchedAttachment, { status: "fetched" }>) => Promise<string>;
 }
 
-export function attachmentResult(
+function attachmentResult(
   fetched: FetchedAttachment & { student: unknown },
   savedPath?: string,
   inlineLimit = INLINE_ATTACHMENT_LIMIT

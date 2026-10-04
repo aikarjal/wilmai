@@ -16,7 +16,7 @@ pnpm -r lint                               # type checks (and the site's ESLint)
 
 `MFA_STRICT=1 node packages/wilma-cli/test/mfa.mjs` makes the mock reject reused one-time codes (slower: it waits for fresh codes).
 
-Parsers are also tested against anonymised copies of real Wilma pages in `packages/wilma-client/test/fixtures/real`. To refresh them after Wilma changes, save the pages from your own account and run `node packages/wilma-client/scripts/anonymize-fixture.mjs` (see the comment at its top); read the result before committing it.
+Parsers are also tested against anonymised copies of real Wilma pages in `packages/wilma-client/test/fixtures/real`. To refresh them after Wilma changes, save the pages from your own account and run `pnpm --filter @wilm-ai/wilma-client fixtures:anonymize <page> <fixture> …` (see the comment at the top of `scripts/anonymize-fixture.mjs`); read the result before committing it.
 
 Bulletin links are only fetched from public internet addresses. Tests that serve "external" files from 127.0.0.1 set `WILMAI_ALLOW_PRIVATE_NETWORK=1`; nothing else should.
 

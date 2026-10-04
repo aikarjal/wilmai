@@ -28,7 +28,7 @@ export function compactText(value: string | null | undefined): string {
 }
 
 /** Multi-line text with single blank lines between blocks. */
-export function formatContent(value: string): string {
+function formatContent(value: string): string {
   const lines = value
     .replace(/\r/g, "")
     .split("\n")
@@ -38,7 +38,7 @@ export function formatContent(value: string): string {
 }
 
 /** "2026-10-02 13:37" in Finnish time. */
-export function finnishDateTime(d: Date | null | undefined): string {
+function finnishDateTime(d: Date | null | undefined): string {
   if (!d || Number.isNaN(d.getTime()) || d.getTime() <= 0) return "";
   return finnishIsoString(d).slice(0, 16).replace("T", " ");
 }
@@ -75,13 +75,13 @@ function perStudent<K extends string, T>(
   return lines.join("\n").replace(/^\n/, "");
 }
 
-export function lessonLine(l: ScheduleLesson): string {
+function lessonLine(l: ScheduleLesson): string {
   const teacher = l.teacher ? ` — ${l.teacher}` : "";
   const room = l.room ? `, ${l.room}` : "";
   return `${l.start}-${l.end}  ${l.subject}${teacher}${room}`;
 }
 
-export function examLine(exam: UpcomingExam): string {
+function examLine(exam: UpcomingExam): string {
   const when = exam.time ? `${exam.date} ${exam.time}` : exam.date;
   const topic = exam.topic ? ` — ${compactText(exam.topic)}` : "";
   return `${when}  ${exam.subject}${exam.name ? `: ${exam.name}` : ""}${topic}`;
@@ -99,7 +99,7 @@ export function messageLine(msg: Pick<Message, "wilmaId" | "subject" | "sentAt" 
   return `${finnishDay(msg.sentAt)} ${compactText(msg.subject)}${sender}${msg.unread ? " [new]" : ""}${replies} (id ${msg.wilmaId})`;
 }
 
-export function lessonNoteLine(note: LessonNote, withDate: boolean): string {
+function lessonNoteLine(note: LessonNote, withDate: boolean): string {
   const date = withDate ? `${note.date} ` : "";
   const time = note.start ? `${note.start} ` : "";
   const subject = note.subject ? ` [${note.subject}]` : "";

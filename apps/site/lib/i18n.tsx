@@ -155,12 +155,12 @@ const en: Dictionary = {
       },
       {
         title: "Grades",
-        prompt: "“How did the last exams go?”",
+        prompt: "“How did the last exams go? What was on the spring report card?”",
         color: "blue"
       },
       {
         title: "Lesson notes",
-        prompt: "“Any feedback or absences logged today?”",
+        prompt: "“Any feedback from teachers or absences this week?”",
         color: "yellow"
       },
       {
@@ -207,11 +207,11 @@ const en: Dictionary = {
         q: "Where does my Wilma login live?",
         a: (
           <p>
-            In one file on your computer: <code>~/.config/wilmai/config.json</code>,
-            readable only by your user account. Remove it any time with{" "}
-            <code>wilma config clear</code> or by deleting the file. If your assistant runs
-            on its own cloud computer, the login lives in that assistant&apos;s secret
-            settings instead.
+            In one folder on your computer, <code>~/.config/wilmai</code>: the login, and
+            the current Wilma session so your assistant doesn&apos;t have to log in again
+            every time. Only your user account can read them. Remove both any time with{" "}
+            <code>wilma config clear</code>. If your assistant runs on its own cloud
+            computer, the login lives in that assistant&apos;s secret settings instead.
           </p>
         )
       },
@@ -241,8 +241,8 @@ const en: Dictionary = {
             WilmAI logs in only to your school&apos;s own Wilma, with your own
             login. There is no middleman, no analytics, and no telemetry. Besides
             Wilma, it opens links in school bulletins when you ask for an
-            attachment, and checks once a day whether a newer version is out. It
-            is also read-only — it can&apos;t send messages or change anything in
+            attachment, and when you use it in a terminal, checks once a day whether
+            a newer version is out. It is also read-only — it can&apos;t send messages or change anything in
             Wilma.
           </p>
         )
@@ -378,12 +378,12 @@ const fi: Dictionary = {
       },
       {
         title: "Arvosanat",
-        prompt: "”Miten viime kokeet menivät?”",
+        prompt: "”Miten viime kokeet menivät? Mitä kevään todistukseen tuli?”",
         color: "blue"
       },
       {
         title: "Tuntimerkinnät",
-        prompt: "”Onko tänään merkintöjä tai poissaoloja?”",
+        prompt: "”Onko tällä viikolla tullut opettajilta merkintöjä tai poissaoloja?”",
         color: "yellow"
       },
       {
@@ -431,11 +431,11 @@ const fi: Dictionary = {
         q: "Missä Wilma-tunnukseni säilyvät?",
         a: (
           <p>
-            Yhdessä tiedostossa omalla koneellasi:{" "}
-            <code>~/.config/wilmai/config.json</code>, vain oman käyttäjätilisi
-            luettavissa. Voit poistaa sen milloin tahansa komennolla{" "}
-            <code>wilma config clear</code> tai poistamalla tiedoston. Jos avustajasi
-            toimii omalla pilvikoneellaan, tunnukset ovat sen sijaan avustajan
+            Yhdessä kansiossa omalla koneellasi, <code>~/.config/wilmai</code>: tunnukset
+            ja voimassa oleva Wilma-istunto, jotta avustajan ei tarvitse kirjautua joka
+            kerta uudelleen. Vain oma käyttäjätilisi voi lukea niitä. Voit poistaa
+            molemmat milloin tahansa komennolla <code>wilma config clear</code>. Jos
+            avustajasi toimii omalla pilvikoneellaan, tunnukset ovat sen sijaan avustajan
             salaisuusasetuksissa.
           </p>
         )
@@ -466,8 +466,9 @@ const fi: Dictionary = {
           <p>
             WilmAI kirjautuu vain koulusi omaan Wilmaan omilla tunnuksillasi.
             Ei välikäsiä, ei analytiikkaa, ei telemetriaa. Wilman lisäksi se
-            avaa tiedotteissa olevia linkkejä, kun pyydät liitettä, ja tarkistaa
-            kerran päivässä, onko uudempi versio saatavilla. Se on myös vain
+            avaa tiedotteissa olevia linkkejä, kun pyydät liitettä, ja terminaalissa
+            käytettäessä tarkistaa kerran päivässä, onko uudempi versio saatavilla.
+            Se on myös vain
             lukeva — se ei voi lähettää viestejä tai muuttaa mitään Wilmassa.
           </p>
         )

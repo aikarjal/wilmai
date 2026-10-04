@@ -21,7 +21,7 @@ const MAX_BODY_BYTES = 16 * 1024;
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 
 /** The children per connected Wilma, for the page's "You're connected" list. */
-export function accountsSummary(profiles: StoredProfile[]) {
+function accountsSummary(profiles: StoredProfile[]) {
   return profiles.map((p) => ({
     wilma: p.tenantName ?? p.tenantUrl,
     students: (p.students ?? []).map((s) => s.name),

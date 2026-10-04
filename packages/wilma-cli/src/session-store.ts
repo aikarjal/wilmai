@@ -26,7 +26,7 @@ export interface SessionStore {
 
 type Saved = Record<string, { state: string; savedAt: number }>;
 
-export function sessionsPath(): string {
+function sessionsPath(): string {
   return resolve(dirname(getConfigPath()), "wilmai-sessions.json");
 }
 

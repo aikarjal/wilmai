@@ -96,7 +96,7 @@ async function withAccess(run: (access: WilmaAccess) => Promise<CallToolResult>)
   }
 }
 
-export function createWilmaMcpServer(version: string): McpServer {
+function createWilmaMcpServer(version: string): McpServer {
   const server = new McpServer({ name: "wilma", title: "WilmAI", version }, { instructions: INSTRUCTIONS });
 
   registerWilmaTools(server, {

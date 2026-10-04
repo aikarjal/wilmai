@@ -131,13 +131,13 @@ The CLI reports the underlying cause code (for example
 
 ```bash
 # 1. Node >=22.19 / >=24.6
-NODE_USE_SYSTEM_CA=1 wilma summary --json
+NODE_USE_SYSTEM_CA=1 wilma summary
 
 # 2. Node >=22.15 (the flag has wider version support than the env var)
-node --use-system-ca "$(command -v wilma)" summary --json
+node --use-system-ca "$(command -v wilma)" summary
 
 # 3. Point Node at the proxy root explicitly
-NODE_EXTRA_CA_CERTS=/path/to/root-ca.pem wilma summary --json
+NODE_EXTRA_CA_CERTS=/path/to/root-ca.pem wilma summary
 ```
 
 Never set `NODE_TLS_REJECT_UNAUTHORIZED=0`. It disables certificate verification
@@ -153,9 +153,9 @@ Two things that make this hard to recognise:
 
 ## Credentials & Privacy
 
-Your Wilma login is stored locally in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`), readable only by your user account. The password is obfuscated (not encrypted) for convenience — this is a personal productivity tool, not a vault. Remove it with `wilma config clear`.
+Your Wilma login is stored locally in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`), readable only by your user account. The password is obfuscated (not encrypted) for convenience — this is a personal productivity tool, not a vault. The current Wilma session is kept next to it (`wilmai-sessions.json`, same protection, at most 6 hours) so commands don't log in each time; set `WILMAI_NO_SESSION_CACHE=1` to turn that off. `wilma config clear` removes both.
 
-The CLI, the MCP server and the Claude Desktop extension have no server behind them: they talk only to your school's Wilma. (The hosted relay in `apps/relay` is a separate, private test.) When an AI assistant uses WilmAI, the school information it reads goes to that assistant's provider, the same as pasting it into a chat; your password does not.
+The CLI, the MCP server and the Claude Desktop extension have no server behind them: they log in only to your school's Wilma. Besides Wilma, they open links from school bulletins when you ask for an attachment (only public websites, never with your Wilma login), and the CLI checks npm once a day for a newer version when you use it in a terminal. (The hosted relay in `apps/relay` is a separate, private test.) When an AI assistant uses WilmAI, the school information it reads goes to that assistant's provider, the same as pasting it into a chat; your password does not.
 
 **Do not share your config file.** It accesses the same data as the official Wilma app or website; it is your responsibility to handle that data appropriately.
 

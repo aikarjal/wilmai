@@ -16,7 +16,7 @@ function municipalityNames(tenant: TenantInfo): string[] {
   return names;
 }
 
-export function fuzzyIncludes(target: string, needle: string): boolean {
+function fuzzyIncludes(target: string, needle: string): boolean {
   const hay = (target ?? "").toLowerCase();
   const search = (needle ?? "").toLowerCase();
   if (!search) return true;
@@ -31,7 +31,7 @@ export function fuzzyIncludes(target: string, needle: string): boolean {
   return false;
 }
 
-export function tenantMatches(search: string, tenant: TenantInfo): boolean {
+function tenantMatches(search: string, tenant: TenantInfo): boolean {
   const needle = (search ?? "").toLowerCase();
   if (fuzzyIncludes(tenant.name ?? "", needle)) return true;
   if (fuzzyIncludes(tenant.url ?? "", needle)) return true;

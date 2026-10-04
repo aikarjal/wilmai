@@ -2,7 +2,7 @@ import { open } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { NewsResource } from "@wilm-ai/wilma-client";
 
-export const MAX_NEWS_RESOURCE_BYTES = 50 * 1024 * 1024;
+const MAX_NEWS_RESOURCE_BYTES = 50 * 1024 * 1024;
 
 export function normalizeResourceId(raw: string | undefined): string | undefined {
   if (!raw) return undefined;

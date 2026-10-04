@@ -52,16 +52,33 @@ const profile = {
 
 console.log("Running live Wilma client test...");
 
-const client = await WilmaClient.login(profile);
-const messages = await client.messages.list("inbox");
-const news = await client.news.list();
-const exams = await client.exams.list();
-
-assert(Array.isArray(messages), "messages should be an array");
-assert(Array.isArray(news), "news should be an array");
-assert(Array.isArray(exams), "exams should be an array");
-
-console.log(`messages: ${messages.length}`);
-console.log(`news: ${news.length}`);
-console.log(`exams: ${exams.length}`);
+// Read-only; prints counts, not content. One login for everything.
+const client = await WilmaClient.login({ ...profile, studentNumber: null });
+const students = await client.students();
+assert(students.length >= 1, "expected at least one student");
+for (const [i, student] of students.entries()) {
+  const kid = client.forStudent(student.studentNumber);
+  const [messages, news, exams, lessons, notes, gradebook] = await Promise.all([
+    kid.messages.list("inbox"),
+    kid.news.list(),
+    kid.exams.upcoming(),
+    kid.schedule.list({ from: monday(0), to: monday(4) }),
+    kid.attendance.summary(),
+    kid.gradebook.get(),
+  ]);
+  assert(Array.isArray(messages) && Array.isArray(news) && Array.isArray(exams), "lists");
+  console.log(
+    `student ${i + 1}: messages ${messages.length}, news ${news.length}, upcoming exams ${exams.length} ` +
+      `(${exams.filter((e) => e.time).length} timed), lessons this week ${lessons.length}, lesson notes this year ${notes.total}, ` +
+      `gradebook subjects ${gradebook.length}`
+  );
+}
 console.log("✅ Live Wilma client test passed");
+
+/** This week's Monday (+ days), YYYY-MM-DD in Finnish time. */
+function monday(plus) {
+  const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Helsinki" }));
+  const d = new Date(today);
+  d.setDate(today.getDate() - ((today.getDay() + 6) % 7) + plus);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}

@@ -9,7 +9,6 @@ export {
   mfaCallbackFor,
   TotpSecretInvalidError,
   TotpSecretRequiredError,
-  verifyLogin,
   verifyLoginSession,
 } from "@wilm-ai/wilma-cli/dist/credentials.js";
 export { renderLoginPage } from "@wilm-ai/wilma-cli/dist/login-server.js";

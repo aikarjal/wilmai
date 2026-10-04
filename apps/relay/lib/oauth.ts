@@ -56,8 +56,8 @@ export interface SealedToken {
   exp: number;
 }
 
-export const ACCESS_TTL = 60 * 60; // 1 hour
-export const REFRESH_TTL = 60 * 60 * 24 * 60; // 60 days
+const ACCESS_TTL = 60 * 60; // 1 hour
+const REFRESH_TTL = 60 * 60 * 24 * 60; // 60 days
 export const CODE_TTL = 5 * 60;
 export const REQUEST_TTL = 30 * 60;
 export const MAX_LOGINS = 5;

@@ -42,7 +42,7 @@ export interface ParsedCommand {
   raw: string[];
 }
 
-export const DATA_COMMANDS = [
+const DATA_COMMANDS = [
   "summary",
   "schedule",
   "homework",
@@ -55,7 +55,7 @@ export const DATA_COMMANDS = [
   "printouts",
   "students",
 ] as const;
-export const OTHER_COMMANDS = ["accounts", "find-school", "login", "mcp", "update", "config", "help"] as const;
+const OTHER_COMMANDS = ["accounts", "find-school", "login", "mcp", "update", "config", "help"] as const;
 
 const ALIASES: Record<string, string> = {
   kids: "students",

@@ -39,7 +39,7 @@ export class WilmaAiError extends Error {
 const SCHOOL_TIME_ZONE = "Europe/Helsinki";
 
 /** YYYY-MM-DD for an instant, in Finnish time. */
-export function finnishDate(d: Date = new Date()): string {
+function finnishDate(d: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: SCHOOL_TIME_ZONE,
     year: "numeric",
@@ -61,11 +61,11 @@ function weekdayOf(isoDate: string): number {
   return new Date(isoDate + "T12:00:00Z").getUTCDay();
 }
 
-export function todayString(): string {
+function todayString(): string {
   return finnishDate();
 }
 
-export function nextSchoolDay(from?: string): string {
+function nextSchoolDay(from?: string): string {
   let d = addDays(from ?? todayString(), 1);
   // Skip Saturday (6) and Sunday (0)
   while (weekdayOf(d) === 0 || weekdayOf(d) === 6) {
@@ -75,7 +75,7 @@ export function nextSchoolDay(from?: string): string {
 }
 
 /** The school day before `from` (default today): Friday for a Monday. */
-export function previousSchoolDay(from?: string): string {
+function previousSchoolDay(from?: string): string {
   let d = addDays(from ?? todayString(), -1);
   while (weekdayOf(d) === 0 || weekdayOf(d) === 6) {
     d = addDays(d, -1);
@@ -83,7 +83,7 @@ export function previousSchoolDay(from?: string): string {
   return d;
 }
 
-export function currentWeekBounds(weeksAhead = 0): [string, string] {
+function currentWeekBounds(weeksAhead = 0): [string, string] {
   const today = todayString();
   const dayOfWeek = weekdayOf(today); // 0=Sun, 1=Mon, ...
   const monday = addDays(today, (dayOfWeek === 0 ? -6 : 1 - dayOfWeek) + 7 * weeksAhead);
@@ -118,7 +118,7 @@ const WEEKDAYS: Record<string, number> = {
   sat: 6, la: 6, saturday: 6,
 };
 
-export function nextDateForWeekday(rawWeekday: string): string {
+function nextDateForWeekday(rawWeekday: string): string {
   const target = WEEKDAYS[(rawWeekday ?? "").trim().toLowerCase()];
   if (target === undefined) {
     throw new WilmaAiError(
@@ -141,7 +141,7 @@ export type ScheduleDateSelection = {
 
 export const SCHEDULE_WHEN = ["today", "tomorrow", "week", "next-week"] as const;
 
-export function resolveScheduleDateSelection(opts: { when?: string; date?: string; weekday?: string }): ScheduleDateSelection {
+function resolveScheduleDateSelection(opts: { when?: string; date?: string; weekday?: string }): ScheduleDateSelection {
   const when = opts.when || "week";
   if (!(SCHEDULE_WHEN as readonly string[]).includes(when)) {
     throw new WilmaAiError("invalid_argument", `Unknown period "${when}". Use ${SCHEDULE_WHEN.join(", ")}, a date or a weekday.`);
@@ -193,7 +193,7 @@ export interface SummaryInputs {
  * lesson notes from the previous school day. With `since` (YYYY-MM-DD): only
  * what is from that day on. Unread messages are always included.
  */
-export function buildSummaryData(input: SummaryInputs, opts: { days?: number; since?: string } = {}) {
+function buildSummaryData(input: SummaryInputs, opts: { days?: number; since?: string } = {}) {
   const today = todayString();
   const tomorrow = nextSchoolDay();
   const cutoff = opts.since ?? addDays(today, -(opts.days ?? 7));
@@ -275,7 +275,7 @@ export type FetchedAttachment =
  * Bulletins to show: the newest `limit` dated ones, every pinned one (they
  * stay relevant all year), and the older ones only when asked for.
  */
-export function selectNews(news: NewsItem[], opts: { limit?: number; includeOlder?: boolean } = {}): NewsItem[] {
+function selectNews(news: NewsItem[], opts: { limit?: number; includeOlder?: boolean } = {}): NewsItem[] {
   const dated = news.filter((item) => !item.archived && item.published).slice(0, opts.limit ?? 20);
   const pinnedUndated = news.filter((item) => !item.archived && !item.published);
   const older = opts.includeOlder ? news.filter((item) => item.archived) : [];
@@ -287,7 +287,7 @@ export function selectNews(news: NewsItem[], opts: { limit?: number; includeOlde
  * inbox are required; meeting invitations, lesson notes and exam times are
  * extras — if Wilma can't give one, the summary says so in `unavailable`.
  */
-export async function fetchSummaryInputs(client: WilmaClient, opts: { notesFrom: string }): Promise<SummaryInputs> {
+async function fetchSummaryInputs(client: WilmaClient, opts: { notesFrom: string }): Promise<SummaryInputs> {
   const unavailable: string[] = [];
   const optional = <T>(name: string, promise: Promise<T>, fallback: T): Promise<T> =>
     promise.catch((err) => {
@@ -313,7 +313,7 @@ export async function fetchSummaryInputs(client: WilmaClient, opts: { notesFrom:
 }
 
 /** The first day of a period ending today that is `days` long. */
-export function daysBack(days: number): string {
+function daysBack(days: number): string {
   const today = todayString();
   return addDays(today, -(days - 1));
 }
@@ -348,7 +348,7 @@ function rememberSession(key: string, client: WilmaClient): void {
 }
 
 /** Identifies one Wilma account and password (a changed password starts fresh). */
-export function poolKey(profile: WilmaProfile): string {
+function poolKey(profile: WilmaProfile): string {
   const { baseUrl, username, password } = profile;
   // The password is part of the key, so a changed password starts a fresh session.
   return createHash("sha256")
