@@ -40,7 +40,7 @@ There are two ways to reach Wilma. Both return the same data, in the same JSON s
 1. **MCP tools** — if tools named `wilma_*` are available (the WilmAI connector, desktop extension or plugin), use them. No shell needed.
 2. **CLI** — otherwise use the `wilma` (or `wilmai`) command. It prints JSON when you run it (no `--json` needed), and `wilma help <command>` shows usage, examples and the JSON shape.
 
-Both cover **every child by default**; pass `student` / `--student <number|name>` to narrow to one. Results come per child: `{ students: [{ student: { studentNumber, name, wilma? }, … }] }`. Times are Finnish time with their offset (`2026-10-02T13:37:00+03:00`) — report them as they are, without converting.
+Both cover **every child by default**; pass `student` / `--student <number|name>` to narrow to one. Results come per child: `{ students: [{ student: { studentNumber, name, wilma? }, … }] }`. Times are Finnish time with their offset (`2026-10-02T13:37:00+03:00`) — report them as they are, without converting. When you write dates for the user, follow the language you answer in: Finnish `ke 7.10.` (with the final period), English `Wed 7 Oct`. Wilma's own texts use the Finnish style; convert it instead of mixing the two (not `Wed 7.10`).
 
 | MCP tool | CLI command |
 |---|---|

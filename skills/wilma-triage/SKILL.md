@@ -200,7 +200,9 @@ Child A (8th grade)
 Child B (6th grade)
 • No actionable items
 
-📅 Calendar: Added Child A math exam (Feb 10), removed cancelled disco (Feb 11)
+📅 Calendar: Added Child A math exam (10 Feb), removed cancelled disco (11 Feb)
 ```
 
 Keep it brief. One line per item. Silence is better than noise.
+
+When you write dates for the user, follow the language you answer in: Finnish `ke 7.10.` (with the final period), English `Wed 7 Oct`. Wilma's own texts use the Finnish style; convert it instead of mixing the two (not `Wed 7.10`).
