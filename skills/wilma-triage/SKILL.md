@@ -56,10 +56,10 @@ Over time, the user will give feedback on what to report and what to skip — st
    wilma messages list --all-students --limit 10 --json
    wilma news list --all-students --limit 10 --json
 
-   # Lesson notes (merkinnät) — fetch yesterday's notes during a morning run,
-   # since teachers fill them during/after class. For a same-day check later
-   # in the afternoon, omit --date.
-   wilma attendance list --all-students --date <yesterday-YYYY-MM-DD> --json
+   # Lesson notes (merkinnät) — in a morning run, fetch the previous school
+   # day (on Mondays, from Friday), since teachers fill them during/after class.
+   # For a same-day check later in the afternoon, omit --from.
+   wilma attendance list --all-students --from <previous-school-day-YYYY-MM-DD> --json
 
    # Read full content when subject line looks actionable
    wilma messages read <id> --student <name> --json
@@ -90,9 +90,9 @@ Over time, the user will give feedback on what to report and what to skip — st
 
    **Sandbox note:** image/PDF reader tools may reject files in certain temp paths (e.g. system temp dirs). Download attachments into a workspace-relative directory (e.g. `./attachments/`) before reading, and clean up afterward if desired.
 
-3. **Filter** — apply triage rules below plus any kid-specific rules from MEMORY.md
+3. **Filter** — apply triage rules below plus any kid-specific rules from MEMORY.md. Bulletin lists always include pinned bulletins (`pinned: true`, e.g. the school-year bulletin), so they reappear every day: report a bulletin only when its date is within the triage period. A message whose `replyCount` has grown since the last run (keep the counts in MEMORY.md) has a new reply — read the thread.
 
-4. **Calendar sync** — add missing exams and actionable events with the calendar tool noted in TOOLS.md (skip if there is none)
+4. **Calendar sync** — add missing exams and actionable events with the calendar tool noted in TOOLS.md (skip if there is none). An exam with a `time` gets a timed event; others are all-day events.
    - **ALWAYS check for existing events before adding** to avoid duplicates
    - Use naming conventions stored in TOOLS.md
    - Remove cancelled events from calendar
@@ -131,9 +131,9 @@ Lesson notes are short per-lesson remarks teachers leave in Wilma. They fall int
 - **Unexplained absences** ("Selvittämätön poissaolo") — **Report immediately.** Could indicate truancy or that the parent forgot to file an excuse in Wilma.
 - **Explained absences** ("Terveydellinen syy" = medical, "Muu selvitetty poissaolo" = other-explained) — **Report briefly** as confirmation that the absence is logged. Skip if MEMORY.md says the parent doesn't want absence confirmations.
 - **Positive feedback** ("Hyvä!", "Osasit toimia ryhmän vastuullisena jäsenenä") — **Skip by default.** Mention occasionally if MEMORY.md indicates the parent wants positive notes too.
-- **Note with parenthetical detail** (e.g. "Muu selvitetty poissaolo; Lähti 13.00" = "left at 13:00") — the extra clause after the semicolon is often the most useful part. Surface it.
+- **The teacher's own words** (`note`, e.g. "Lähti 13.00" = "left at 13:00", or what exactly was missing) — often the most useful part. Surface it.
 
-The `typeLabel` field in the JSON is the full Finnish reason; `subject` is the course code (e.g. `MA_8LV`). Group consecutive same-subject same-type notes when reporting (one absence often spans multiple periods).
+`typeLabel` is the Finnish label, `note` the teacher's words (or null), and `subject` the course code (e.g. `MA_8LV`; empty for notes not tied to a lesson). Group consecutive same-subject same-type notes when reporting (one absence often spans multiple periods). For a term overview, `wilma attendance summary --json` (`wilma_lesson_notes_summary`) counts notes by type.
 
 ## Triage Rules
 

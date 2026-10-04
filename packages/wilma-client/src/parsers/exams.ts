@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import type { Exam } from "../types.js";
+import type { Exam, UpcomingExam } from "../types.js";
 
 export function parseExamsHtml(html: string): Exam[] {
   const $ = cheerio.load(html);
@@ -34,6 +34,9 @@ export function parseExamsHtml(html: string): Exam[] {
     const examDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
     // Also store as local date string to avoid any serialization issues
     const dateString = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    // "Pe 30.10.2026 Klo 08:30": some exams have a start time.
+    const timeMatch = /klo\s*(\d{1,2})[:.](\d{2})/i.exec(dateText);
+    const time = timeMatch ? `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}` : null;
 
     // Compact whitespace first to normalize the text before parsing
     const subjDesc = compactText($(firstCells.get(1)).text());
@@ -76,6 +79,7 @@ export function parseExamsHtml(html: string): Exam[] {
       description: description ? compactText(description) : null,
       teacher: teacher ? compactText(teacher) : null,
       notes: notes ? compactText(notes) : null,
+      time,
       fetchedAt: now,
     });
 
@@ -83,6 +87,42 @@ export function parseExamsHtml(html: string): Exam[] {
   });
 
   return exams;
+}
+
+/**
+ * Add start times from the exam calendar to upcoming exams (the front page's
+ * exam list has dates only). An exam is matched by date and its course code
+ * (e.g. "MA_91" appears in the calendar entry), or by date alone when it is
+ * the only exam that day in both lists.
+ */
+export function addExamTimes(upcoming: UpcomingExam[], calendar: Exam[]): UpcomingExam[] {
+  return upcoming.map((exam) => {
+    const sameDay = calendar.filter((entry) => entry.dateString === exam.date);
+    const code = exam.subjectCode ? new RegExp(`(^|\\s)${escapeRegExp(exam.subjectCode)}(\\s|$|[.,:])`) : null;
+    const text = (entry: Exam) => `${entry.description ?? ""} ${entry.subject}`;
+    let byCode = code ? sameDay.filter((entry) => code.test(text(entry))) : [];
+    if (byCode.length > 1) {
+      // Several exams of one course that day: the exam's name tells them apart.
+      const nameWords = words(exam.name);
+      const scored = byCode.map((entry) => {
+        const entryWords = new Set(words(text(entry)));
+        return { entry, score: nameWords.filter((word) => entryWords.has(word)).length };
+      });
+      const best = Math.max(...scored.map((s) => s.score));
+      byCode = best > 0 ? scored.filter((s) => s.score === best).map((s) => s.entry) : byCode;
+    }
+    const onlyOne = sameDay.length === 1 && upcoming.filter((other) => other.date === exam.date).length === 1;
+    const match = byCode.length === 1 ? byCode[0] : onlyOne ? sameDay[0] : null;
+    return { ...exam, time: match?.time ?? null };
+  });
+}
+
+function words(value: string): string[] {
+  return value.toLowerCase().match(/[\p{L}\d]{3,}/gu) ?? [];
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function compactText(value: string): string {

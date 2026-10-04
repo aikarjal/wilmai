@@ -11,6 +11,7 @@ import type {
   OverviewData,
   Printout,
   StudentInfo,
+  UpcomingExam,
   WilmaProfile,
 } from "./types.js";
 import { parseWilmaTimestamp } from "./parsers/dates.js";
@@ -22,7 +23,7 @@ import {
   parseNewsList,
   parseNewsListHtml,
 } from "./parsers/news.js";
-import { parseExamsHtml } from "./parsers/exams.js";
+import { addExamTimes, parseExamsHtml } from "./parsers/exams.js";
 import { parseAttendanceHtml, summarizeLessonNotes } from "./parsers/attendance.js";
 import { parseGradebookHtml } from "./parsers/gradebook.js";
 import { parsePrintoutsHtml } from "./parsers/printouts.js";
@@ -223,6 +224,27 @@ export class WilmaClient {
   };
 
   exams = {
+    /**
+     * Upcoming exams with topics and teachers (front page), plus the start
+     * time when the school gives one (exam calendar). Without the calendar,
+     * exams come back without times.
+     */
+    upcoming: async (): Promise<UpcomingExam[]> => {
+      const [overview, calendar] = await Promise.all([this.overview.get(), this.exams.calendarOrEmpty()]);
+      return addExamTimes(overview.upcomingExams, calendar);
+    },
+
+    /** The exam calendar, or [] if it can't be read (start times are a bonus). */
+    calendarOrEmpty: async (): Promise<Exam[]> => {
+      try {
+        return await this.exams.list();
+      } catch (err) {
+        if (err instanceof NetworkError) throw err;
+        return [];
+      }
+    },
+
+    /** The exam calendar page: upcoming exams with dates, start times, teachers and notes. */
     list: async (opts?: { start?: string; end?: string }): Promise<Exam[]> => {
       const params = new URLSearchParams();
       if (opts?.start) {

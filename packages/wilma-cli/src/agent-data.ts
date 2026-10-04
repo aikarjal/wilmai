@@ -1,5 +1,6 @@
 import {
   WilmaClient,
+  addExamTimes,
   type MessageFolder,
   type MfaCallback,
   type NewsItem,
@@ -232,6 +233,17 @@ export function selectNews(news: NewsItem[], opts: { limit?: number; includeOlde
   return [...dated, ...pinnedUndated, ...older];
 }
 
+/** What a daily summary needs, fetched at once; upcoming exams get their start times. */
+export async function fetchSummaryInputs(client: WilmaClient) {
+  const [overview, calendar, news, messages] = await Promise.all([
+    client.overview.get(),
+    client.exams.calendarOrEmpty(),
+    client.news.list(),
+    client.messages.list("inbox"),
+  ]);
+  return { overview: { ...overview, upcomingExams: addExamTimes(overview.upcomingExams, calendar) }, news, messages };
+}
+
 /** The first day of a period ending today that is `days` long. */
 export function daysBack(days: number): string {
   const today = todayString();
@@ -438,11 +450,7 @@ export class WilmaAccess {
 
   async summary(opts: { student?: string; days?: number } = {}) {
     const result = await this.perStudent(opts.student, async (client, s) => {
-      const [overview, news, messages] = await Promise.all([
-        client.overview.get(),
-        client.news.list(),
-        client.messages.list("inbox"),
-      ]);
+      const { overview, news, messages } = await fetchSummaryInputs(client);
       return { summary: buildSummaryData(overview, news, messages, opts.days ?? 7, s.name) };
     });
     return { generatedAt: new Date().toISOString(), ...result };
@@ -469,8 +477,7 @@ export class WilmaAccess {
 
   async upcomingExams(opts: { student?: string; limit?: number } = {}) {
     return this.perStudent(opts.student, async (client) => {
-      const overview = await client.overview.get();
-      return { exams: overview.upcomingExams.slice(0, opts.limit ?? 20) };
+      return { exams: (await client.exams.upcoming()).slice(0, opts.limit ?? 20) };
     });
   }
 

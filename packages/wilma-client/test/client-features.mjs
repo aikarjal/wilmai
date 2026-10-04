@@ -45,6 +45,9 @@ const server = createServer((req, res) => {
     return res.end(PDF);
   }
   if (path === "/!1/news") return send(200, "text/html", fixture("news-list.html"));
+  if (/^\/![12]\/overview$/.test(path)) return send(200, "application/json", fixture("overview.json"));
+  if (path === "/!1/exams/calendar") return send(200, "text/html", fixture("exams-calendar.html"));
+  if (path === "/!2/exams/calendar") return send(500, "text/plain", "");
   send(404, "text/plain", `Unexpected ${req.method} ${req.url}`);
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -93,6 +96,13 @@ try {
   assert.equal(response.headers.get("content-type"), "application/pdf");
   assert.deepEqual(Buffer.from(await response.arrayBuffer()), PDF);
   await assert.rejects(kid.printouts.fetch("999"), /not found/);
+
+  // Exams: the front page's list, with times from the calendar when it can be read.
+  const exams = await kid.exams.upcoming();
+  const withoutCalendar = await older.exams.upcoming();
+  assert.equal(exams.length, withoutCalendar.length, "a broken calendar page costs only the times");
+  assert.ok(withoutCalendar.every((e) => !e.time));
+  assert.ok(requests.includes("/!1/exams/calendar"));
 
   // Bulletins: dated, pinned and older ones.
   const news = await kid.news.list();

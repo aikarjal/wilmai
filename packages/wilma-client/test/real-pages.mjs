@@ -10,6 +10,8 @@ import { parseGradebookHtml } from "../dist/parsers/gradebook.js";
 import { parsePrintoutsHtml } from "../dist/parsers/printouts.js";
 import { parseMessageDetailJson, parseMessagesList } from "../dist/parsers/messages.js";
 import { parseTimetableJson } from "../dist/parsers/schedule.js";
+import { addExamTimes, parseExamsHtml } from "../dist/parsers/exams.js";
+import { parseOverview } from "../dist/parsers/overview.js";
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/real/${name}`, import.meta.url), "utf8");
 const finnishDay = (date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Helsinki" }).format(date);
@@ -119,6 +121,22 @@ const finnishDay = (date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europ
   assert.equal(lesson.subject, first.caption);
   assert.equal(lesson.subjectCode, first.caption.split(" ")[0]);
   assert.ok(lesson.teacher.startsWith(`${first.teachers[0].lastname} ${first.teachers[0].firstname}`), "Lastname Firstname, like the schedule page");
+}
+
+/* ---------------- exams: front page JSON + start times from the calendar ---------------- */
+{
+  const calendar = parseExamsHtml(fixture("exams-calendar.html"));
+  assert.equal(calendar.length, 12);
+  assert.deepEqual(calendar.filter((e) => e.time).map((e) => `${e.dateString} ${e.time}`), ["2026-10-30 08:30", "2026-11-02 08:30"]);
+  const upcoming = parseOverview(JSON.parse(fixture("overview.json")), new Date("2026-10-04T12:00:00+03:00")).upcomingExams;
+  assert.equal(upcoming.length, 12, "the calendar and the front page list the same exams");
+  const timed = addExamTimes(upcoming, calendar).filter((e) => e.time);
+  assert.deepEqual(timed.map((e) => `${e.date} ${e.time} ${e.subjectCode}`), ["2026-10-30 08:30 MA_91", "2026-11-02 08:30 BI_9LV"]);
+  // Two exams of one course on 30.10: only the one the calendar times gets the time.
+  const sameDay = addExamTimes(upcoming, calendar).filter((e) => e.date === "2026-10-30" && e.subjectCode === "MA_91");
+  assert.equal(sameDay.length, 2);
+  assert.equal(sameDay.filter((e) => e.time).length, 1);
+  assert.deepEqual(addExamTimes(upcoming, []).filter((e) => e.time), [], "no calendar, no times");
 }
 
 console.log("real-pages: all assertions passed");

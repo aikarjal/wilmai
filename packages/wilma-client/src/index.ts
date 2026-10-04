@@ -41,3 +41,4 @@ export { finnishDateString, finnishParts, finnishTime } from "./finnish-time.js"
 
 export { parseStudentsFromHome } from "./parsers/students.js";
 export { htmlToText } from "./parsers/html-text.js";
+export { addExamTimes } from "./parsers/exams.js";

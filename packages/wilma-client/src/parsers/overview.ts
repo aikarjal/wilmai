@@ -111,9 +111,9 @@ function firstScheduleTeacher(
 /*  Main parser                                                       */
 /* ------------------------------------------------------------------ */
 
-export function parseOverview(raw: unknown): OverviewData {
+/** `now` decides which exams are upcoming (default: the current time). */
+export function parseOverview(raw: unknown, now: Date = new Date()): OverviewData {
   const data = (raw ?? {}) as RawOverview;
-  const now = new Date();
   const today = finnishDateString(now);
 
   return {

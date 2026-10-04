@@ -18,6 +18,7 @@ import {
   type MessageFolder,
   type NewsItem,
   type Printout,
+  type UpcomingExam,
   type TenantInfo,
   type WilmaProfile,
   type StudentInfo,
@@ -34,6 +35,7 @@ import {
 import {
   buildSummaryData,
   daysBack,
+  fetchSummaryInputs,
   finnishDate,
   matchStudents,
   parseIsoDate,
@@ -1335,6 +1337,13 @@ async function outputNews(
   }
 }
 
+/** "2026-10-30 08:30  Matematiikka: exam name — topic" */
+function examLine(exam: UpcomingExam): string {
+  const when = exam.time ? `${exam.date} ${exam.time}` : exam.date;
+  const topic = exam.topic ? ` — ${compactText(exam.topic)}` : "";
+  return `${when}  ${exam.subject}: ${exam.name}${topic}`;
+}
+
 /** "2026-09-27 Title (id:1)", marking pinned and older bulletins. */
 function newsLine(item: NewsItem): string {
   const date = item.published ? `${finnishDate(item.published)} ` : "";
@@ -1559,18 +1568,15 @@ async function outputUpcomingExams(
   client: WilmaClient,
   opts: { limit: number; json?: boolean; label?: string }
 ) {
-  const overview = await client.overview.get();
-  const slice = overview.upcomingExams.slice(0, opts.limit);
+  const exams = await client.exams.upcoming();
+  const slice = exams.slice(0, opts.limit);
   if (opts.json) {
     console.log(JSON.stringify(slice, null, 2));
     return;
   }
   const prefix = opts.label ? `[${opts.label}] ` : "";
-  console.log(`\n${prefix}Upcoming exams (${overview.upcomingExams.length})`);
-  slice.forEach((exam) => {
-    const topic = exam.topic ? ` — ${compactText(exam.topic)}` : "";
-    console.log(`- ${exam.date}  ${exam.subject}: ${exam.name}${topic}`);
-  });
+  console.log(`\n${prefix}Upcoming exams (${exams.length})`);
+  slice.forEach((exam) => console.log(`- ${examLine(exam)}`));
 }
 
 async function outputAttendance(
@@ -1694,11 +1700,7 @@ async function outputSummary(
   client: WilmaClient,
   opts: { days: number; json?: boolean; label?: string }
 ) {
-  const [overview, news, messages] = await Promise.all([
-    client.overview.get(),
-    client.news.list(),
-    client.messages.list("inbox"),
-  ]);
+  const { overview, news, messages } = await fetchSummaryInputs(client);
 
   const summary = buildSummaryData(overview, news, messages, opts.days, opts.label);
 
@@ -1730,10 +1732,7 @@ async function outputSummary(
 
   if (summary.upcomingExams.length) {
     console.log("\nUPCOMING EXAMS");
-    summary.upcomingExams.forEach((exam) => {
-      const topic = exam.topic ? ` — ${compactText(exam.topic)}` : "";
-      console.log(`  ${exam.date}  ${exam.subject}: ${exam.name}${topic}`);
-    });
+    summary.upcomingExams.forEach((exam) => console.log(`  ${examLine(exam)}`));
   }
 
   if (summary.recentHomework.length) {
@@ -2316,8 +2315,7 @@ async function outputAllExams(
   const results = [];
   for (const student of students) {
     const client = await loginForStudent(student, profile, onMfa);
-    const overview = await client.overview.get();
-    results.push({ student, items: overview.upcomingExams.slice(0, limit) });
+    results.push({ student, items: (await client.exams.upcoming()).slice(0, limit) });
   }
   if (json) {
     console.log(JSON.stringify({ students: results }, null, 2));
@@ -2325,10 +2323,7 @@ async function outputAllExams(
   }
   results.forEach((entry) => {
     console.log(`\n[${entry.student.name}]`);
-    entry.items.forEach((exam) => {
-      const topic = exam.topic ? ` — ${compactText(exam.topic)}` : "";
-      console.log(`- ${exam.date} ${exam.subject}: ${exam.name}${topic}`);
-    });
+    entry.items.forEach((exam) => console.log(`- ${examLine(exam)}`));
   });
 }
 
@@ -2376,11 +2371,7 @@ async function outputAllOverviewCommand(
       const summaries = [];
       for (const student of students) {
         const client = await loginForStudent(student, profile, onMfa);
-        const [overview, news, messages] = await Promise.all([
-          client.overview.get(),
-          client.news.list(),
-          client.messages.list("inbox"),
-        ]);
+        const { overview, news, messages } = await fetchSummaryInputs(client);
         summaries.push({
           student,
           summary: buildSummaryData(overview, news, messages, flags.days ?? 7, student.name),

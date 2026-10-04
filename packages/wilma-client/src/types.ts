@@ -72,6 +72,8 @@ export interface Exam {
   description?: string | null;
   teacher?: string | null;
   notes?: string | null;
+  /** Start time ("08:30") when the school gives one; only the exam calendar has it. */
+  time?: string | null;
   fetchedAt: Date;
 }
 
@@ -125,6 +127,8 @@ export interface UpcomingExam {
   examId: number;
   /** YYYY-MM-DD */
   date: string;
+  /** Start time ("08:30") when the school gives one (from the exam calendar). */
+  time?: string | null;
   name: string;
   subject: string;
   subjectCode: string;

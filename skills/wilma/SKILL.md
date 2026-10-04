@@ -108,6 +108,7 @@ wilma homework list --student <id|name> --json
 ```bash
 wilma exams list --student <id|name> --json
 ```
+Each exam has its date, subject, name, topic (what to study) and teacher; `time` is the start time when the school gives one (otherwise null).
 
 ### Exam grades
 ```bash
@@ -190,20 +191,20 @@ wilma homework list --all-students --json
 wilma exams list --all-students --json
 ```
 
-You can also pass a name fragment for `--student` (fuzzy match).
+`--student` takes a student number, the full name, or the start of a first or last name (`Kiia` for "Kiia Example"). An unknown or ambiguous name is an error that lists the children, so pass a number or full name from `wilma kids list` when unsure.
 
 ## MFA (two-step verification)
 If the Wilma account has MFA/TOTP enabled, logins need the authenticator setup key (a base32 key or `otpauth://` URI) so they can run unattended:
 
 - **`wilma login`:** the login page asks for the setup key when Wilma requires it and saves it with the login.
 - **Environment:** set `WILMA_TOTP_SECRET`.
-- **One-off:** pass `--totp-secret <base32-key|otpauth://...>` to any command.
+- **One-off:** `--totp-secret <base32-key|otpauth://...>` works on any command, but a key on the command line ends up in shell history; prefer the two above.
 
 ## Notes
-- If no `--student` is provided, the CLI uses the last selected student from `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`).
+- If no `--student` is provided, the CLI uses the last selected student from `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`) — only one child. Pass `--all-students` to cover every child (the MCP tools always do).
 - If multiple students exist and no default is set, the CLI will print a helpful error with the list of students.
 - When the account has multiple students, `--student` is **required** for read commands.
-- If auth fails or the CLI says no saved login, run `wilma login` again, or use `wilma config clear` to reset.
+- If auth fails or the CLI says no saved login, run `wilma login` again (logging in to the same Wilma replaces that login). `wilma accounts` lists saved logins and `wilma accounts remove <number>` removes one; `wilma config clear` deletes every saved login.
 - Run `wilma update` to update the CLI to the latest version.
 - **TLS errors on managed machines.** If a command fails with a `code` such as `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, the network is intercepting TLS and re-signing certificates with a private root CA that Node does not trust. With `--json` the failure carries `code` and `hint` fields — read the `hint` and report it rather than retrying. The fix is to run the CLI with `NODE_USE_SYSTEM_CA=1` (Node >=22.19/>=24.6), or `node --use-system-ca "$(command -v wilma)"` (Node >=22.15). Never suggest `NODE_TLS_REJECT_UNAUTHORIZED=0`; it disables verification entirely. Note that a working `npm install` does not prove TLS is healthy — the npm registry is commonly exempt from inspection.
 
@@ -213,6 +214,8 @@ Wilma contains a mix of urgent items and general info. When summarizing for pare
 
 **Include** items that:
 - Require action or preparation (forms, replies, permissions, materials to bring).
+- Are lesson notes about missing study materials or homework, behaviour, or unexplained absences.
+- Are replies in a thread the parent started (`replyCount` in message lists).
 - Announce a deadline or time-specific requirement.
 - Describe a schedule deviation or noteworthy event (trips, themed days, school closures, exams).
 - Mention homework, exams, or upcoming deadlines.
@@ -225,7 +228,7 @@ When in doubt, **include** and let the parent decide. Prefer a short, structured
 
 ## Scripts
 
-Use `scripts/wilma-cli.sh` for a stable wrapper around the CLI.
+`scripts/wilma-cli.sh` runs the installed `wilma` (or `wilmai`), or the latest release through `npx` when neither is installed.
 
 ## Links
 - **GitHub:** https://github.com/aikarjal/wilmai

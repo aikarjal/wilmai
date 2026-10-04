@@ -1,0 +1,3394 @@
+{
+ "Role": "damyguno",
+ "AddAppt": false,
+ "Schedule": [
+  {
+   "ReservationID": 4909,
+   "ScheduleID": 190420591,
+   "Day": 1,
+   "Start": "08:30",
+   "End": "10:05",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-28",
+    "2026-10-05",
+    "2026-10-19",
+    "2026-10-26",
+    "2026-11-02"
+   ],
+   "Groups": [
+    {
+     "Id": 4874484,
+     "CourseId": 515027,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "BI_",
+     "Caption": "BI_ Gagamyko",
+     "FullCaption": "Gagamyko",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 30842,
+       "Caption": "Tod",
+       "LongCaption": "Kyhib Kyvu",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 9274,
+       "Caption": "407",
+       "LongCaption": "407",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 7445,
+   "ScheduleID": 190420591,
+   "Day": 1,
+   "Start": "10:15",
+   "End": "11:00",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-28",
+    "2026-10-05",
+    "2026-10-19",
+    "2026-10-26",
+    "2026-11-02"
+   ],
+   "Groups": [
+    {
+     "Id": 4553869,
+     "CourseId": 767558,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "MA_",
+     "Caption": "MA_ Hamyreveduli",
+     "FullCaption": "Hamyreveduli",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 54929,
+       "Caption": "Pof",
+       "LongCaption": "Nuhirija Jifur",
+       "ScheduleVisible": true
+      },
+      {
+       "Id": 28266,
+       "Caption": "Dak",
+       "LongCaption": "Kipureg Hodeh-Gogu",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 4910,
+       "Caption": "410",
+       "LongCaption": "410",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 9026,
+   "ScheduleID": 190420591,
+   "Day": 1,
+   "Start": "11:05",
+   "End": "11:50",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-28",
+    "2026-10-05",
+    "2026-10-19",
+    "2026-10-26",
+    "2026-11-02"
+   ],
+   "Groups": [
+    {
+     "ShortCaption": "DU",
+     "Caption": "Vugyvibe",
+     "FullCaption": "Vugyvibe",
+     "Class": "SU"
+    }
+   ]
+  },
+  {
+   "ReservationID": 983,
+   "ScheduleID": 190420591,
+   "Day": 1,
+   "Start": "11:50",
+   "End": "13:25",
+   "Class": "SU/F/B",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-28",
+    "2026-10-05",
+    "2026-10-19",
+    "2026-10-26",
+    "2026-11-02"
+   ],
+   "Groups": [
+    {
+     "Id": 1957905,
+     "CourseId": 292266,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "vLDE_.1",
+     "Caption": "vLDE_ Dubule-botib nojydikuk.1",
+     "FullCaption": "Dubule-botib nojydikuk",
+     "Class": "SU/F/B",
+     "Teachers": [
+      {
+       "Id": 37678,
+       "Caption": "Jit",
+       "LongCaption": "Polapibipu Vikaryfeh",
+       "ScheduleVisible": true
+      },
+      {
+       "Id": 77875,
+       "Caption": "Nan",
+       "LongCaption": "Fikarut Lysej",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 1140,
+       "Caption": "107",
+       "LongCaption": "107 GU",
+       "ScheduleVisible": true
+      },
+      {
+       "Id": 4276,
+       "Caption": "213",
+       "LongCaption": "213 JA",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 6347,
+   "ScheduleID": 190420591,
+   "Day": 1,
+   "Start": "13:35",
+   "End": "14:20",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-28",
+    "2026-10-05",
+    "2026-10-19",
+    "2026-10-26",
+    "2026-11-02"
+   ],
+   "Groups": [
+    {
+     "Id": 6373345,
+     "CourseId": 381834,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "SUK_",
+     "Caption": "SUK_ Difype hubid di pesyhinydobu",
+     "FullCaption": "Difype hubid di pesyhinydobu",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 7907,
+       "Caption": "Fus",
+       "LongCaption": "Furamy Kydik",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 7463,
+       "Caption": "415",
+       "LongCaption": "415",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 8092,
+   "ScheduleID": 190420591,
+   "Day": 1,
+   "Start": "14:35",
+   "End": "15:20",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-28",
+    "2026-10-05",
+    "2026-10-19",
+    "2026-10-26",
+    "2026-11-02"
+   ],
+   "Groups": [
+    {
+     "Id": 2335763,
+     "CourseId": 137266,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "RUB1_.t",
+     "Caption": "RUB1_ Tenotom hubid, DA.d",
+     "FullCaption": "Tenotom hubid, DA",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 12945,
+       "Caption": "Tyd",
+       "LongCaption": "Legapime Bobija",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 2334,
+       "Caption": "504",
+       "LongCaption": "504",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 4825,
+   "ScheduleID": 190420591,
+   "Day": 2,
+   "Start": "08:30",
+   "End": "10:05",
+   "Class": "7-JY/SU/HU/PY/BY/DU/LO",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-29",
+    "2026-10-06",
+    "2026-10-20",
+    "2026-10-27",
+    "2026-11-03"
+   ],
+   "Groups": [
+    {
+     "Id": 7286493,
+     "CourseId": 377122,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "vKU2_.1",
+     "Caption": "vKU2_ Hykimyjotam gasav patovof 2.1",
+     "FullCaption": "Hykimyjotam gasav patovof 2",
+     "Class": "7-JY/SU/HU/PY/BY/DU/LO",
+     "Teachers": [
+      {
+       "Id": 37678,
+       "Caption": "Jit",
+       "LongCaption": "Polapibipu Vikaryfeh",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 4276,
+       "Caption": "213",
+       "LongCaption": "213 JA",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 7798,
+   "ScheduleID": 190420591,
+   "Day": 2,
+   "Start": "10:15",
+   "End": "11:50",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-29",
+    "2026-10-06",
+    "2026-10-20",
+    "2026-10-27",
+    "2026-11-03"
+   ],
+   "Groups": [
+    {
+     "Id": 3100414,
+     "CourseId": 952063,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "LI_",
+     "Caption": "LI_ Vepetemi",
+     "FullCaption": "Vepetemi",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 6901,
+       "Caption": "Keb",
+       "LongCaption": "Vydetumabi Gid",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 4673,
+   "ScheduleID": 190420591,
+   "Day": 2,
+   "Start": "11:50",
+   "End": "12:35",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-29",
+    "2026-10-06",
+    "2026-10-20",
+    "2026-10-27",
+    "2026-11-03"
+   ],
+   "Groups": [
+    {
+     "ShortCaption": "DU",
+     "Caption": "Vugyvibe",
+     "FullCaption": "Vugyvibe",
+     "Class": "SU"
+    }
+   ]
+  },
+  {
+   "ReservationID": 1610,
+   "ScheduleID": 190420591,
+   "Day": 2,
+   "Start": "12:40",
+   "End": "14:20",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-29",
+    "2026-10-06",
+    "2026-10-20",
+    "2026-10-27",
+    "2026-11-03"
+   ],
+   "Groups": [
+    {
+     "Id": 5430219,
+     "CourseId": 861705,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "FY_",
+     "Caption": "FY_ Petuvyfe",
+     "FullCaption": "Petuvyfe",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 28266,
+       "Caption": "Dak",
+       "LongCaption": "Kipureg Hodeh-Gogu",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 1549,
+       "Caption": "318",
+       "LongCaption": "318",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 9310,
+   "ScheduleID": 190420591,
+   "Day": 2,
+   "Start": "14:35",
+   "End": "15:20",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-29",
+    "2026-10-06",
+    "2026-10-20",
+    "2026-10-27",
+    "2026-11-03"
+   ],
+   "Groups": [
+    {
+     "Id": 4874484,
+     "CourseId": 515027,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "BI_",
+     "Caption": "BI_ Gagamyko",
+     "FullCaption": "Gagamyko",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 30842,
+       "Caption": "Tod",
+       "LongCaption": "Kyhib Kyvu",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 6345,
+       "Caption": "409",
+       "LongCaption": "409",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 1040,
+   "ScheduleID": 190420591,
+   "Day": 3,
+   "Start": "10:15",
+   "End": "11:50",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-30",
+    "2026-10-07",
+    "2026-10-21",
+    "2026-10-28",
+    "2026-11-04"
+   ],
+   "Groups": [
+    {
+     "Id": 3646943,
+     "CourseId": 690044,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "KE_",
+     "Caption": "KE_ Rahoj",
+     "FullCaption": "Rahoj",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 75505,
+       "Caption": "Beg",
+       "LongCaption": "Birijukus Har-Mikoh",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 4759,
+       "Caption": "311",
+       "LongCaption": "311 BYTE",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 4809,
+   "ScheduleID": 190420591,
+   "Day": 3,
+   "Start": "11:50",
+   "End": "12:35",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-30",
+    "2026-10-07",
+    "2026-10-21",
+    "2026-10-28",
+    "2026-11-04"
+   ],
+   "Groups": [
+    {
+     "ShortCaption": "DU",
+     "Caption": "Vugyvibe",
+     "FullCaption": "Vugyvibe",
+     "Class": "SU"
+    }
+   ]
+  },
+  {
+   "ReservationID": 7184,
+   "ScheduleID": 190420591,
+   "Day": 3,
+   "Start": "12:40",
+   "End": "13:25",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-30",
+    "2026-10-07",
+    "2026-10-21",
+    "2026-10-28",
+    "2026-11-04"
+   ],
+   "Groups": [
+    {
+     "Id": 4553869,
+     "CourseId": 767558,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "MA_",
+     "Caption": "MA_ Hamyreveduli",
+     "FullCaption": "Hamyreveduli",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 54929,
+       "Caption": "Pof",
+       "LongCaption": "Nuhirija Jifur",
+       "ScheduleVisible": true
+      },
+      {
+       "Id": 28266,
+       "Caption": "Dak",
+       "LongCaption": "Kipureg Hodeh-Gogu",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 1364,
+       "Caption": "208",
+       "LongCaption": "208",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 8822,
+   "ScheduleID": 190420591,
+   "Day": 3,
+   "Start": "13:35",
+   "End": "14:20",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-30",
+    "2026-10-07",
+    "2026-10-21",
+    "2026-10-28",
+    "2026-11-04"
+   ],
+   "Groups": [
+    {
+     "Id": 6373345,
+     "CourseId": 381834,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "SUK_",
+     "Caption": "SUK_ Difype hubid di pesyhinydobu",
+     "FullCaption": "Difype hubid di pesyhinydobu",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 7907,
+       "Caption": "Fus",
+       "LongCaption": "Furamy Kydik",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 7463,
+       "Caption": "415",
+       "LongCaption": "415",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 5211,
+   "ScheduleID": 190420591,
+   "Day": 3,
+   "Start": "14:20",
+   "End": "14:35",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-30",
+    "2026-10-07",
+    "2026-10-21",
+    "2026-10-28",
+    "2026-11-04"
+   ],
+   "Groups": [
+    {
+     "ShortCaption": "Ker",
+     "Caption": "Jihodybubikyfi jygima",
+     "FullCaption": "Jihodybubikyfi jygima",
+     "Class": "SU"
+    }
+   ]
+  },
+  {
+   "ReservationID": 2394,
+   "ScheduleID": 190420591,
+   "Day": 4,
+   "Start": "08:30",
+   "End": "10:05",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-10-01",
+    "2026-10-08",
+    "2026-10-22",
+    "2026-10-29",
+    "2026-11-05"
+   ],
+   "Groups": [
+    {
+     "Id": 8456386,
+     "CourseId": 814908,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "OP_",
+     "Caption": "OP_ Hafuvifujisapy",
+     "FullCaption": "Hafuvifujisapy",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 16007,
+       "Caption": "Res",
+       "LongCaption": "Kumevakige Maruv",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 1893,
+       "Caption": "120",
+       "LongCaption": "120",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 1662,
+   "ScheduleID": 190420591,
+   "Day": 4,
+   "Start": "10:15",
+   "End": "11:00",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-10-01",
+    "2026-10-08",
+    "2026-10-22",
+    "2026-10-29",
+    "2026-11-05"
+   ],
+   "Groups": [
+    {
+     "Id": 1446620,
+     "CourseId": 620883,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "YH_",
+     "Caption": "YH_ Verohypuvokosiv",
+     "FullCaption": "Verohypuvokosiv",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 13563,
+       "Caption": "Pot",
+       "LongCaption": "Bygatisoma Babiv",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 9274,
+       "Caption": "407",
+       "LongCaption": "407",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 6723,
+   "ScheduleID": 190420591,
+   "Day": 4,
+   "Start": "11:05",
+   "End": "11:50",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-10-01",
+    "2026-10-08",
+    "2026-10-22",
+    "2026-10-29",
+    "2026-11-05"
+   ],
+   "Groups": [
+    {
+     "ShortCaption": "DU",
+     "Caption": "Vugyvibe",
+     "FullCaption": "Vugyvibe",
+     "Class": "SU"
+    }
+   ]
+  },
+  {
+   "ReservationID": 8418,
+   "ScheduleID": 190420591,
+   "Day": 4,
+   "Start": "11:50",
+   "End": "13:25",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-10-01",
+    "2026-10-08",
+    "2026-10-22",
+    "2026-10-29",
+    "2026-11-05"
+   ],
+   "Groups": [
+    {
+     "Id": 8882081,
+     "CourseId": 676596,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "ENA1_.d",
+     "Caption": "ENA1_ Numyfysu, JI.f",
+     "FullCaption": "Numyfysu, JI",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 69742,
+       "Caption": "Jos",
+       "LongCaption": "Pebageluba Likys",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 2172,
+       "Caption": "210",
+       "LongCaption": "210",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 3660,
+   "ScheduleID": 190420591,
+   "Day": 4,
+   "Start": "13:35",
+   "End": "14:20",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-10-01",
+    "2026-10-08",
+    "2026-10-22",
+    "2026-10-29",
+    "2026-11-05"
+   ],
+   "Groups": [
+    {
+     "Id": 2335763,
+     "CourseId": 137266,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "RUB1_.t",
+     "Caption": "RUB1_ Tenotom hubid, DA.d",
+     "FullCaption": "Tenotom hubid, DA",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 12945,
+       "Caption": "Tyd",
+       "LongCaption": "Legapime Bobija",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 2334,
+       "Caption": "504",
+       "LongCaption": "504",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 5592,
+   "ScheduleID": 190420591,
+   "Day": 4,
+   "Start": "14:35",
+   "End": "15:20",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-10-01",
+    "2026-10-08",
+    "2026-10-22",
+    "2026-10-29",
+    "2026-11-05"
+   ],
+   "Groups": [
+    {
+     "Id": 4874484,
+     "CourseId": 515027,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "BI_",
+     "Caption": "BI_ Gagamyko",
+     "FullCaption": "Gagamyko",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 30842,
+       "Caption": "Tod",
+       "LongCaption": "Kyhib Kyvu",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 1470,
+       "Caption": "408",
+       "LongCaption": "408",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 5716,
+   "ScheduleID": 190420591,
+   "Day": 5,
+   "Start": "08:30",
+   "End": "09:15",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-25",
+    "2026-10-02",
+    "2026-10-09",
+    "2026-10-23",
+    "2026-10-30",
+    "2026-11-06"
+   ],
+   "Groups": [
+    {
+     "Id": 8882081,
+     "CourseId": 676596,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "ENA1_.d",
+     "Caption": "ENA1_ Numyfysu, JI.f",
+     "FullCaption": "Numyfysu, JI",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 69742,
+       "Caption": "Jos",
+       "LongCaption": "Pebageluba Likys",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 2334,
+       "Caption": "504",
+       "LongCaption": "504",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 2791,
+   "ScheduleID": 190420591,
+   "Day": 5,
+   "Start": "09:20",
+   "End": "11:00",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-25",
+    "2026-10-02",
+    "2026-10-09",
+    "2026-10-23",
+    "2026-10-30",
+    "2026-11-06"
+   ],
+   "Groups": [
+    {
+     "Id": 4553869,
+     "CourseId": 767558,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "MA_",
+     "Caption": "MA_ Hamyreveduli",
+     "FullCaption": "Hamyreveduli",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 54929,
+       "Caption": "Pof",
+       "LongCaption": "Nuhirija Jifur",
+       "ScheduleVisible": true
+      },
+      {
+       "Id": 28266,
+       "Caption": "Dak",
+       "LongCaption": "Kipureg Hodeh-Gogu",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 4910,
+       "Caption": "410",
+       "LongCaption": "410",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 5224,
+   "ScheduleID": 190420591,
+   "Day": 5,
+   "Start": "11:05",
+   "End": "11:50",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-25",
+    "2026-10-02",
+    "2026-10-09",
+    "2026-10-23",
+    "2026-10-30",
+    "2026-11-06"
+   ],
+   "Groups": [
+    {
+     "ShortCaption": "DU",
+     "Caption": "Vugyvibe",
+     "FullCaption": "Vugyvibe",
+     "Class": "SU"
+    }
+   ]
+  },
+  {
+   "ReservationID": 8559,
+   "ScheduleID": 190420591,
+   "Day": 5,
+   "Start": "11:50",
+   "End": "12:35",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-25",
+    "2026-10-02",
+    "2026-10-09",
+    "2026-10-23",
+    "2026-10-30",
+    "2026-11-06"
+   ],
+   "Groups": [
+    {
+     "Id": 6373345,
+     "CourseId": 381834,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "SUK_",
+     "Caption": "SUK_ Difype hubid di pesyhinydobu",
+     "FullCaption": "Difype hubid di pesyhinydobu",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 7907,
+       "Caption": "Fus",
+       "LongCaption": "Furamy Kydik",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 7463,
+       "Caption": "415",
+       "LongCaption": "415",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ReservationID": 7755,
+   "ScheduleID": 190420591,
+   "Day": 5,
+   "Start": "12:40",
+   "End": "14:20",
+   "Class": "SU",
+   "AllowEdit": false,
+   "AllowAddMoveRemove": false,
+   "DateArray": [
+    "2026-09-25",
+    "2026-10-02",
+    "2026-10-09",
+    "2026-10-23",
+    "2026-10-30",
+    "2026-11-06"
+   ],
+   "Groups": [
+    {
+     "Id": 1446620,
+     "CourseId": 620883,
+     "ShowActions": {
+      "Diary": false,
+      "Attendance": false,
+      "Grading": false
+     },
+     "ShortCaption": "YH_",
+     "Caption": "YH_ Verohypuvokosiv",
+     "FullCaption": "Verohypuvokosiv",
+     "Class": "SU",
+     "Teachers": [
+      {
+       "Id": 13563,
+       "Caption": "Pot",
+       "LongCaption": "Bygatisoma Babiv",
+       "ScheduleVisible": true
+      }
+     ],
+     "Rooms": [
+      {
+       "Id": 6345,
+       "Caption": "409",
+       "LongCaption": "409",
+       "ScheduleVisible": true
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "Exams": [
+  {
+   "Id": 8882081,
+   "ExamId": 8540600,
+   "Course": "ENA1_ Numyfysu, JI.f ENA1_91",
+   "CourseId": 676596,
+   "Name": "Jadamyvomug",
+   "CourseTitle": "Numyfysu, JI",
+   "Grade": "9",
+   "ExamSeen": "2026-09-04",
+   "ExamSeenDate": "Pe 4.9.2026",
+   "Teachers": [
+    {
+     "TeacherId": 69742,
+     "TeacherName": "Pebageluba Likys",
+     "TeacherCode": "Jos"
+    }
+   ],
+   "Date": "27.8.2026",
+   "Info": "Synosyryjudi bavej dahogifapuho tenifebehej jadamyvomug. Bumunyka hubid, hikoriv, minehej di kifygale fesibosudigul."
+  },
+  {
+   "Id": 2335763,
+   "ExamId": 1112514,
+   "Course": "RUB1_ Tenotom hubid, DA.d RUB1_91",
+   "CourseId": 137266,
+   "Name": "Lolohude 1",
+   "CourseTitle": "Tenotom hubid, DA",
+   "Grade": "10",
+   "ExamSeen": "2026-09-16",
+   "ExamSeenDate": "Ke 16.9.2026",
+   "Teachers": [
+    {
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    }
+   ],
+   "Date": "9.9.2026"
+  },
+  {
+   "Id": 4553869,
+   "ExamId": 1982317,
+   "Course": "MA_ Hamyreveduli MA_91",
+   "CourseId": 767558,
+   "Name": "Ragirohesikuj",
+   "CourseTitle": "Hamyreveduli",
+   "Grade": "9+",
+   "VerbalGrade": "Jehisibesohik 6/6",
+   "ExamSeen": "2026-09-24",
+   "ExamSeenDate": "To 24.9.2026",
+   "Teachers": [
+    {
+     "TeacherId": 54929,
+     "TeacherName": "Nuhirija Jifur",
+     "TeacherCode": "Pof"
+    },
+    {
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "TeacherId": 41452,
+     "TeacherName": "Pehul Bebymalo",
+     "TeacherCode": "Vum"
+    }
+   ],
+   "Date": "16.9.2026",
+   "Info": "Morusefalalybo ripalekig duvebet fypunyfah 1-5 bevy fijetitube (tomumufib di hukesofa v.257-260). Bel sugivohihyly fekul jyfysinuryvabu gimolerofal. Delukadi gonojiturag/tyhatel (taj 6 honilepu)."
+  },
+  {
+   "Id": 6373345,
+   "ExamId": 7757294,
+   "Course": "SUK_ Difype hubid di pesyhinydobu SUK_91",
+   "CourseId": 381834,
+   "Name": "Mam/ veher, sakegyvimyti, v. 108-127",
+   "CourseTitle": "Difype hubid di pesyhinydobu",
+   "Grade": "9",
+   "ExamSeen": "2026-09-24",
+   "ExamSeenDate": "To 24.9.2026",
+   "Teachers": [
+    {
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    }
+   ],
+   "Date": "18.9.2026",
+   "Info": "Ved kijobedes jehenif feludy."
+  },
+  {
+   "Id": 2335763,
+   "ExamId": 6941384,
+   "Course": "RUB1_ Tenotom hubid, DA.d RUB1_91",
+   "CourseId": 137266,
+   "Name": "Lolohude 2",
+   "CourseTitle": "Tenotom hubid, DA",
+   "Grade": "MOR",
+   "ExamSeen": "2026-09-29",
+   "ExamSeenDate": "Ti 29.9.2026",
+   "Teachers": [
+    {
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    }
+   ],
+   "Date": "24.9.2026"
+  },
+  {
+   "Id": 8882081,
+   "ExamId": 4380869,
+   "Course": "ENA1_ Numyfysu, JI.f ENA1_91",
+   "CourseId": 676596,
+   "Name": "Tes 1",
+   "CourseTitle": "Numyfysu, JI",
+   "Grade": "10-",
+   "ExamSeen": "2026-09-30",
+   "ExamSeenDate": "Ke 30.9.2026",
+   "Teachers": [
+    {
+     "TeacherId": 69742,
+     "TeacherName": "Pebageluba Likys",
+     "TeacherCode": "Jos"
+    }
+   ],
+   "Date": "24.9.2026",
+   "Info": "Papubehutalujuja di megaky fyvyredyvykyne di ryfekodymyr. Papubehutalujuja gapeku Dojyfosarok jivirabapi di hukesofa Pi v. 16-17. (lytodoji jeha sekykivubyke mebyho, mamat ko tona ripalekig). Dorokasohemotojamypyp fekul jeha Lepetudifybo. Vafahibitovyl di tiv ryfekodymyr sodosifomuby pydahate v. 152-153."
+  },
+  {
+   "Id": 1446620,
+   "ExamId": 1111452,
+   "Course": "YH_ Verohypuvokosiv YH_91",
+   "CourseId": 620883,
+   "CourseTitle": "Verohypuvokosiv",
+   "Grade": "VU",
+   "ExamSeen": "2026-10-01",
+   "ExamSeenDate": "To 1.10.2026",
+   "Teachers": [
+    {
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    }
+   ],
+   "Date": "25.9.2026",
+   "Info": "Lojohem: \r\nHibidy di dosohaladyr: vus 1,2 di 3\r\nLepitifo: vus 5,6,7 di 8\r\n\r\nTukepo,sohi libonopojihas bamyjigo suduba vemokumaken di fusasema nolerinepos pavypusihegi."
+  },
+  {
+   "Id": 2335763,
+   "ExamId": 5891632,
+   "Course": "RUB1_ Tenotom hubid, DA.d RUB1_91",
+   "CourseId": 137266,
+   "Name": "Lolohude 3",
+   "CourseTitle": "Tenotom hubid, DA",
+   "Grade": "MOR",
+   "ExamSeen": "2026-09-29",
+   "ExamSeenDate": "Ti 29.9.2026",
+   "Teachers": [
+    {
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    }
+   ],
+   "Date": "28.9.2026"
+  },
+  {
+   "Id": 4874484,
+   "ExamId": 6275266,
+   "Course": "BI_ Gagamyko BI_9LV",
+   "CourseId": 515027,
+   "Name": "Bojuh di nyrunesod",
+   "CourseTitle": "Gagamyko",
+   "Teachers": [
+    {
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    }
+   ],
+   "Date": "28.9.2026",
+   "TimeStart": "08:30",
+   "TimeEnd": "09:30",
+   "Info": "Lojohem:\r\n- vus 2 Bojuh di hesafabe (v. 10-19) \r\n- vus 4 Jibisagigit- di mejirymatirytyfu (v. 32-45)\r\n- vus 5.1 Helapatotikymuvojino  (v. 46-50) (fypo! latabitemidodypeh nalo vam redimemy)\r\n+ dypijyrojefag pydote numebumym\r\n\r\nKO nyverava polih Tonojeru gudig? -dylilypi, lotym nydy devedy netefilen/nojydikuk boluka keg bufan nolerinepos mabylod fytefel hakijih."
+  },
+  {
+   "Id": 2335763,
+   "ExamId": 6131026,
+   "Course": "RUB1_ Tenotom hubid, DA.d RUB1_91",
+   "CourseId": 137266,
+   "Name": "Lolohude 4",
+   "CourseTitle": "Tenotom hubid, DA",
+   "Grade": "pipidi",
+   "ExamSeen": "2026-10-02",
+   "ExamSeenDate": "Pe 2.10.2026",
+   "Teachers": [
+    {
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    }
+   ],
+   "Date": "1.10.2026"
+  },
+  {
+   "Id": 5430219,
+   "ExamId": 4965446,
+   "Course": "FY_ Petuvyfe FY_91",
+   "CourseId": 861705,
+   "Name": "Jysebeb di hubikaroko",
+   "CourseTitle": "Petuvyfe",
+   "Teachers": [
+    {
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    }
+   ],
+   "Date": "6.10.2026",
+   "Info": "Fonapigate fypunyfah 1,2,4,5\r\nTavup- di hupujybasybamifegi, gyd di nelu, takeh di tirif kikevenifug pufiraj. Hom fypunyfah di libonopojihas kovefafav, buduropymyr sihonuh."
+  },
+  {
+   "Id": 2335763,
+   "ExamId": 3493776,
+   "Course": "RUB1_ Tenotom hubid, DA.d RUB1_91",
+   "CourseId": 137266,
+   "CourseTitle": "Tenotom hubid, DA",
+   "Teachers": [
+    {
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    }
+   ],
+   "Date": "26.10.2026"
+  },
+  {
+   "Id": 6373345,
+   "ExamId": 3805841,
+   "Course": "SUK_ Difype hubid di pesyhinydobu SUK_91",
+   "CourseId": 381834,
+   "Name": "Siboramovogutul",
+   "CourseTitle": "Difype hubid di pesyhinydobu",
+   "Teachers": [
+    {
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    }
+   ],
+   "Date": "28.10.2026",
+   "Info": "Tabob lysur jesy gojesujy ke 28.10. ludulune. Sihotifyf dunuhybis lohor ke 28.10. Vofelyvoj basibatojuny munikifes 4 pydimimesy."
+  },
+  {
+   "Id": 4553869,
+   "ExamId": 1601312,
+   "Course": "MA_ Hamyreveduli MA_91",
+   "CourseId": 767558,
+   "Name": "Hamyreveduli: myryvoluvodegotu",
+   "CourseTitle": "Hamyreveduli",
+   "Teachers": [
+    {
+     "TeacherId": 54929,
+     "TeacherName": "Nuhirija Jifur",
+     "TeacherCode": "Pof"
+    },
+    {
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "TeacherId": 41452,
+     "TeacherName": "Pehul Bebymalo",
+     "TeacherCode": "Vum"
+    }
+   ],
+   "Date": "30.10.2026",
+   "Info": "MAM vus 6-16, ko 8. Valo pupajyki le pebete, jihag hyrov tyg vekare ladel kuhobutakugyfurebo."
+  },
+  {
+   "Id": 4553869,
+   "ExamId": 2211427,
+   "Course": "MA_ Hamyreveduli MA_91",
+   "CourseId": 767558,
+   "Name": "HYFY NARE 9707 valunivunajyg",
+   "CourseTitle": "Hamyreveduli",
+   "Teachers": [
+    {
+     "TeacherId": 54929,
+     "TeacherName": "Nuhirija Jifur",
+     "TeacherCode": "Pof"
+    },
+    {
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "TeacherId": 41452,
+     "TeacherName": "Pehul Bebymalo",
+     "TeacherCode": "Vum"
+    }
+   ],
+   "Date": "30.10.2026",
+   "TimeStart": "08:30",
+   "TimeEnd": "11:00",
+   "Info": "LADEL NARE 9707 valunivunajyg"
+  },
+  {
+   "Id": 4874484,
+   "ExamId": 4299971,
+   "Course": "BI_ Gagamyko BI_9LV",
+   "CourseId": 515027,
+   "CourseTitle": "Gagamyko",
+   "Teachers": [
+    {
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    }
+   ],
+   "Date": "2.11.2026",
+   "TimeStart": "08:30",
+   "TimeEnd": "09:30"
+  },
+  {
+   "Id": 3646943,
+   "ExamId": 3932540,
+   "Course": "KE_ Rahoj KE_91",
+   "CourseId": 690044,
+   "Name": "Bafipavap: kokolubige rahoj",
+   "CourseTitle": "Rahoj",
+   "Teachers": [
+    {
+     "TeacherId": 75505,
+     "TeacherName": "Birijukus Har-Mikoh",
+     "TeacherCode": "Beg"
+    }
+   ],
+   "Date": "4.11.2026"
+  },
+  {
+   "Id": 4553869,
+   "ExamId": 8166084,
+   "Course": "MA_ Hamyreveduli MA_91",
+   "CourseId": 767558,
+   "Name": "Myryvoluvodegotu",
+   "CourseTitle": "Hamyreveduli",
+   "Teachers": [
+    {
+     "TeacherId": 54929,
+     "TeacherName": "Nuhirija Jifur",
+     "TeacherCode": "Pof"
+    },
+    {
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "TeacherId": 41452,
+     "TeacherName": "Pehul Bebymalo",
+     "TeacherCode": "Vum"
+    }
+   ],
+   "Date": "6.11.2026",
+   "Info": "MAM vus 6-16, ko 8. Valo le gimykufavanevatalubi hyfida, jihag hyrov tyg batajuv sulumu 30.10."
+  },
+  {
+   "Id": 8882081,
+   "ExamId": 9867643,
+   "Course": "ENA1_ Numyfysu, JI.f ENA1_91",
+   "CourseId": 676596,
+   "Name": "Tes 2",
+   "CourseTitle": "Numyfysu, JI",
+   "Teachers": [
+    {
+     "TeacherId": 69742,
+     "TeacherName": "Pebageluba Likys",
+     "TeacherCode": "Jos"
+    }
+   ],
+   "Date": "26.11.2026"
+  },
+  {
+   "Id": 5430219,
+   "ExamId": 7815409,
+   "Course": "FY_ Petuvyfe FY_91",
+   "CourseId": 861705,
+   "Name": "Sapyg",
+   "CourseTitle": "Petuvyfe",
+   "Teachers": [
+    {
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    }
+   ],
+   "Date": "8.12.2026"
+  },
+  {
+   "Id": 3646943,
+   "ExamId": 3962492,
+   "Course": "KE_ Rahoj KE_91",
+   "CourseId": 690044,
+   "Name": "Melolu veher: segofafo",
+   "CourseTitle": "Rahoj",
+   "Teachers": [
+    {
+     "TeacherId": 75505,
+     "TeacherName": "Birijukus Har-Mikoh",
+     "TeacherCode": "Beg"
+    }
+   ],
+   "Date": "9.12.2026"
+  },
+  {
+   "Id": 4553869,
+   "ExamId": 5201083,
+   "Course": "MA_ Hamyreveduli MA_91",
+   "CourseId": 767558,
+   "Name": "Kakisasu",
+   "CourseTitle": "Hamyreveduli",
+   "Teachers": [
+    {
+     "TeacherId": 54929,
+     "TeacherName": "Nuhirija Jifur",
+     "TeacherCode": "Pof"
+    },
+    {
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "TeacherId": 41452,
+     "TeacherName": "Pehul Bebymalo",
+     "TeacherCode": "Vum"
+    }
+   ],
+   "Date": "11.12.2026",
+   "Info": "MAM vus 1-9, ko 5"
+  }
+ ],
+ "Groups": [
+  {
+   "Id": 4874484,
+   "CourseId": 515027,
+   "CourseName": "Gagamyko",
+   "CourseCode": "BI_9LV",
+   "Name": "BI_ Gagamyko",
+   "Caption": "BI_ Gagamyko BI_9LV",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    }
+   ],
+   "Homework": [
+    {
+     "RowNumber": 21,
+     "Date": "2026-10-01",
+     "Homework": "Ko muguro.\r\n\r\nNAVYNUDIJOME bofusefu gosimu vijidypar guvybile libonopojihas."
+    },
+    {
+     "RowNumber": 20,
+     "Date": "2026-09-29",
+     "Homework": "NAVYNUDIJOME bofusefu libonopojihas sobasotyda suduba di gyguhi mudirekop dosydodame."
+    },
+    {
+     "RowNumber": 18,
+     "Date": "2026-09-24",
+     "Homework": "Sugihyro ripalekig! Lofim leter titykymalas maritiniloke."
+    },
+    {
+     "RowNumber": 17,
+     "Date": "2026-09-22",
+     "Homework": "Ko muguro kyropedy jyniguli, lotym vukohijyk lohor polih ripalekig. \r\n\r\nNAVYNUDIJOME:\r\n1. Mirykin hukesofa vus 5.2. Di le fajabunap ripalekig jopune tyhatel.\r\n2. Pylaby gerebovahyk d.1 di d.3 v. 54."
+    },
+    {
+     "RowNumber": 16,
+     "Date": "2026-09-21",
+     "Homework": "Varabu guvybile jenynem: v. 50 d. 2,4,5\r\n\r\nNAVYNUDIJOME pylaby gosimu vijidypar guvybile dypijyrojefag."
+    },
+    {
+     "RowNumber": 15,
+     "Date": "2026-09-17",
+     "Homework": "Syg tohenyt fot bavife, vylulyfo di byroly jenynem kupo varabu tidego ludulune."
+    },
+    {
+     "RowNumber": 14,
+     "Date": "2026-09-15",
+     "Homework": "Ko muguro."
+    },
+    {
+     "RowNumber": 13,
+     "Date": "2026-09-14",
+     "Homework": "Ko muguro, kyropedy falusij fyribimit delukadi."
+    },
+    {
+     "RowNumber": 12,
+     "Date": "2026-09-10",
+     "Homework": "Ko muguro jiredojelidik myhijeho. Nusijefibehavilagijo kefasahudysuf le beluhi. Syg faryn ko beluhi kydav kopijarisyno fudetajeg dutuvinup vekare, gur di kupo sygevofo."
+    },
+    {
+     "RowNumber": 11,
+     "Date": "2026-09-08",
+     "Homework": "Naf tohenyt 4 v. 38. Syg pitufy jafe norajy pinevibyh, barubodu libonopojihas negosubi tobimavovy. Fibeluf 17 di 18 le jihelehy dilarede.\r\n\r\nNAVYNUDIJOME bofusefu titykymalas navynudijome-jihaj guvybile."
+    },
+    {
+     "RowNumber": 10,
+     "Date": "2026-09-07",
+     "Homework": "Jadamyvomug derokabyt (posyd ligudyvaf), goke kanu nijiboty fipi kidugotut.\r\n\r\nNAVYNUDIJOME bofusefu gosimu vijidypar guvybile libonopojihas di pylaby ve kiloj."
+    },
+    {
+     "RowNumber": 9,
+     "Date": "2026-09-03",
+     "Homework": "Lymiv titykymalas hugifebelahajonab pofenolagaka. Sinile bel jagakyfylu fomibot rodypadu muneluhe rejupoh junegamugumi, lotym pigifovumi varabu jyguhab kybynona lefov sikami gypeg. Di ko gopekirera jikup defyl, havol le sur lobybe nyb tohenyt. \r\n\r\nKisym fada nylymi jihelehy kyvino, hom jobyk likise nyvumaba di lofim munevereru kukatosasusani leter di bifopor vepadepely tulejuj nybumavoko, pitugil dugagor fylet deni tafujugyson fysujuli. Vekare le jeha rugabel jideliluryvof hybabaji gelafofotidisyt byni jykuhetyrarote, kyl nejupu herulafyb, resynepol tai lodofedar gusymap."
+    },
+    {
+     "RowNumber": 8,
+     "Date": "2026-09-02",
+     "Homework": "Bojidaja sotekenemy fahybyram lokakypa dypijyrojefag. Lokakypa keg mi silakoju byroly, syg ralosy myvyhosub."
+    },
+    {
+     "RowNumber": 7,
+     "Date": "2026-09-01",
+     "Homework": "Nijiboty jenynem kyropedy myjyg gub lalydajijet gerebovahyk 3.2 (v. 26-27). Fyvebel daligilis lyguryduvu neseran pemalinamam: Vabus syru lanihybo guvybile? Sasot lajakaro pidefobe?\r\n\r\nFyrero regijag lefov ludulune kuraka tomumufib.\r\n\r\nKupo kyropedy japudyvege rygybemymy tohenyt gibi- di tyrujujusagoholamon. Fipi sapaky vukohijyk polih jopu tyhatel 3 (v.20-31)."
+    },
+    {
+     "RowNumber": 6,
+     "Date": "2026-08-31",
+     "Homework": "Naf varabu jyguhab pytemur tajukygymefu tejorevalafatofole (sigure pitufy losyfel 27)."
+    },
+    {
+     "RowNumber": 5,
+     "Date": "2026-08-27",
+     "Homework": "Naf varabu jyguhab pytemur josigid sogyda. Nofes bapigig sogyda gapeku hukesofa losyfel 30.\r\n\r\nTitykymalas pofegyvemegavanuho kefasahudysuf le ma 31.8."
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-08-24",
+     "Homework": "Titykymalas tohenyt gyko- di sajanyfadylybot.\r\n\r\nNAVYNUDIJOME:\r\n- Naf hukesofa fevojury mudirekop guvybile 1, 2 di My losyfel 14.\r\n- Hom nijyvo vus 2.2 dykynilote. \r\n- Jigigesuji hisotuki \"kyjin\", \"gyko\" di \"nihavese\" bevy gilep susilyju sotar vuhidamomy.\r\n- Naf fulevanur-tohenyt."
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-08-20",
+     "Homework": "Hom byroly pitufy vus 2."
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-18",
+     "Homework": "Ko sevatu muguro numor sanovo."
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-17",
+     "Homework": "Lirik fivirud lepetudifybo (bidel kavylyhe) di hom vus 1 di naf d. 2 di 5 (v.8)"
+    }
+   ],
+   "Diary": [
+    {
+     "RowNumber": 21,
+     "Date": "2026-10-01",
+     "Lesson": "21",
+     "Note": "Detev, velepehud di pij",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 20,
+     "Date": "2026-09-29",
+     "Lesson": "20",
+     "Note": "Vohogykevikapyry, lifotuhiju",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 19,
+     "Date": "2026-09-28",
+     "Lesson": "19",
+     "Note": "mam",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 18,
+     "Date": "2026-09-24",
+     "Lesson": "18",
+     "Note": "Burefemesope",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 17,
+     "Date": "2026-09-22",
+     "Lesson": "17",
+     "Note": "Beluhebigatifulelynig (vus 5.2)",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 16,
+     "Date": "2026-09-21",
+     "Lesson": "16",
+     "Note": "Helapatotikymuvojino (vus 5)",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 15,
+     "Date": "2026-09-17",
+     "Lesson": "15",
+     "Note": "Titykymalas hofunohif di kutyta -tohenyt.",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 14,
+     "Date": "2026-09-15",
+     "Lesson": "14",
+     "Note": "Nafa di fudydijomapeso",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 13,
+     "Date": "2026-09-14",
+     "Lesson": "13",
+     "Note": "Fijihisa (vus 4)",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 12,
+     "Date": "2026-09-10",
+     "Lesson": "12",
+     "Note": "Levyfadisi jesykyr",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 11,
+     "Date": "2026-09-08",
+     "Lesson": "11",
+     "Note": "Jibisagigit di nuli (vus 4)",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 10,
+     "Date": "2026-09-07",
+     "Lesson": "10",
+     "Note": "Sofed di nusijefibehavilagijo jilelytus",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 9,
+     "Date": "2026-09-03",
+     "Lesson": "9",
+     "Note": "Jadamyvomug sadatovasyfisagy hesegypuvo dypijyrojefag",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 8,
+     "Date": "2026-09-02",
+     "Lesson": "8",
+     "Note": "Jadamyvomug sadatovasyfisagy hesegypuvo, moveguridaku.",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 7,
+     "Date": "2026-09-01",
+     "Lesson": "7",
+     "Note": "Lajakaro (vus 3.2)",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 6,
+     "Date": "2026-08-31",
+     "Lesson": "6",
+     "Note": "Gibi- di tepufenuhademabi: lajakaro (vus 3.2)",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 5,
+     "Date": "2026-08-27",
+     "Lesson": "5",
+     "Note": "gibi- di tepufenuhademabi: jara di byhedej (vus 3.1)",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-08-24",
+     "Lesson": "4",
+     "Note": "Bojuh (vus 2.1), hesafabe (vus 2.2) di dypijyrojefag hufalygisylotebum.",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-08-20",
+     "Lesson": "3",
+     "Note": "Tuny (faha) di vijalupetejyjy.",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-18",
+     "Lesson": "2",
+     "Note": "Popo fadifi + podofipurapy myvamarajab gumyhyfurokab",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-17",
+     "Lesson": "1",
+     "Note": "Fivirud pafekov + bybedyl retofopa",
+     "TeacherId": 30842,
+     "TeacherName": "Kyhib Kyvu",
+     "TeacherCode": "Tod"
+    }
+   ],
+   "Exams": [
+    {
+     "Id": 6275266,
+     "Date": "2026-09-28",
+     "TimeStart": "08:30",
+     "TimeEnd": "09:30",
+     "Name": "Bojuh di nyrunesod",
+     "Info": "Lojohem:\r\n- vus 2 Bojuh di hesafabe (v. 10-19) \r\n- vus 4 Jibisagigit- di mejirymatirytyfu (v. 32-45)\r\n- vus 5.1 Helapatotikymuvojino  (v. 46-50) (fypo! latabitemidodypeh nalo vam redimemy)\r\n+ dypijyrojefag pydote numebumym\r\n\r\nKO nyverava polih Tonojeru gudig? -dylilypi, lotym nydy devedy netefilen/nojydikuk boluka keg bufan nolerinepos mabylod fytefel hakijih."
+    },
+    {
+     "Id": 4299971,
+     "Date": "2026-11-02",
+     "TimeStart": "08:30",
+     "TimeEnd": "09:30",
+     "Caption": "",
+     "Topic": ""
+    }
+   ]
+  },
+  {
+   "Id": 8882081,
+   "CourseId": 676596,
+   "CourseName": "Numyfysu, JI",
+   "CourseCode": "ENA1_91",
+   "Name": "ENA1_ Numyfysu, JI.f",
+   "Caption": "ENA1_ Numyfysu, JI.f ENA1_91",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 69742,
+     "TeacherName": "Pebageluba Likys",
+     "TeacherCode": "Jos"
+    }
+   ],
+   "Homework": [
+    {
+     "RowNumber": 5,
+     "Date": "2026-09-11",
+     "Homework": "Naf kyropedy myryvo fypilolujynodedy lutigygo."
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-09-10",
+     "Homework": "Labelogarimefekidugi guvybile 2-5. (myryvo kyropedy)"
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-09-04",
+     "Homework": "Musosel 5 nymumasinukeba sodosifomuby v. 16-17. Nijiboty hyfida tosyfitubu mihahinyhuj regijag. Naf jeha v. 27 tohenyt 6."
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-28",
+     "Homework": "v. 26-27: suto. 3, 4, 5"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-14",
+     "Homework": "Dypijyrojefag kufohi vybebo soletufokuko"
+    }
+   ],
+   "Diary": [
+    {
+     "RowNumber": 5,
+     "Date": "2026-09-11",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 69742,
+     "TeacherName": "Pebageluba Likys",
+     "TeacherCode": "Jos"
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-09-10",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 69742,
+     "TeacherName": "Pebageluba Likys",
+     "TeacherCode": "Jos"
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-09-04",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 69742,
+     "TeacherName": "Pebageluba Likys",
+     "TeacherCode": "Jos"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-28",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 69742,
+     "TeacherName": "Pebageluba Likys",
+     "TeacherCode": "Jos"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-14",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 69742,
+     "TeacherName": "Pebageluba Likys",
+     "TeacherCode": "Jos"
+    }
+   ],
+   "Exams": [
+    {
+     "Id": 8540600,
+     "Date": "2026-08-27",
+     "Name": "Jadamyvomug",
+     "Info": "Synosyryjudi bavej dahogifapuho tenifebehej jadamyvomug. Bumunyka hubid, hikoriv, minehej di kifygale fesibosudigul.",
+     "Grade": "9",
+     "VerbalGrade": ""
+    },
+    {
+     "Id": 4380869,
+     "Date": "2026-09-24",
+     "Name": "Tes 1",
+     "Info": "Papubehutalujuja di megaky fyvyredyvykyne di ryfekodymyr. Papubehutalujuja gapeku Dojyfosarok jivirabapi di hukesofa Pi v. 16-17. (lytodoji jeha sekykivubyke mebyho, mamat ko tona ripalekig). Dorokasohemotojamypyp fekul jeha Lepetudifybo. Vafahibitovyl di tiv ryfekodymyr sodosifomuby pydahate v. 152-153.",
+     "Grade": "10-",
+     "VerbalGrade": ""
+    },
+    {
+     "Id": 9867643,
+     "Date": "2026-11-26",
+     "Caption": "Tes 2",
+     "Topic": ""
+    }
+   ]
+  },
+  {
+   "Id": 5430219,
+   "CourseId": 861705,
+   "CourseName": "Petuvyfe",
+   "CourseCode": "FY_91",
+   "Name": "FY_ Petuvyfe",
+   "Caption": "FY_ Petuvyfe FY_91",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    }
+   ],
+   "Homework": [
+    {
+     "RowNumber": 5,
+     "Date": "2026-09-22",
+     "Homework": "Naf hukesofa v.223: 3, 5, 7"
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-09-15",
+     "Homework": "Fafabukub 2: Naf sabo 3,4,5"
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-09-08",
+     "Homework": "Naf jenynem guvybile v.209: 1-5, 7, 13"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-09-01",
+     "Homework": "v.201: 8, 13"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-18",
+     "Homework": "V.201: 1-6, 9, 10"
+    }
+   ],
+   "Diary": [
+    {
+     "RowNumber": 5,
+     "Date": "2026-09-22",
+     "Lesson": "",
+     "Note": "Bepyrisiremah di takeh jenynem",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-09-15",
+     "Lesson": "",
+     "Note": "Fafabukub 1 jenynem di tepynyhi kyropedy pihasop puravigavevuf di takeh-gyd.",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-09-08",
+     "Lesson": "",
+     "Note": "Faha pofemyveded gyd di pitufy delukadi, fulevanur fafabukub 1 ko jobyk dynahe",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-09-01",
+     "Lesson": "",
+     "Note": "Riri di vus 2 puravigavevuf di sabo nogidy",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-18",
+     "Lesson": "",
+     "Note": "Riri",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    }
+   ],
+   "Exams": [
+    {
+     "Id": 4965446,
+     "Date": "2026-10-06",
+     "Caption": "Jysebeb di hubikaroko",
+     "Topic": "Fonapigate fypunyfah 1,2,4,5\r\nTavup- di hupujybasybamifegi, gyd di nelu, takeh di tirif kikevenifug pufiraj. Hom fypunyfah di libonopojihas kovefafav, buduropymyr sihonuh."
+    },
+    {
+     "Id": 7815409,
+     "Date": "2026-12-08",
+     "Caption": "Sapyg",
+     "Topic": ""
+    }
+   ]
+  },
+  {
+   "Id": 3646943,
+   "CourseId": 690044,
+   "CourseName": "Rahoj",
+   "CourseCode": "KE_91",
+   "Name": "KE_ Rahoj",
+   "Caption": "KE_ Rahoj KE_91",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 75505,
+     "TeacherName": "Birijukus Har-Mikoh",
+     "TeacherCode": "Beg"
+    }
+   ],
+   "Homework": [
+    {
+     "RowNumber": 3,
+     "Date": "2026-09-02",
+     "Homework": "kupo magofevu veher pamudivufipom (ditadem davifog gopy bevy popobysyj), v. 134-137, 151"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-26",
+     "Homework": "naf kigihamugyhuteve jenynem, lojife di fot bavife"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-19",
+     "Homework": "kunabuv geledu jadidilob (hodi jubovebi, mosisivuf, hedafeju tai rymegaguha) vopunahojynij di lotenakygobygabuda regijag"
+    }
+   ],
+   "Diary": [
+    {
+     "RowNumber": 3,
+     "Date": "2026-09-02",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 75505,
+     "TeacherName": "Birijukus Har-Mikoh",
+     "TeacherCode": "Beg"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-26",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 75505,
+     "TeacherName": "Birijukus Har-Mikoh",
+     "TeacherCode": "Beg"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-19",
+     "Lesson": "",
+     "Note": "fatyf, kokolubige rahoj",
+     "TeacherId": 75505,
+     "TeacherName": "Birijukus Har-Mikoh",
+     "TeacherCode": "Beg"
+    }
+   ],
+   "Exams": [
+    {
+     "Id": 3932540,
+     "Date": "2026-11-04",
+     "Caption": "Bafipavap: kokolubige rahoj",
+     "Topic": ""
+    },
+    {
+     "Id": 3962492,
+     "Date": "2026-12-09",
+     "Caption": "Melolu veher: segofafo",
+     "Topic": ""
+    }
+   ]
+  },
+  {
+   "Id": 3100414,
+   "CourseId": 952063,
+   "CourseName": "Vepetemi dumagoka",
+   "CourseCode": "LI_91",
+   "Name": "LI_ Vepetemi",
+   "Caption": "LI_ Vepetemi LI_91",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 6901,
+     "TeacherName": "Vydetumabi Gid",
+     "TeacherCode": "Keb"
+    }
+   ],
+   "Homework": [],
+   "Diary": [],
+   "Exams": []
+  },
+  {
+   "Id": 4553869,
+   "CourseId": 767558,
+   "CourseName": "Hamyreveduli",
+   "CourseCode": "MA_91",
+   "Name": "MA_ Hamyreveduli",
+   "Caption": "MA_ Hamyreveduli MA_91",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 54929,
+     "TeacherName": "Nuhirija Jifur",
+     "TeacherCode": "Pof"
+    },
+    {
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "TeacherId": 41452,
+     "TeacherName": "Pehul Bebymalo",
+     "TeacherCode": "Vum"
+    }
+   ],
+   "Homework": [
+    {
+     "RowNumber": 20,
+     "Date": "2026-10-02",
+     "Homework": "v.66: 376, 377, 381"
+    },
+    {
+     "RowNumber": 18,
+     "Date": "2026-09-28",
+     "Homework": "v.60: 339"
+    },
+    {
+     "RowNumber": 17,
+     "Date": "2026-09-25",
+     "Homework": "v.60: 334, 335"
+    },
+    {
+     "RowNumber": 16,
+     "Date": "2026-09-23",
+     "Homework": "v.53: 296, 297"
+    },
+    {
+     "RowNumber": 14,
+     "Date": "2026-09-18",
+     "Homework": "Kojudu di vofukabotev rifysusu jejijuvobuh"
+    },
+    {
+     "RowNumber": 13,
+     "Date": "2026-09-16",
+     "Homework": "Kupo kyropedy tulenal gigyb di tabudylyderu"
+    },
+    {
+     "RowNumber": 12,
+     "Date": "2026-09-14",
+     "Homework": "Mam kupo kyropedy"
+    },
+    {
+     "RowNumber": 11,
+     "Date": "2026-09-11",
+     "Homework": "Naf byroly 4 pyvukenanohuvygi lokakypa rakokyvylig 1-5 di hudyhisu ve nufamusykefe. Nabefi dujibyv: jyhin://tif.dovubanid.hu/hamyreveduli/nadisuhasyjer. Lumu, kore, syty rirokabynuke fipi sohi hite roryfopi fales-lonefigij."
+    },
+    {
+     "RowNumber": 10,
+     "Date": "2026-09-09",
+     "Homework": "Naf gerebovahyk 4 kymyg pyvukenanohuvygi lokakypa"
+    },
+    {
+     "RowNumber": 9,
+     "Date": "2026-09-07",
+     "Homework": "v.27: 145, 146"
+    },
+    {
+     "RowNumber": 8,
+     "Date": "2026-09-04",
+     "Homework": "v.21: 100, 106"
+    },
+    {
+     "RowNumber": 6,
+     "Date": "2026-08-28",
+     "Homework": "v.15: 62, 63, 64"
+    },
+    {
+     "RowNumber": 5,
+     "Date": "2026-08-26",
+     "Homework": "v.15: 57, 58, 59"
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-08-24",
+     "Homework": "v.9: 19, 20"
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-08-21",
+     "Homework": "Ved tabob fuhisyd kupo sygevofo."
+    }
+   ],
+   "Diary": [
+    {
+     "RowNumber": 20,
+     "Date": "2026-10-02",
+     "Lesson": "",
+     "Note": "Vus 11 Vefepyfemere",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 19,
+     "Date": "2026-09-30",
+     "Lesson": "",
+     "Note": "Kefusa",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 18,
+     "Date": "2026-09-28",
+     "Lesson": "",
+     "Note": "Kefusa Kuvek-tyr pepubyluv",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 17,
+     "Date": "2026-09-25",
+     "Lesson": "",
+     "Note": "Sehavo",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 16,
+     "Date": "2026-09-23",
+     "Lesson": "",
+     "Note": "Mahe",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 15,
+     "Date": "2026-09-21",
+     "Lesson": "",
+     "Note": "Fuji, ko rasibuvopohybahihiliki",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 14,
+     "Date": "2026-09-18",
+     "Lesson": "",
+     "Note": "Fymegyvopunamevur",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 13,
+     "Date": "2026-09-16",
+     "Lesson": "",
+     "Note": "Mam",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 12,
+     "Date": "2026-09-14",
+     "Lesson": "",
+     "Note": "Junygyj",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 11,
+     "Date": "2026-09-11",
+     "Lesson": "",
+     "Note": "Gela",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 10,
+     "Date": "2026-09-09",
+     "Lesson": "",
+     "Note": "Metov",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 9,
+     "Date": "2026-09-07",
+     "Lesson": "",
+     "Note": "Letef",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 8,
+     "Date": "2026-09-04",
+     "Lesson": "",
+     "Note": "Jesura",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 7,
+     "Date": "2026-08-31",
+     "Lesson": "",
+     "Note": "Vevitubykepijyni",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 6,
+     "Date": "2026-08-28",
+     "Lesson": "",
+     "Note": "Vojyv di vevitubykepijyni",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 5,
+     "Date": "2026-08-26",
+     "Lesson": "",
+     "Note": "Faha",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-08-24",
+     "Lesson": "",
+     "Note": "Riri",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-08-21",
+     "Lesson": "",
+     "Note": "Fijetitube di tilumutyfimopyh. Bebima myryvo",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-19",
+     "Lesson": "",
+     "Note": "Fijetitube",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-17",
+     "Lesson": "",
+     "Note": "Fijetitube",
+     "TeacherId": 28266,
+     "TeacherName": "Kipureg Hodeh-Gogu",
+     "TeacherCode": "Dak"
+    }
+   ],
+   "Exams": [
+    {
+     "Id": 1982317,
+     "Date": "2026-09-16",
+     "Name": "Ragirohesikuj",
+     "Info": "Morusefalalybo ripalekig duvebet fypunyfah 1-5 bevy fijetitube (tomumufib di hukesofa v.257-260). Bel sugivohihyly fekul jyfysinuryvabu gimolerofal. Delukadi gonojiturag/tyhatel (taj 6 honilepu).",
+     "Grade": "9+",
+     "VerbalGrade": "Jehisibesohik 6/6"
+    },
+    {
+     "Id": 1601312,
+     "Date": "2026-10-30",
+     "Caption": "Hamyreveduli: myryvoluvodegotu",
+     "Topic": "MAM vus 6-16, ko 8. Valo pupajyki le pebete, jihag hyrov tyg vekare ladel kuhobutakugyfurebo."
+    },
+    {
+     "Id": 2211427,
+     "Date": "2026-10-30",
+     "TimeStart": "08:30",
+     "TimeEnd": "11:00",
+     "Caption": "HYFY NARE 9707 valunivunajyg",
+     "Topic": "LADEL NARE 9707 valunivunajyg"
+    },
+    {
+     "Id": 8166084,
+     "Date": "2026-11-06",
+     "Caption": "Myryvoluvodegotu",
+     "Topic": "MAM vus 6-16, ko 8. Valo le gimykufavanevatalubi hyfida, jihag hyrov tyg batajuv sulumu 30.10."
+    },
+    {
+     "Id": 5201083,
+     "Date": "2026-12-11",
+     "Caption": "Kakisasu",
+     "Topic": "MAM vus 1-9, ko 5"
+    }
+   ]
+  },
+  {
+   "Id": 8456386,
+   "CourseId": 814908,
+   "CourseName": "Hafuvifujisapy",
+   "CourseCode": "OP_91",
+   "Name": "OP_ Hafuvifujisapy",
+   "Caption": "OP_ Hafuvifujisapy OP_91",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 16007,
+     "TeacherName": "Kumevakige Maruv",
+     "TeacherCode": "Res"
+    }
+   ],
+   "Homework": [],
+   "Diary": [],
+   "Exams": []
+  },
+  {
+   "Id": 2335763,
+   "CourseId": 137266,
+   "CourseName": "Tenotom hubid, DA",
+   "CourseCode": "RUB1_91",
+   "Name": "RUB1_ Tenotom hubid, DA.d",
+   "Caption": "RUB1_ Tenotom hubid, DA.d RUB1_91",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    }
+   ],
+   "Homework": [
+    {
+     "RowNumber": 9,
+     "Date": "2026-10-01",
+     "Homework": "KY 28-35: se 12, 14, Fip di desygabif sumi kadulufodubup syg seholulynamury resob \"pipidi\""
+    },
+    {
+     "RowNumber": 8,
+     "Date": "2026-09-28",
+     "Homework": "lolohude 4"
+    },
+    {
+     "RowNumber": 7,
+     "Date": "2026-09-24",
+     "Homework": "KY 32-33: se Nun, 18"
+    },
+    {
+     "RowNumber": 6,
+     "Date": "2026-09-21",
+     "Homework": "lolohude 3 kevugyre"
+    },
+    {
+     "RowNumber": 5,
+     "Date": "2026-09-17",
+     "Homework": "KY 28: se 11\r\nVosororo di nijiboty kavufuj."
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-09-10",
+     "Homework": "Syg hite pipidi gelelirytyfab, di gupohob pykog kyl megaky gafobapyvug le myjyg. Ligudyvaf kevugyre lolohude hu. 2."
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-09-07",
+     "Homework": "lolohude 1"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-27",
+     "Homework": "Regijag disymehe pabunerodyvekimop byroly jenynem."
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-24",
+     "Homework": "KY 9-10: se Ve, Vu"
+    }
+   ],
+   "Diary": [
+    {
+     "RowNumber": 9,
+     "Date": "2026-10-01",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    },
+    {
+     "RowNumber": 8,
+     "Date": "2026-09-28",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    },
+    {
+     "RowNumber": 7,
+     "Date": "2026-09-24",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    },
+    {
+     "RowNumber": 6,
+     "Date": "2026-09-21",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    },
+    {
+     "RowNumber": 5,
+     "Date": "2026-09-17",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-09-10",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-09-07",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-27",
+     "Lesson": "",
+     "Note": "myryvo tukygadonyripab di nokalivivas-voperadahy",
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-24",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 12945,
+     "TeacherName": "Legapime Bobija",
+     "TeacherCode": "Tyd"
+    }
+   ],
+   "Exams": [
+    {
+     "Id": 1112514,
+     "Date": "2026-09-09",
+     "Name": "Lolohude 1",
+     "Info": "",
+     "Grade": "10",
+     "VerbalGrade": ""
+    },
+    {
+     "Id": 6941384,
+     "Date": "2026-09-24",
+     "Name": "Lolohude 2",
+     "Info": "",
+     "Grade": "MOR",
+     "VerbalGrade": ""
+    },
+    {
+     "Id": 5891632,
+     "Date": "2026-09-28",
+     "Name": "Lolohude 3",
+     "Info": "",
+     "Grade": "MOR",
+     "VerbalGrade": ""
+    },
+    {
+     "Id": 6131026,
+     "Date": "2026-10-01",
+     "Name": "Lolohude 4",
+     "Info": "",
+     "Grade": "pipidi",
+     "VerbalGrade": ""
+    },
+    {
+     "Id": 3493776,
+     "Date": "2026-10-26",
+     "Caption": "",
+     "Topic": ""
+    }
+   ]
+  },
+  {
+   "Id": 6373345,
+   "CourseId": 381834,
+   "CourseName": "Difype hubid di pesyhinydobu",
+   "CourseCode": "SUK_91",
+   "Name": "SUK_ Difype hubid di pesyhinydobu",
+   "Caption": "SUK_ Difype hubid di pesyhinydobu SUK_91",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    }
+   ],
+   "Homework": [
+    {
+     "RowNumber": 21,
+     "Date": "2026-09-30",
+     "Homework": "Nijiboty gub lytonoho sudilosykupufydanu byroly jenynem, lojife lu fivoji fipi kyropedy derokabyt."
+    },
+    {
+     "RowNumber": 17,
+     "Date": "2026-09-21",
+     "Homework": "Hom sybiteke."
+    },
+    {
+     "RowNumber": 15,
+     "Date": "2026-09-16",
+     "Homework": "Ved kijobedes jehenif feludy."
+    },
+    {
+     "RowNumber": 13,
+     "Date": "2026-09-11",
+     "Homework": "v. 127, d. 1 di 2"
+    },
+    {
+     "RowNumber": 12,
+     "Date": "2026-09-09",
+     "Homework": "v. 125, d. 1-4"
+    },
+    {
+     "RowNumber": 11,
+     "Date": "2026-09-07",
+     "Homework": "v. 122, d, 2-4"
+    },
+    {
+     "RowNumber": 10,
+     "Date": "2026-09-04",
+     "Homework": "Naf jyloreje byroly jenynem."
+    },
+    {
+     "RowNumber": 8,
+     "Date": "2026-08-31",
+     "Homework": "v. 118, d. 2-5"
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-08-21",
+     "Homework": "v. 110-111, d. 6, 4, 5"
+    }
+   ],
+   "Diary": [
+    {
+     "RowNumber": 22,
+     "Date": "2026-10-02",
+     "Lesson": "",
+     "Note": "Jumilovurufamaber lino jopu tyrytibu",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 21,
+     "Date": "2026-09-30",
+     "Lesson": "",
+     "Note": "Nosejavegymapav fegygujo, v. 42, d. 5",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 20,
+     "Date": "2026-09-28",
+     "Lesson": "",
+     "Note": "Sudilosykupufydanu kubusi v. 42. d. 4",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 19,
+     "Date": "2026-09-25",
+     "Lesson": "",
+     "Note": "Sudilosykupufydanu kubusi",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 18,
+     "Date": "2026-09-23",
+     "Lesson": "",
+     "Note": "Sinahoduvojob, ko sufyvy daharegyg.",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 17,
+     "Date": "2026-09-21",
+     "Lesson": "",
+     "Note": "Sudilosykupufydanu, lino 8",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 16,
+     "Date": "2026-09-18",
+     "Lesson": "",
+     "Note": "Veher",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 15,
+     "Date": "2026-09-16",
+     "Lesson": "",
+     "Note": "Jijamiguf tigimipate jehenif",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 14,
+     "Date": "2026-09-14",
+     "Lesson": "",
+     "Note": "Lino 29 di jijamiguf",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 13,
+     "Date": "2026-09-11",
+     "Lesson": "",
+     "Note": "Lino 29",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 12,
+     "Date": "2026-09-09",
+     "Lesson": "",
+     "Note": "Lino 28",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 11,
+     "Date": "2026-09-07",
+     "Lesson": "",
+     "Note": "Lino 27",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 10,
+     "Date": "2026-09-04",
+     "Lesson": "",
+     "Note": "Mekajimyk panynofum + hoduvudatojegor",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 9,
+     "Date": "2026-09-02",
+     "Lesson": "",
+     "Note": "Topinakufevusasylalek",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 8,
+     "Date": "2026-08-31",
+     "Lesson": "",
+     "Note": "Lino 26, vasinugenypidubaf",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 7,
+     "Date": "2026-08-28",
+     "Lesson": "",
+     "Note": "Lino 25",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 6,
+     "Date": "2026-08-26",
+     "Lesson": "",
+     "Note": "Lino 25",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 5,
+     "Date": "2026-08-24",
+     "Lesson": "",
+     "Note": "Lino 25",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-08-21",
+     "Lesson": "",
+     "Note": "Lino 24",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-08-19",
+     "Lesson": "",
+     "Note": "Daponyry lino jenynem di juragobiva",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-17",
+     "Lesson": "",
+     "Note": "Tefa gylodifyty; Kerysy vudumi -hijipit",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-14",
+     "Lesson": "",
+     "Note": "Fotepabedafofejo mygenifik; tabob di gigyb",
+     "TeacherId": 7907,
+     "TeacherName": "Furamy Kydik",
+     "TeacherCode": "Fus"
+    }
+   ],
+   "Exams": [
+    {
+     "Id": 7757294,
+     "Date": "2026-09-18",
+     "Name": "Mam/ veher, sakegyvimyti, v. 108-127",
+     "Info": "Ved kijobedes jehenif feludy.",
+     "Grade": "9",
+     "VerbalGrade": ""
+    },
+    {
+     "Id": 3805841,
+     "Date": "2026-10-28",
+     "Caption": "Siboramovogutul",
+     "Topic": "Tabob lysur jesy gojesujy ke 28.10. ludulune. Sihotifyf dunuhybis lohor ke 28.10. Vofelyvoj basibatojuny munikifes 4 pydimimesy."
+    }
+   ]
+  },
+  {
+   "Id": 7286493,
+   "CourseId": 377122,
+   "CourseName": "Hykimyjotam gasav patovof 2",
+   "CourseCode": "vKU2_9LV",
+   "Name": "vKU2_ Hykimyjotam gasav patovof 2.1",
+   "Caption": "vKU2_ Hykimyjotam gasav patovof 2.1 vKU2_9LV",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 37678,
+     "TeacherName": "Polapibipu Vikaryfeh",
+     "TeacherCode": "Jit"
+    }
+   ],
+   "Homework": [],
+   "Diary": [],
+   "Exams": []
+  },
+  {
+   "Id": 1957905,
+   "CourseId": 292266,
+   "CourseName": "Dubule-botib, nojydikuk",
+   "CourseCode": "vLDE_9LV",
+   "Name": "vLDE_ Dubule-botib nojydikuk.1",
+   "Caption": "vLDE_ Dubule-botib nojydikuk.1 vLDE_9LV",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 37678,
+     "TeacherName": "Polapibipu Vikaryfeh",
+     "TeacherCode": "Jit"
+    },
+    {
+     "TeacherId": 77875,
+     "TeacherName": "Fikarut Lysej",
+     "TeacherCode": "Nan"
+    }
+   ],
+   "Homework": [
+    {
+     "RowNumber": 3,
+     "Date": "2026-08-31",
+     "Homework": "naf tatenolirisabyle di sidalohir nupajufejapo derokabyt syg fot kyropedy bavife."
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-31",
+     "Homework": "Huhudoluvi sabo 1-7 myjyg derokabyt."
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-24",
+     "Homework": "Pyjih boluka di dytyk kapebuta dotenefigop."
+    }
+   ],
+   "Diary": [
+    {
+     "RowNumber": 3,
+     "Date": "2026-08-31",
+     "Lesson": "",
+     "Note": "dupukedem",
+     "TeacherId": 77875,
+     "TeacherName": "Fikarut Lysej",
+     "TeacherCode": "Nan"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-31",
+     "Lesson": "",
+     "Note": "",
+     "TeacherId": 37678,
+     "TeacherName": "Polapibipu Vikaryfeh",
+     "TeacherCode": "Jit"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-24",
+     "Lesson": "",
+     "Note": "Pyjih",
+     "TeacherId": 77875,
+     "TeacherName": "Fikarut Lysej",
+     "TeacherCode": "Nan"
+    }
+   ],
+   "Exams": []
+  },
+  {
+   "Id": 1446620,
+   "CourseId": 620883,
+   "CourseName": "Verohypuvokosiv",
+   "CourseCode": "YH_91",
+   "Name": "YH_ Verohypuvokosiv",
+   "Caption": "YH_ Verohypuvokosiv YH_91",
+   "StartDate": "2026-08-12",
+   "EndDate": "2026-12-19",
+   "Committed": false,
+   "Teachers": [
+    {
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    }
+   ],
+   "Homework": [
+    {
+     "RowNumber": 12,
+     "Date": "2026-10-02",
+     "Homework": "Tagumyfepo bebiluryj 1 d:8 mabinymylyr pehovose + \r\ntagumyfepo d: 2.4 (kyrikofoni) fekul jesy kyradug!"
+    },
+    {
+     "RowNumber": 11,
+     "Date": "2026-09-24",
+     "Homework": "Sanovo ripalekig. Tukepo radak najosog feludy, syfisemaf fipi tepynyhi kyropedy."
+    },
+    {
+     "RowNumber": 10,
+     "Date": "2026-09-18",
+     "Homework": "Vus 8 d:1, 2 di 4"
+    },
+    {
+     "RowNumber": 9,
+     "Date": "2026-09-17",
+     "Homework": "Hom vus 8"
+    },
+    {
+     "RowNumber": 8,
+     "Date": "2026-09-11",
+     "Homework": "Hom vus 7  v. 59 d: 1,3 di 4"
+    },
+    {
+     "RowNumber": 7,
+     "Date": "2026-09-04",
+     "Homework": "Hom vus 6 d: 3 di 4"
+    },
+    {
+     "RowNumber": 6,
+     "Date": "2026-09-03",
+     "Homework": "Hom vus 5 d:5 regijag. Sekum gelukig jeha huhelehe pemalinamam: Tagimyjiv le nivasijamobybe rihegesa di dymuvaro sur gilyv di felolyh rerite."
+    },
+    {
+     "RowNumber": 5,
+     "Date": "2026-08-28",
+     "Homework": "Kadanypipyv dypijyrojefag ->gymedehitihekomi. Jaro synosyryjudi tijefydev rupysamutusatote 8972 di 6943 rylufuj tagivyfityvinuhikalo. Fukujy kuvedodysed, hagununupu vus 5 fejikav di mumu galybudoh vymufedi tomytetib nuro pemalinamam."
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-08-27",
+     "Homework": "Vus 2 d: 2 di 3"
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-08-21",
+     "Homework": "Naf rerije pafuvosahane filegonupusikop dypijyrojefag"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-20",
+     "Homework": "Vus 1 d: 3 di 4"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-14",
+     "Homework": "Hom luvutatesidu lerihulu: v.8-11 di naf nusasobe gimolerofal regijag hedyji ralojy puravigavevuf dilarede."
+    }
+   ],
+   "Diary": [
+    {
+     "RowNumber": 12,
+     "Date": "2026-10-02",
+     "Lesson": "",
+     "Note": "Gub morisu di sur jyrunynyfugyjebalutakofy.\r\njelumusyguj guvybile",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    },
+    {
+     "RowNumber": 11,
+     "Date": "2026-09-24",
+     "Lesson": "",
+     "Note": "Napalelosibel di rugijabytymagomeh",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    },
+    {
+     "RowNumber": 10,
+     "Date": "2026-09-18",
+     "Lesson": "",
+     "Note": "Kegivyn di napalelosibel",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    },
+    {
+     "RowNumber": 9,
+     "Date": "2026-09-17",
+     "Lesson": "",
+     "Note": "Kegivyn",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    },
+    {
+     "RowNumber": 8,
+     "Date": "2026-09-11",
+     "Lesson": "",
+     "Note": "Byni kepytejed di bimygukyno",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    },
+    {
+     "RowNumber": 7,
+     "Date": "2026-09-04",
+     "Lesson": "",
+     "Note": "Kyrikofoni",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    },
+    {
+     "RowNumber": 6,
+     "Date": "2026-09-03",
+     "Lesson": "",
+     "Note": "Pevygume",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    },
+    {
+     "RowNumber": 5,
+     "Date": "2026-08-28",
+     "Lesson": "",
+     "Note": "Takidy di jisubipopababe",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    },
+    {
+     "RowNumber": 4,
+     "Date": "2026-08-27",
+     "Lesson": "",
+     "Note": "Byjadijit tovitany",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    },
+    {
+     "RowNumber": 3,
+     "Date": "2026-08-21",
+     "Lesson": "",
+     "Note": "Vodytysebysyk \r\nSojukadejym",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    },
+    {
+     "RowNumber": 2,
+     "Date": "2026-08-20",
+     "Lesson": "",
+     "Note": "Vus 1 Hibidy dadatoselymuso",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    },
+    {
+     "RowNumber": 1,
+     "Date": "2026-08-14",
+     "Lesson": "",
+     "Note": "Rudu lyjunynyrytegisop fyperuhilih?",
+     "TeacherId": 13563,
+     "TeacherName": "Bygatisoma Babiv",
+     "TeacherCode": "Pot"
+    }
+   ],
+   "Exams": [
+    {
+     "Id": 1111452,
+     "Date": "2026-09-25",
+     "Name": "",
+     "Info": "Lojohem: \r\nHibidy di dosohaladyr: vus 1,2 di 3\r\nLepitifo: vus 5,6,7 di 8\r\n\r\nTukepo,sohi libonopojihas bamyjigo suduba vemokumaken di fusasema nolerinepos pavypusihegi.",
+     "Grade": "VU",
+     "VerbalGrade": ""
+    }
+   ]
+  }
+ ]
+}

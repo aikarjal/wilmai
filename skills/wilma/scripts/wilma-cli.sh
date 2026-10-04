@@ -9,6 +9,6 @@ if command -v wilma >/dev/null 2>&1; then
 elif command -v wilmai >/dev/null 2>&1; then
   wilmai "$@"
 else
-  # fallback to local repo build
-  node "$(pwd)/packages/wilma-cli/dist/index.js" "$@"
+  # Not installed: run the published CLI without installing it globally.
+  npx -y @wilm-ai/wilma-cli "$@"
 fi
