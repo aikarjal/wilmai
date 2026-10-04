@@ -8,7 +8,9 @@ npx skills add aikarjal/wilmai
 ```
 
 ## Install as a plugin (skills + MCP server)
-This folder is also the `wilma` plugin for Claude Code and Codex:
+For just the Wilma tools in Claude Code, one command is simpler: `claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp`.
+
+This folder is also the `wilma` plugin for Claude Code and Codex, with both skills included:
 ```bash
 # Claude Code
 /plugin marketplace add aikarjal/wilmai

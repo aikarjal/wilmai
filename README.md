@@ -19,7 +19,7 @@ Step-by-step guides in English and Finnish: **[wilm.ai](https://wilm.ai/en#quick
 | Assistant | How | Guide |
 |---|---|---|
 | **Claude Desktop** (Mac, Windows) | Download [`wilmai.mcpb`](https://wilm.ai/get/claude) and open it | [wilm.ai#claude](https://wilm.ai/en#claude) |
-| **Claude Code** | `/plugin marketplace add aikarjal/wilmai` then `/plugin install wilma@wilmai` | [wilm.ai#claude](https://wilm.ai/en#claude) |
+| **Claude Code** | `claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp` | [wilm.ai#claude](https://wilm.ai/en#claude) |
 | **ChatGPT desktop app** | Send ChatGPT one message and it installs the plugin; or add the MCP server `npx -y @wilm-ai/wilma-cli@2 mcp` yourself | [wilm.ai#chatgpt](https://wilm.ai/en#chatgpt) |
 | **Codex** | `codex plugin marketplace add aikarjal/wilmai` then `codex plugin add wilma@wilmai` | [wilm.ai#chatgpt](https://wilm.ai/en#chatgpt) |
 | **Grok Bot** | Send one message; the bot installs the CLI and skill itself | [wilm.ai#grok](https://wilm.ai/en#grok) |
@@ -79,7 +79,7 @@ wilma mcp
 
 A stdio MCP server with read-only tools: `wilma_summary`, `wilma_schedule`, `wilma_homework`, `wilma_upcoming_exams`, `wilma_grades`, `wilma_gradebook`, `wilma_lesson_notes`, `wilma_lesson_notes_summary`, `wilma_list_messages`, `wilma_read_message`, `wilma_list_news`, `wilma_read_news`, `wilma_get_news_attachment`, `wilma_list_printouts`, `wilma_get_printout`, `wilma_account`, `wilma_find_school`, `wilma_login`. Every tool covers all children unless `student` is given, and the JSON is the same as the CLI's. If nobody is logged in, tools open the browser login and tell the assistant what to relay.
 
-Any MCP client can run it with `npx -y @wilm-ai/wilma-cli@2 mcp`. For Claude Code directly: `claude mcp add wilma -- npx -y @wilm-ai/wilma-cli@2 mcp`.
+Any MCP client can run it with `npx -y @wilm-ai/wilma-cli@2 mcp`. For Claude Code: `claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp` (`--scope user` makes it available in every project).
 
 Build the Claude Desktop extension locally with `pnpm --filter @wilm-ai/wilma-cli build:mcpb` (output: `packages/wilma-cli/build/wilmai.mcpb`). The release workflow attaches it to each GitHub release.
 

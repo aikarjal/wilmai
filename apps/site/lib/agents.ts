@@ -140,11 +140,11 @@ export const agents: Agent[] = [
         others: [
           {
             title: "Using Claude Code?",
-            intro: "Add the WilmAI plugin: the Wilma tools plus the wilma and wilma-triage skills.",
+            intro: "Add the Wilma tools with one command.",
             steps: [
               {
-                title: "Run these in Claude Code",
-                action: { kind: "command", text: "/plugin marketplace add aikarjal/wilmai\n/plugin install wilma@wilmai" }
+                title: "Run this in your terminal",
+                action: { kind: "command", text: "claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp" }
               }
             ]
           }
@@ -170,11 +170,11 @@ export const agents: Agent[] = [
         others: [
           {
             title: "Käytätkö Claude Codea?",
-            intro: "Lisää WilmAI-lisäosa: Wilma-työkalut sekä wilma- ja wilma-triage-taidot.",
+            intro: "Lisää Wilma-työkalut yhdellä komennolla.",
             steps: [
               {
-                title: "Aja nämä Claude Codessa",
-                action: { kind: "command", text: "/plugin marketplace add aikarjal/wilmai\n/plugin install wilma@wilmai" }
+                title: "Aja tämä terminaalissa",
+                action: { kind: "command", text: "claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp" }
               }
             ]
           }
