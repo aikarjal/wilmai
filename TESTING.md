@@ -41,4 +41,4 @@ Run these locally only. No secrets are committed to the repo.
 
 ### Notes
 - The tests assume at least one student on the account.
-- For the CLI, `wilma kids list --json` must return at least one student.
+- For the CLI, `wilma students` must return at least one student. The run should need at most one login (commands continue the saved session).

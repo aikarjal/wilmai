@@ -46,12 +46,12 @@ wilma login
 
 Opens a one-time page on `127.0.0.1` in your browser. Pick your school's Wilma, log in, and the verified login is saved to `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`; override with `WILMAI_CONFIG_PATH`). The password is entered on that page — never in an agent's chat.
 
-Children on different Wilmas (say, a city school and a private school or lukio)? Press **Add another Wilma** on the same page, or run `wilma login` again. Every saved login is used together: summaries and `--all-students` cover all your children. `wilma accounts` lists the saved logins and `wilma accounts remove <number>` removes one.
+Children on different Wilmas (say, a city school and a private school or lukio)? Press **Add another Wilma** on the same page, or run `wilma login` again. Every saved login is used together: every command covers all your children. `wilma accounts` lists the saved logins and `wilma accounts remove <number>` removes one.
 
 Without a browser (scripts, agents on cloud computers), first find the Wilma address:
 
 ```bash
-wilma tenants <city or school>
+wilma find-school <city or school>
 ```
 
 then:
@@ -78,7 +78,7 @@ Running `wilma` without arguments still opens the interactive menu.
 wilma mcp
 ```
 
-A stdio MCP server with read-only tools: `wilma_summary`, `wilma_schedule`, `wilma_homework`, `wilma_upcoming_exams`, `wilma_grades`, `wilma_lesson_notes`, `wilma_list_messages`, `wilma_read_message`, `wilma_list_news`, `wilma_read_news`, `wilma_get_news_attachment`, `wilma_account`, `wilma_find_school`, `wilma_login`. Every tool covers all children unless `student` is given. If nobody is logged in, tools open the browser login and tell the assistant what to relay.
+A stdio MCP server with read-only tools: `wilma_summary`, `wilma_schedule`, `wilma_homework`, `wilma_upcoming_exams`, `wilma_grades`, `wilma_gradebook`, `wilma_lesson_notes`, `wilma_lesson_notes_summary`, `wilma_list_messages`, `wilma_read_message`, `wilma_list_news`, `wilma_read_news`, `wilma_get_news_attachment`, `wilma_list_printouts`, `wilma_get_printout`, `wilma_account`, `wilma_find_school`, `wilma_login`. Every tool covers all children unless `student` is given, and the JSON is the same as the CLI's. If nobody is logged in, tools open the browser login and tell the assistant what to relay.
 
 Any MCP client can run it with `npx -y @wilm-ai/wilma-cli mcp`. For Claude Code directly: `claude mcp add wilma -- npx -y @wilm-ai/wilma-cli mcp`.
 
@@ -89,16 +89,18 @@ Build the Claude Desktop extension locally with `pnpm --filter @wilm-ai/wilma-cl
 ```bash
 npm i -g @wilm-ai/wilma-cli
 
-wilma summary --all-students --json
-wilma schedule list --when tomorrow --json
-wilma homework list --all-students --json
-wilma exams list --all-students --json
-wilma grades list --all-students --json
-wilma attendance list --all-students --json
-wilma news read <id> --student <id|name> --json
+wilma summary                 # daily briefing for every child
+wilma schedule tomorrow
+wilma exams
+wilma notes --days 7          # absences and teachers' feedback
+wilma messages 27164611       # one message with its replies
+wilma news 73291 download 1   # a file linked from a bulletin
+wilma help <command>
 ```
 
-News JSON includes structured `resources` for every link in a bulletin. Any resource can be downloaded with `wilma news resource download <news-id> <resource-id> --student <id|name> --output <directory> --json`. Wilma-hosted files download through the authenticated session; external URLs are fetched with an isolated, unauthenticated request that never carries Wilma credentials. The CLI does not guess whether a URL is a file — it attempts the download and reports `downloaded` or `not_a_file` (a web page answered, e.g. a sign-in wall).
+Every command covers all children (`--student` narrows), prints JSON when another program reads it and text in a terminal, and gives times in Finnish time. Commands continue the last Wilma session instead of logging in each time. See the [CLI README](packages/wilma-cli/README.md).
+
+News JSON includes structured `resources` for every link in a bulletin. Any resource can be downloaded with `wilma news <news-id> download <resource-id> --output <directory>`. Wilma-hosted files download through the authenticated session; external URLs are fetched with an isolated, unauthenticated request that never carries Wilma credentials. The CLI does not guess whether a URL is a file — it attempts the download and reports `downloaded` or `not_a_file` (a web page answered, e.g. a sign-in wall).
 
 ### Skills
 

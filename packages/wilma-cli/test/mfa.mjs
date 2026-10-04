@@ -131,12 +131,23 @@ try {
   const again = await client.callTool({ name: "wilma_homework", arguments: {} });
   assert.ok(!again.isError, again.content[0].text);
 
-  // The CLI too (its own process, its own login).
+  // The CLI too: another process, but it continues the saved session — no
+  // new login, no new code.
   const { execFile } = await import("node:child_process");
+  const codesBeforeCli = usedCodes.length;
   const out = await new Promise((r, j) =>
-    execFile(process.execPath, [cliPath, "kids", "list", "--json"], { env }, (e, so, se) => (e ? j(new Error(se || e.message)) : r(so)))
+    execFile(process.execPath, [cliPath, "students"], { env }, (e, so, se) => (e ? j(new Error(se || e.message)) : r(so)))
   );
-  assert.equal(JSON.parse(out)[0].name, "Mfa Lapsi");
+  assert.equal(JSON.parse(out).students[0].name, "Mfa Lapsi");
+  assert.equal(usedCodes.length, codesBeforeCli, "the CLI reused the saved session");
+
+  // When that session has ended, the CLI logs in again with a generated code.
+  currentSid = "someone-else";
+  const again2 = await new Promise((r, j) =>
+    execFile(process.execPath, [cliPath, "students"], { env }, (e, so, se) => (e ? j(new Error(se || e.message)) : r(so)))
+  );
+  assert.equal(JSON.parse(again2).students[0].name, "Mfa Lapsi");
+  assert.ok(usedCodes.length > codesBeforeCli, "a fresh code for the new login");
   await client.close();
 
   console.log(`mfa${STRICT ? " (strict: reused codes rejected)" : ""}: all assertions passed (${usedCodes.length} codes sent; ${reusedCode ? "a reused code was " + (STRICT ? "rejected and retried" : "accepted") : "no code reused"})`);

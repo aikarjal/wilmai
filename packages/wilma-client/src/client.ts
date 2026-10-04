@@ -61,6 +61,30 @@ export class WilmaClient {
     return new WilmaClient(session);
   }
 
+  /**
+   * A client on a session saved earlier with exportSession(), without logging
+   * in. If Wilma has ended that session, the first request logs in again by
+   * itself. Returns null when the saved state has no session.
+   */
+  static resume(profile: WilmaProfile, state: string, onMfaRequired?: MfaCallback): WilmaClient | null {
+    const session = new WilmaSession(profile.baseUrl, {
+      studentNumber: profile.studentNumber ?? null,
+      debug: profile.debug ?? false,
+    });
+    session.setMfaCallback(onMfaRequired);
+    return session.resumeState(state, profile.username, profile.password) ? new WilmaClient(session) : null;
+  }
+
+  /** This login's session (cookies) as a string, for WilmaClient.resume() in a later process. Treat it like a password. */
+  exportSession(): string {
+    return this.session.exportState();
+  }
+
+  /** Run a callback after every successful login, e.g. to save the new session. */
+  onLogin(callback: (() => void) | undefined): void {
+    this.session.onLogin(callback);
+  }
+
   static async listStudents(profile: WilmaProfile, onMfaRequired?: MfaCallback): Promise<StudentInfo[]> {
     const client = await WilmaClient.login({ ...profile, studentNumber: null }, onMfaRequired);
     return client.students();

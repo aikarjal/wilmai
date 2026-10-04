@@ -14,6 +14,7 @@ import {
   registerWilmaTools,
   textResult,
 } from "../../lib/wilma";
+import cliPackage from "@wilm-ai/wilma-cli/package.json";
 
 export const runtime = "nodejs";
 export const preferredRegion = "arn1";
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
     label: c.n ?? c.t,
   }));
 
-  const server = new McpServer({ name: "wilma", title: "WilmAI", version: "1.7.0" }, { instructions: INSTRUCTIONS });
+  const server = new McpServer({ name: "wilma", title: "WilmAI", version: cliPackage.version }, { instructions: INSTRUCTIONS });
   registerWilmaTools(server, {
     // Vercel caps a function response at 4.5 MB; base64 adds a third.
     inlineAttachmentLimit: 3 * 1024 * 1024,

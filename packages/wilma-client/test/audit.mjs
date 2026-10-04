@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { execFileSync } from "node:child_process";
-import { WilmaClient, parseWilmaTimestamp, parseStudentsFromHome } from "../dist/index.js";
+import { WilmaClient, finnishIsoString, parseWilmaTimestamp, parseStudentsFromHome } from "../dist/index.js";
 import { assertPublicUrl, isBlockedAddress } from "../dist/external-fetch.js";
 import { parseStudentsFromAccountsRoles } from "../dist/parsers/students.js";
 import { parseMessagesList } from "../dist/parsers/messages.js";
@@ -144,6 +144,23 @@ try {
   await WilmaClient.login({ baseUrl, username: "parent", password: "right" }); // cancels our session
   assert.deepEqual((await kid.messages.list("inbox")).map((m) => m.wilmaId), [7]);
 
+  // A saved session continues in a new client without logging in; once Wilma
+  // has ended it, the client logs in again by itself.
+  const saved = client.exportSession();
+  loginPosts = 0;
+  const resumed = WilmaClient.resume({ baseUrl, username: "parent", password: "right" }, saved);
+  await resumed.forStudent("1").overview.get();
+  assert.equal(loginPosts, 0, "no login for a live saved session");
+  await WilmaClient.login({ baseUrl, username: "parent", password: "right" }); // ends that session
+  loginPosts = 0;
+  let relogins = 0;
+  resumed.onLogin(() => (relogins += 1));
+  await resumed.forStudent("1").overview.get();
+  assert.equal(loginPosts, 1, "one login when the saved session has ended");
+  assert.equal(relogins, 1, "onLogin reports the new session (to save it)");
+  assert.equal(WilmaClient.resume({ baseUrl, username: "parent", password: "right" }, "{}"), null, "nothing to resume");
+  assert.notEqual(resumed.exportSession(), saved);
+
   // A body that stalls mid-way fails as a timeout, like a request that never answers.
   stallBody = true;
   const slow = await kid.session.get("/slow", undefined, { timeoutMs: 300 });
@@ -184,6 +201,8 @@ for (const tz of ["UTC", "America/Los_Angeles", "Europe/Helsinki"]) {
   assert.equal(out, "2026-02-05T12:00:00.000Z 2026-07-05T06:30:00.000Z", `Wilma times in ${tz}`);
 }
 assert.equal(parseWilmaTimestamp("2026-02-05 14:00").toISOString(), "2026-02-05T12:00:00.000Z");
+assert.equal(finnishIsoString(new Date("2026-02-05T12:00:00Z")), "2026-02-05T14:00:00+02:00", "winter time");
+assert.equal(finnishIsoString(new Date("2026-07-05T06:30:00Z")), "2026-07-05T09:30:00+03:00", "summer time");
 
 /* ---------------- parser edge cases ---------------- */
 // A name containing a menu word is still a name; menu links are ignored.

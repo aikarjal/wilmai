@@ -1,6 +1,6 @@
 ---
 name: wilma-triage
-version: 1.4.0
+version: 2.0.0
 description: Daily triage of Wilma school notifications for Finnish parents. Fetches exams, messages, news, schedules, homework, and lesson notes (merkinnät) — filters for actionable items, downloads and reads important bulletin attachments, syncs exams to the family calendar, and reports via chat. Requires the `wilma` skill (WilmAI MCP tools or wilma CLI); calendar sync uses whatever calendar tool the agent has (e.g. the `gog` CLI on OpenClaw, or a calendar connector).
 metadata:
   {
@@ -26,7 +26,7 @@ Automated daily triage of Wilma school data for parents. Filters noise, surfaces
 
 ## Dependencies
 
-- **Wilma access** — the WilmAI MCP tools (`wilma_*`) or the `wilma` skill and CLI (`clawhub install wilma`; attachment download requires wilma-cli 1.6.0+). The `wilma` skill maps each MCP tool to its CLI command; use whichever is available.
+- **Wilma access** — the WilmAI MCP tools (`wilma_*`) or the `wilma` skill and CLI (`clawhub install wilma`; this skill's commands need wilma-cli 2.0+). The `wilma` skill maps each MCP tool to its CLI command; use whichever is available.
 - **Calendar (optional)** — any calendar tool the agent has: the `gog` skill on OpenClaw (`clawhub install gog`), or the assistant's own calendar connector. Without one, list new dates in the report instead of syncing.
 - **Notes** — this skill stores setup and preferences in the agent's notes. On OpenClaw that is **TOOLS.md** and **MEMORY.md**; elsewhere use the assistant's memory or project instructions wherever this skill says TOOLS.md or MEMORY.md.
 
@@ -34,7 +34,7 @@ Automated daily triage of Wilma school data for parents. Filters noise, surfaces
 
 On first use, collect and store configuration:
 
-1. **Discover kids:** Call `wilma_account` or run `wilma kids list --json` to get student names and numbers
+1. **Discover kids:** Call `wilma_account` or run `wilma students` to get student names and numbers
 2. **Calendar:** List the available calendars with the agent's calendar tool (e.g. `gog calendar calendars`). Ask the user which calendar to use for school events. Store the calendar ID in **TOOLS.md** under a `## Wilma Triage` section along with naming conventions for events. Skip this step if no calendar tool is available.
 3. **Preferences:** Ask about any kid-specific rules (e.g., subject overrides like ET instead of religion). Store in **MEMORY.md** as part of the Wilma triage context.
 
@@ -42,29 +42,18 @@ Over time, the user will give feedback on what to report and what to skip — st
 
 ## Workflow
 
-1. **Fetch data** — check TOOLS.md for student details, then start with summary. With the MCP tools, the equivalents are `wilma_summary`, `wilma_upcoming_exams`, `wilma_schedule`, `wilma_homework`, `wilma_grades`, `wilma_list_messages`, `wilma_list_news`, `wilma_lesson_notes`, `wilma_read_message` and `wilma_read_news` (they cover all children by default). With the CLI:
+1. **Fetch data** — one call covers what's new for every child: `wilma_summary` with `since`, or the CLI below. Use the date of the last run (stored in MEMORY.md), or yesterday. It returns today's and the next school day's lessons, upcoming exams (with start times when given), homework, lesson notes (teachers' feedback and absences), bulletins and messages from that day on, plus every unread message.
    ```bash
-   # Best starting point — returns schedule, exams, homework, news, messages
-   wilma summary --all-students --json
+   wilma summary --since <last-run-date-or-yesterday>
 
    # Drill into specifics as needed
-   wilma exams list --all-students --json
-   wilma schedule list --when today --all-students --json
-   wilma schedule list --when tomorrow --all-students --json
-   wilma homework list --all-students --limit 10 --json
-   wilma grades list --all-students --limit 5 --json
-   wilma messages list --all-students --limit 10 --json
-   wilma news list --all-students --limit 10 --json
-
-   # Lesson notes (merkinnät) — in a morning run, fetch the previous school
-   # day (on Mondays, from Friday), since teachers fill them during/after class.
-   # For a same-day check later in the afternoon, omit --from.
-   wilma attendance list --all-students --from <previous-school-day-YYYY-MM-DD> --json
-
-   # Read full content when subject line looks actionable
-   wilma messages read <id> --student <name> --json
-   wilma news read <id> --student <name> --json
+   wilma messages <id>                 # full text and every reply
+   wilma news <id>                     # full text and linked resources
+   wilma exams                         # all upcoming exams
+   wilma schedule tomorrow
+   wilma notes --from <date>           # lesson notes for a longer period
    ```
+   The CLI prints JSON when an agent runs it; results come per child (`students[].student`), and times are Finnish time. With the MCP tools, `wilma_read_message`, `wilma_read_news`, `wilma_upcoming_exams`, `wilma_schedule` and `wilma_lesson_notes` are the equivalents. Every tool and command covers all children by default.
 
 2. **Download and read important attachments** — many bulletins are link-only: the `content` field is empty (or just defers to an attachment), and the actionable information — dates, deadlines, forms, required materials, schedule details — lives inside the attached document. Skipping these means missing exactly the items triage exists to catch.
 
@@ -74,7 +63,7 @@ Over time, the user will give feedback on what to report and what to skip — st
    - the bulletin text is empty or defers to the attachment.
 
    ```bash
-   wilma news resource download <news-id> <resource-id> --student <name> --output <dir> --json
+   wilma news <news-id> download <resource-id> --output <dir>
    ```
 
    With the MCP tools, call `wilma_get_news_attachment` instead; it returns the file content directly.
@@ -97,7 +86,7 @@ Over time, the user will give feedback on what to report and what to skip — st
    - Use naming conventions stored in TOOLS.md
    - Remove cancelled events from calendar
 
-5. **Report** — if actionable items found, send details. If nothing actionable, stay silent or send a brief confirmation. Check MEMORY.md for the user's notification preference.
+5. **Report** — if actionable items found, send details. If nothing actionable, stay silent or send a brief confirmation. Check MEMORY.md for the user's notification preference. Then store today's date in MEMORY.md as the last run (the next run's `--since`).
 
 ## Calendar Sync
 
@@ -133,7 +122,7 @@ Lesson notes are short per-lesson remarks teachers leave in Wilma. They fall int
 - **Positive feedback** ("Hyvä!", "Osasit toimia ryhmän vastuullisena jäsenenä") — **Skip by default.** Mention occasionally if MEMORY.md indicates the parent wants positive notes too.
 - **The teacher's own words** (`note`, e.g. "Lähti 13.00" = "left at 13:00", or what exactly was missing) — often the most useful part. Surface it.
 
-`typeLabel` is the Finnish label, `note` the teacher's words (or null), and `subject` the course code (e.g. `MA_8LV`; empty for notes not tied to a lesson). Group consecutive same-subject same-type notes when reporting (one absence often spans multiple periods). For a term overview, `wilma attendance summary --json` (`wilma_lesson_notes_summary`) counts notes by type.
+`typeLabel` is the Finnish label, `note` the teacher's words (or null), and `subject` the course code (e.g. `MA_8LV`; empty for notes not tied to a lesson). Group consecutive same-subject same-type notes when reporting (one absence often spans multiple periods). For a term overview, `wilma notes summary` (`wilma_lesson_notes_summary`) counts notes by type.
 
 ## Triage Rules
 

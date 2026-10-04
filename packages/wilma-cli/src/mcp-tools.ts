@@ -3,6 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { FetchedAttachment, WilmaAccess } from "./agent-data.js";
 import { normalizeResourceId } from "./downloads.js";
+import { toAgentJson } from "./output-json.js";
 
 /*
  * Wilma data tools shared by the local stdio server (`wilma mcp`) and the
@@ -26,7 +27,7 @@ export const studentArg = z
   .describe("Child's name or student number. Omit to include every child on the account.");
 
 export function json(data: unknown): CallToolResult {
-  return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  return { content: [{ type: "text", text: toAgentJson(data) }] };
 }
 
 export function textResult(text: string, isError = false): CallToolResult {
@@ -65,7 +66,7 @@ export function attachmentResult(
     sizeBytes: fetched.data.byteLength,
     savedTo: savedPath ?? null,
   };
-  const content: CallToolResult["content"] = [{ type: "text", text: JSON.stringify(meta, null, 2) }];
+  const content: CallToolResult["content"] = [{ type: "text", text: toAgentJson(meta) }];
   const type = fetched.contentType ?? "application/octet-stream";
   if (fetched.data.byteLength > inlineLimit) {
     content.push({
@@ -97,14 +98,18 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     {
       title: "School summary",
       description:
-        "Daily briefing per child: today's and tomorrow's lessons, upcoming exams, homework from the last few days, and recent news and messages (ids only). The best starting point for any question about school.",
+        "Daily briefing per child: today's and the next school day's lessons, upcoming exams (with start times when given), recent homework, lesson notes since the previous school day (teachers' feedback and absences), recent bulletins, and recent and unread messages (ids, unread, replyCount). The best starting point for any question about school.",
       inputSchema: {
         student: studentArg,
         days: z.number().int().min(1).max(60).optional().describe("How many days back to include news and messages (default 7)."),
+        since: z
+          .string()
+          .optional()
+          .describe("Only what is new from this day on (YYYY-MM-DD or 'yesterday'): bulletins, messages, homework, lesson notes. For daily runs."),
       },
       annotations: { title: "School summary", ...READ_ONLY },
     },
-    async ({ student, days }) => ctx.withAccess(async (a) => json(await a.summary({ student, days })))
+    async ({ student, days, since }) => ctx.withAccess(async (a) => json(await a.summary({ student, days, since })))
   );
 
   server.registerTool(
@@ -115,7 +120,7 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
         "Lessons for today, the next school day, this week, a specific date, or the next occurrence of a weekday.",
       inputSchema: {
         student: studentArg,
-        when: z.enum(["today", "tomorrow", "week"]).optional().describe("Default: week. 'tomorrow' means the next school day."),
+        when: z.enum(["today", "tomorrow", "week", "next-week"]).optional().describe("Default: week. 'tomorrow' means the next school day."),
         date: z.string().optional().describe("A specific date, YYYY-MM-DD. Overrides 'when'."),
         weekday: z
           .string()

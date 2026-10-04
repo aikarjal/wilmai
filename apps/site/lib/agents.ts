@@ -82,14 +82,14 @@ const grokMessage = {
 2. Add the Wilma skill from ${REPO} (skills/wilma).
 3. Log me in with: wilma login
    If you run on my computer, it opens a login page in my browser.
-   If you run on your own cloud computer, ask me which city my kids' school is in, find our Wilma with "wilma tenants <city>" and let me pick it. Then ask me to add WILMA_USERNAME and WILMA_PASSWORD to your secret settings, and set WILMA_TENANT to the Wilma I picked.
+   If you run on your own cloud computer, ask me which city my kids' school is in, find our Wilma with "wilma find-school <city>" and let me pick it. Then ask me to add WILMA_USERNAME and WILMA_PASSWORD to your secret settings, and set WILMA_TENANT to the Wilma I picked.
 Never ask me to type my Wilma password into this chat.`,
   fi: `Ota WilmAI käyttöön, jotta voit lukea lasteni koulutiedot Wilmasta.
 1. Asenna CLI: npm install -g @wilm-ai/wilma-cli
 2. Lisää Wilma-taito osoitteesta ${REPO} (skills/wilma).
 3. Kirjaa minut sisään komennolla: wilma login
    Jos toimit minun koneellani, se avaa kirjautumissivun selaimeeni.
-   Jos toimit omalla pilvikoneellasi, kysy missä kaupungissa lasteni koulu on, etsi Wilmamme komennolla "wilma tenants <kaupunki>" ja anna minun valita se. Pyydä sitten minua lisäämään WILMA_USERNAME ja WILMA_PASSWORD salaisuusasetuksiisi, ja aseta WILMA_TENANT valitsemaani Wilmaan.
+   Jos toimit omalla pilvikoneellasi, kysy missä kaupungissa lasteni koulu on, etsi Wilmamme komennolla "wilma find-school <kaupunki>" ja anna minun valita se. Pyydä sitten minua lisäämään WILMA_USERNAME ja WILMA_PASSWORD salaisuusasetuksiisi, ja aseta WILMA_TENANT valitsemaani Wilmaan.
 Älä koskaan pyydä minua kirjoittamaan Wilma-salasanaani tähän keskusteluun.`
 };
 
@@ -350,7 +350,7 @@ export const agents: Agent[] = [
       en: {
         name: "Terminal",
         tagline: "No assistant needed",
-        summary: "Prefer the command line? The wilma CLI shows the same information in your terminal, and --json gives scripts and agents structured output.",
+        summary: "Prefer the command line? The wilma CLI shows the same information in your terminal, and gives scripts and agents JSON.",
         steps: [
           {
             title: "Install",
@@ -365,14 +365,14 @@ export const agents: Agent[] = [
           {
             title: "Look things up",
             body: "Run wilma on its own for an interactive menu, or wilma --help for every command.",
-            action: { kind: "command", text: "wilma summary --all-students\nwilma schedule list --when tomorrow\nwilma exams list --all-students --json" }
+            action: { kind: "command", text: "wilma summary\nwilma schedule tomorrow\nwilma exams" }
           }
         ]
       },
       fi: {
         name: "Terminaali",
         tagline: "Ilman avustajaa",
-        summary: "Komentorivi tuntuu omimmalta? wilma-CLI näyttää samat tiedot terminaalissa, ja --json antaa jäsenneltyä dataa skripteille ja agenteille.",
+        summary: "Komentorivi tuntuu omimmalta? wilma-CLI näyttää samat tiedot terminaalissa ja antaa skripteille ja agenteille jäsenneltyä dataa (JSON).",
         steps: [
           {
             title: "Asenna",
@@ -387,7 +387,7 @@ export const agents: Agent[] = [
           {
             title: "Hae tietoja",
             body: "Pelkkä wilma avaa valikon, ja wilma --help listaa kaikki komennot.",
-            action: { kind: "command", text: "wilma summary --all-students\nwilma schedule list --when tomorrow\nwilma exams list --all-students --json" }
+            action: { kind: "command", text: "wilma summary\nwilma schedule tomorrow\nwilma exams" }
           }
         ]
       }

@@ -37,6 +37,7 @@ assert.equal(matchStudents(kids, "Mattila")[0].studentNumber, "8", "start of a n
 assert.equal(matchStudents(kids, "7")[0].name, "Daniella Korhonen");
 
 /* ---------------- mock Wilma ---------------- */
+let logins = 0;
 const wilma = createServer(async (req, res) => {
   for await (const _ of req);
   const send = (status, type, body, headers = {}) => {
@@ -46,6 +47,7 @@ const wilma = createServer(async (req, res) => {
   const base = `http://127.0.0.1:${wilma.address().port}`;
   if (req.method === "GET" && req.url === "/login") return send(200, "text/html", '<input type="hidden" name="SESSIONID" value="s">');
   if (req.method === "POST" && req.url === "/login") {
+    logins += 1;
     return send(303, "text/plain", "", { Location: `${base}/?checkcookie`, "Set-Cookie": "Wilma2SID=ok; Path=/" });
   }
   if (req.url === "/?checkcookie") return send(200, "text/html", "home");
@@ -98,70 +100,107 @@ const run = (args, opts = {}) =>
       resolve({ code: error ? error.code : 0, stdout, stderr })
     )
   );
-const jsonError = async (args, pattern, label) => {
-  const result = await run([...args, "--json"]);
-  assert.equal(result.code, 1, `${label}: exit code`);
+const json = async (args, opts) => {
+  const result = await run(args, opts);
+  assert.equal(result.code, 0, `${args.join(" ")}: ${result.stdout} ${result.stderr}`);
+  return JSON.parse(result.stdout);
+};
+const jsonError = async (args, code, pattern, label, exitCode = code === "invalid_argument" || code === "unknown_command" ? 2 : 1) => {
+  const result = await run(args);
+  assert.equal(result.code, exitCode, `${label}: exit code`);
   const body = JSON.parse(result.stdout);
   assert.equal(body.status, "error", label);
+  assert.equal(body.code, code, label);
   assert.match(body.message, pattern, label);
+  return body;
 };
 
 try {
-  // Errors are JSON with --json, and exit 1.
-  await jsonError(["sumary"], /Unknown command "sumary"/, "unknown command");
-  await jsonError(["news", "lsit"], /Unknown subcommand "lsit"/, "unknown subcommand");
-  await jsonError(["messages", "list", "--studnet", "Emilia"], /Unknown option "--studnet"/, "unknown flag");
-  await jsonError(["messages", "list", "--student"], /--student needs a value/, "flag without a value");
-  await jsonError(["messages", "list", "--limit", "-1"], /--limit must be a whole number/, "negative limit");
-  await jsonError(["messages", "list", "--folder", "spam"], /--folder must be one of/, "unknown folder");
-  await jsonError(["schedule", "list", "--when", "someday"], /--when must be one of/, "unknown --when");
-  await jsonError(["attendance", "list", "--date", "2026-02-30"], /Invalid date/, "impossible date");
-  await jsonError(["news", "read"], /Missing news id/, "read without an id");
-  await jsonError(["messages", "list", "--student", "Ella"], /No student matching "Ella"/, "no loose name match");
-  await jsonError(["messages", "read", "41"], /Several students on this login/, "reading needs a student");
+  // Errors are JSON (piped output is JSON without --json), with a code and exit code 2 for usage errors.
+  await jsonError(["sumary"], "unknown_command", /Unknown command "sumary"/, "unknown command");
+  await jsonError(["news", "lsit"], "invalid_argument", /Invalid news id "lsit"/, "not a news id");
+  await jsonError(["messages", "--studnet", "Emilia"], "invalid_argument", /Unknown option "--studnet"/, "unknown flag");
+  await jsonError(["messages", "--student"], "invalid_argument", /--student needs a value/, "flag without a value");
+  await jsonError(["messages", "--limit", "-1"], "invalid_argument", /--limit must be a whole number/, "negative limit");
+  await jsonError(["messages", "--folder", "spam"], "invalid_argument", /--folder must be one of/, "unknown folder");
+  await jsonError(["schedule", "someday"], "invalid_argument", /Unknown period "someday"/, "unknown period");
+  await jsonError(["notes", "--date", "2026-02-30"], "invalid_argument", /Invalid date/, "impossible date");
+  await jsonError(["news", "read"], "invalid_argument", /Missing news id/, "read without an id");
+  const unknown = await jsonError(["messages", "--student", "Ella"], "unknown_student", /No student matching "Ella"/, "no loose name match");
+  assert.deepEqual(unknown.students.map((s) => s.name), ["Daniella Korhonen", "Emilia Mattila"], "the error lists the children");
+  await jsonError(["notes", "--days", "3", "--date", "2026-09-30"], "invalid_argument", /Use one of/, "conflicting periods");
+  const noLogin = await run(["summary"], { env: { ...env, WILMAI_CONFIG_PATH: join(tempDirectory, "none.json") } });
+  assert.equal(noLogin.code, 3);
+  assert.equal(JSON.parse(noLogin.stdout).code, "not_logged_in");
 
-  // A strict match works, and human output is in Finnish time without terminal escapes.
-  const list = await run(["messages", "list", "--student", "Emilia"]);
+  // Help: the overview, and per command with examples.
+  assert.match((await run(["--help"])).stdout, /summary .*start here/);
+  assert.match((await run(["help", "schedule"])).stdout, /Usage: wilma schedule[\s\S]*Examples:/);
+  assert.match((await run(["notes", "--help"])).stdout, /Usage: wilma notes/);
+  assert.match((await run([])).stdout, /Usage: wilma <command>/, "no command from a program: help, not a prompt");
+
+  // Every child by default; a strict --student narrows; text in Finnish time without terminal escapes.
+  const all = await json(["messages"]);
+  assert.deepEqual(all.students.map((s) => s.student.name), ["Daniella Korhonen", "Emilia Mattila"]);
+  const list = await run(["messages", "--student", "Emilia", "--text"]);
   assert.equal(list.code, 0, list.stderr);
   assert.match(list.stdout, /2026-02-05 Retki huomenna/, "Finnish date, text kept");
   assert.ok(!/[\u001b\u0007]/.test(list.stdout), "escape sequences removed");
-  const listRaw = (await run(["messages", "list", "--student", "emi", "--json"])).stdout;
+  const listRaw = (await run(["messages", "--student", "emi"])).stdout;
   assert.ok(!/[\u001b\u0007\u009b]/.test(listRaw), "JSON output is escaped, not raw");
-  const listJson = JSON.parse(listRaw);
-  assert.equal(listJson[0].wilmaId, 41);
-  assert.equal(listJson[0].subject, "\u001b]0;pwned\u0007Retki\u001b[2J huomenna\u009b", "JSON keeps the data as it is");
+  assert.ok(!/fetchedAt|typeClass|sendersJson/.test(listRaw), "no bookkeeping fields");
+  assert.ok(!listRaw.includes("\n  "), "compact JSON for programs");
+  const message = JSON.parse(listRaw).students[0].messages[0];
+  assert.equal(message.wilmaId, 41);
+  assert.equal(message.sentAt, "2026-02-05T01:30:00+02:00", "Finnish time with its offset, not UTC");
+  assert.equal(message.subject, "\u001b]0;pwned\u0007Retki\u001b[2J huomenna\u009b", "JSON keeps the data as it is");
 
   // Bulletins: newest dated ones and every pinned one by default; older ones with --older.
-  const news = JSON.parse((await run(["news", "list", "--student", "8", "--json"])).stdout);
+  const news = (await json(["news", "--student", "8"])).students[0].news;
   assert.equal(news.length, 24);
   assert.equal(news.filter((n) => n.pinned).length, 11);
-  assert.equal(JSON.parse((await run(["news", "list", "--student", "8", "--older", "--json"])).stdout).length, 42);
-  assert.match((await run(["news", "list", "--student", "8"])).stdout, /\[pinned\][\s\S]*add --older/);
+  assert.equal((await json(["news", "list", "--student", "8", "--older", "--json"])).students[0].news.length, 42, "1.x spelling");
+  assert.match((await run(["news", "--student", "8", "--text"])).stdout, /\[pinned\]/);
 
-  // A thread's replies, in JSON and in the terminal.
-  const thread = JSON.parse((await run(["messages", "read", "41", "--student", "8", "--json"])).stdout);
-  assert.equal(thread.replies.length, 1);
-  assert.match((await run(["messages", "read", "41", "--student", "8"])).stdout, /--- Reply from .+\n\S/);
+  // A thread's replies, in JSON and in the terminal — no --student needed to read one.
+  const thread = await json(["messages", "41"]);
+  assert.equal(thread.message.replies.length, 1);
+  assert.equal(thread.student.name, "Daniella Korhonen");
+  assert.match((await run(["messages", "read", "41", "--text"])).stdout, /--- Reply from .+\n\S/);
 
-  // Lesson notes with the teacher's words, and the summary.
-  const notes = JSON.parse((await run(["attendance", "list", "--student", "8", "--from", "2026-08-01", "--to", "2026-10-31", "--json"])).stdout);
-  assert.equal(notes.length, 57);
-  assert.ok(notes.some((n) => n.note));
-  const summary = JSON.parse((await run(["attendance", "summary", "--student", "8", "--json"])).stdout);
-  assert.equal(summary.total, 57);
-  await jsonError(["attendance", "list", "--days", "3", "--date", "2026-09-30"], /--days, --date or --from/, "conflicting periods");
+  // Lesson notes with the teacher's words, and the summary (1.x `attendance` spelling too).
+  const notes = await json(["notes", "--student", "8", "--from", "2026-08-01", "--to", "2026-10-31"]);
+  assert.equal(notes.from, "2026-08-01");
+  assert.equal(notes.students[0].notes.length, 57);
+  assert.ok(notes.students[0].notes.some((n) => n.note));
+  assert.equal((await json(["attendance", "list", "--student", "8", "--from", "2026-08-01", "--to", "2026-10-31"])).students[0].notes.length, 57);
+  assert.equal((await json(["notes", "summary", "--student", "8"])).students[0].summary.total, 57);
+
+  // The summary has lesson notes, unread counts and Finnish times.
+  const summary = await json(["summary", "--since", "2026-01-01"]);
+  const daniella = summary.students[0].summary;
+  assert.equal(summary.since, "2026-01-01");
+  assert.ok(Array.isArray(daniella.lessonNotes) && "unreadMessages" in daniella);
+  assert.equal(daniella.messages[0].sentAt, "2026-02-05T01:30:00+02:00");
 
   // Gradebook (one child graded, one not yet) and printouts.
-  const gradebooks = JSON.parse((await run(["gradebook", "--all-students", "--json"])).stdout);
+  const gradebooks = await json(["gradebook"]);
   assert.deepEqual(gradebooks.students.map((s) => s.gradebook.length), [21, 0]);
-  assert.match((await run(["gradebook", "--student", "8"])).stdout, /No graded courses yet/);
-  const printouts = JSON.parse((await run(["printouts", "list", "--student", "8", "--json"])).stdout);
+  assert.match((await run(["gradebook", "--student", "8", "--text"])).stdout, /No graded courses yet/);
+  const printouts = (await json(["printouts", "--student", "8"])).students[0].printouts;
   assert.equal(printouts.length, 1);
   const dl = await mkdtemp(join(tmpdir(), "wilmai-printout-"));
-  const saved = JSON.parse((await run(["printouts", "download", printouts[0].id, "--student", "8", "--output", dl, "--json"])).stdout);
+  const saved = await json(["printouts", printouts[0].id, "--student", "8", "--output", dl]);
   assert.equal(saved.status, "downloaded");
   assert.equal(await readFile(saved.path, "utf8"), "%PDF-1.4 test");
   await rm(dl, { recursive: true, force: true });
+
+  // 1.x spellings still work.
+  assert.equal((await json(["kids", "list", "--json"])).students.length, 2);
+  assert.ok((await json(["tenants", "helsinki"])).wilmas.length > 0);
+
+  // One login for all of the above: commands continue the saved session.
+  assert.equal(logins, 1, `logins: ${logins}`);
 
   // A loose config file is tightened to this user only.
   if (process.platform !== "win32") {
@@ -175,6 +214,7 @@ try {
   await writeFile(configPath, damaged);
   const broken = await run(["accounts", "--json"]);
   assert.equal(broken.code, 1);
+  assert.equal(JSON.parse(broken.stdout).code, "config_invalid");
   assert.match(JSON.parse(broken.stdout).message, /isn't valid JSON/);
   assert.equal(await readFile(configPath, "utf8"), damaged, "file left as it was");
   await writeFile(configPath, JSON.stringify(config));

@@ -5,9 +5,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { AuthenticationError } from "@wilm-ai/wilma-client";
-import { WilmaAccess } from "./agent-data.js";
-import { loadConfig, saveConfig } from "./config.js";
-import { ENV_VARS, isMfaFailure, mfaCallbackFor, resolveAccounts } from "./credentials.js";
+import { type WilmaAccess, useSessionStore } from "./agent-data.js";
+import { fileSessionStore } from "./session-store.js";
+import { createAccess } from "./access.js";
+import { loadConfig } from "./config.js";
+import { ENV_VARS, isMfaFailure, resolveAccounts } from "./credentials.js";
 import { createUniqueDownloadFile } from "./downloads.js";
 import { openBrowser, startLoginServer, type LoginServer } from "./login-server.js";
 import { z } from "zod";
@@ -74,26 +76,7 @@ async function withAccess(run: (access: WilmaAccess) => Promise<CallToolResult>)
     return textResult(err instanceof Error ? err.message : String(err), true);
   }
   if (!accounts.length) return startBrowserLogin();
-  const access = new WilmaAccess(
-    accounts.map((account) => ({
-      profile: account.profile,
-      mfa: mfaCallbackFor(account.totpSecret),
-      label: account.stored?.tenantName ?? account.profile.baseUrl,
-      onStudents: async (students) => {
-        // Keep the saved student list fresh for the CLI's --student matching. Re-read the
-        // config and change only this field, so parallel calls and logins aren't overwritten.
-        const stored = account.stored;
-        if (!stored) return;
-        const fresh = students.map((s) => ({ studentNumber: s.studentNumber, name: s.name }));
-        if (JSON.stringify(fresh) === JSON.stringify(stored.students ?? [])) return;
-        const latest = await loadConfig();
-        const target = latest.profiles.find((p) => p.id === stored.id);
-        if (!target) return;
-        target.students = fresh;
-        await saveConfig(latest);
-      },
-    }))
-  );
+  const access = createAccess(accounts);
   try {
     return await run(access);
   } catch (err) {
@@ -168,8 +151,10 @@ export function createWilmaMcpServer(version: string): McpServer {
     },
     async ({ query }) => {
       const found = await searchTenants(query, 15);
-      if (!found.length) return textResult(`No Wilma found for "${query}". Many schools use their city's Wilma: try the city or municipality the school is in.`);
-      return json(found.map((t) => ({ url: t.url, name: t.name })));
+      return json({
+        wilmas: found.map((t) => ({ url: t.url, name: t.name })),
+        ...(found.length ? {} : { hint: `No Wilma found for "${query}". Many schools use their city's Wilma: try the city or municipality the school is in.` }),
+      });
     }
   );
 
@@ -192,6 +177,8 @@ export async function runMcpServer(version: string): Promise<void> {
   // stdout carries JSON-RPC; route any stray logging to stderr.
   console.log = (...args: unknown[]) => console.error(...args);
   console.info = (...args: unknown[]) => console.error(...args);
+  // Share saved sessions with the CLI: no login per process, no extra codes.
+  useSessionStore(fileSessionStore);
   const server = createWilmaMcpServer(version);
   await server.connect(new StdioServerTransport());
 }

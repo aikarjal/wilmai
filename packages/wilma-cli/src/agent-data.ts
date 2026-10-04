@@ -1,6 +1,9 @@
 import {
+  NetworkError,
   WilmaClient,
   addExamTimes,
+  type LessonNote,
+  type Message,
   type MessageFolder,
   type MfaCallback,
   type NewsItem,
@@ -11,6 +14,22 @@ import {
 } from "@wilm-ai/wilma-client";
 import { createHash } from "node:crypto";
 import { fileNameFromResponse, readResponseCapped } from "./downloads.js";
+import type { SessionStore } from "./session-store.js";
+
+/**
+ * An error with a stable code for agents and scripts (the CLI's JSON errors
+ * and exit codes use it): e.g. "unknown_student", "invalid_argument".
+ */
+export class WilmaAiError extends Error {
+  readonly code: string;
+  readonly details?: Record<string, unknown>;
+  constructor(code: string, message: string, details?: Record<string, unknown>) {
+    super(message);
+    this.name = "WilmaAiError";
+    this.code = code;
+    this.details = details;
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  Date helpers shared by the CLI and agent tools                     */
@@ -55,23 +74,36 @@ export function nextSchoolDay(from?: string): string {
   return d;
 }
 
-export function currentWeekBounds(): [string, string] {
+/** The school day before `from` (default today): Friday for a Monday. */
+export function previousSchoolDay(from?: string): string {
+  let d = addDays(from ?? todayString(), -1);
+  while (weekdayOf(d) === 0 || weekdayOf(d) === 6) {
+    d = addDays(d, -1);
+  }
+  return d;
+}
+
+export function currentWeekBounds(weeksAhead = 0): [string, string] {
   const today = todayString();
   const dayOfWeek = weekdayOf(today); // 0=Sun, 1=Mon, ...
-  const monday = addDays(today, dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
+  const monday = addDays(today, (dayOfWeek === 0 ? -6 : 1 - dayOfWeek) + 7 * weeksAhead);
   return [monday, addDays(monday, 4)];
 }
 
+/** YYYY-MM-DD, or "today", "yesterday" or "tomorrow" (Finnish time). */
 export function parseIsoDate(raw: string): string {
   const value = (raw ?? "").trim();
-  // Accept YYYY-MM-DD only.
+  const word = value.toLowerCase();
+  if (word === "today") return todayString();
+  if (word === "yesterday") return addDays(todayString(), -1);
+  if (word === "tomorrow") return addDays(todayString(), 1);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new Error(`Invalid date "${raw}". Expected YYYY-MM-DD.`);
+    throw new WilmaAiError("invalid_argument", `Invalid date "${raw}". Use YYYY-MM-DD, today, yesterday or tomorrow.`);
   }
   // Validate date is real.
   const d = new Date(value + "T12:00:00Z");
   if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== value) {
-    throw new Error(`Invalid date "${raw}". Expected a real calendar date.`);
+    throw new WilmaAiError("invalid_argument", `Invalid date "${raw}". Expected a real calendar date.`);
   }
   return value;
 }
@@ -89,7 +121,8 @@ const WEEKDAYS: Record<string, number> = {
 export function nextDateForWeekday(rawWeekday: string): string {
   const target = WEEKDAYS[(rawWeekday ?? "").trim().toLowerCase()];
   if (target === undefined) {
-    throw new Error(
+    throw new WilmaAiError(
+      "invalid_argument",
       `Invalid weekday "${rawWeekday}". Use mon|tue|wed|thu|fri|sat|sun (also accepts fi: ma|ti|ke|to|pe|la|su).`
     );
   }
@@ -106,11 +139,16 @@ export type ScheduleDateSelection = {
   outputWhen: string;
 };
 
+export const SCHEDULE_WHEN = ["today", "tomorrow", "week", "next-week"] as const;
+
 export function resolveScheduleDateSelection(opts: { when?: string; date?: string; weekday?: string }): ScheduleDateSelection {
   const when = opts.when || "week";
+  if (!(SCHEDULE_WHEN as readonly string[]).includes(when)) {
+    throw new WilmaAiError("invalid_argument", `Unknown period "${when}". Use ${SCHEDULE_WHEN.join(", ")}, a date or a weekday.`);
+  }
 
   if (opts.date && opts.weekday) {
-    throw new Error("Use either --date or --weekday, not both.");
+    throw new WilmaAiError("invalid_argument", "Use either a date or a weekday, not both.");
   }
 
   if (opts.date) {
@@ -133,56 +171,65 @@ export function resolveScheduleDateSelection(opts: { when?: string; date?: strin
     return { when, startDate: date, endDate: date, outputWhen: when };
   }
 
-  const [startDate, endDate] = currentWeekBounds();
+  const [startDate, endDate] = currentWeekBounds(when === "next-week" ? 1 : 0);
   return { when, startDate, endDate, outputWhen: when };
 }
 
-export function buildSummaryData(
-  overview: OverviewData,
-  news: Awaited<ReturnType<WilmaClient["news"]["list"]>>,
-  messages: Awaited<ReturnType<WilmaClient["messages"]["list"]>>,
-  days: number,
-  studentLabel?: string
-) {
+/** Everything a daily summary is built from (see fetchSummaryInputs). */
+export interface SummaryInputs {
+  overview: OverviewData;
+  news: NewsItem[];
+  messages: Message[];
+  lessonNotes: LessonNote[];
+  /** Parts Wilma couldn't give this time (the rest of the summary is still right). */
+  unavailable: string[];
+}
+
+/**
+ * One child's daily briefing: today's and the next school day's lessons,
+ * upcoming exams (with start times), recent homework, lesson notes (teachers'
+ * feedback and absences), bulletins and messages. Without `since`: bulletins
+ * and messages from the last `days` days, homework from the last 3 days, and
+ * lesson notes from the previous school day. With `since` (YYYY-MM-DD): only
+ * what is from that day on. Unread messages are always included.
+ */
+export function buildSummaryData(input: SummaryInputs, opts: { days?: number; since?: string } = {}) {
   const today = todayString();
   const tomorrow = nextSchoolDay();
-  const daysAgo = (n: number) => addDays(today, -n);
-  const cutoffDate = daysAgo(days);
-  const homeworkCutoff = daysAgo(3);
+  const cutoff = opts.since ?? addDays(today, -(opts.days ?? 7));
+  const homeworkCutoff = opts.since ?? addDays(today, -3);
+  const { overview } = input;
 
-  const todaySchedule = overview.schedule.filter((l) => l.date === today);
-  const tomorrowSchedule = overview.schedule.filter((l) => l.date === tomorrow);
-  const upcomingExams = overview.upcomingExams;
-  const recentHomework = overview.homework.filter((h) => h.date >= homeworkCutoff);
-  const recentNews = news
-    .filter((n) => n.published && finnishDate(n.published) >= cutoffDate)
-    .slice(0, 5)
-    .map((n) => ({
-      wilmaId: n.wilmaId,
-      title: n.title,
-      published: n.published?.toISOString() ?? null,
-    }));
-  const recentMessages = messages
-    .filter((m) => finnishDate(m.sentAt) >= cutoffDate)
-    .slice(0, 5)
+  const news = input.news
+    .filter((n) => n.published && finnishDate(n.published) >= cutoff)
+    .slice(0, opts.since ? 30 : 10)
+    .map((n) => ({ wilmaId: n.wilmaId, title: n.title, published: n.published, pinned: Boolean(n.pinned) }));
+  const messages = input.messages
+    .filter((m) => m.unread || finnishDate(m.sentAt) >= cutoff)
+    .sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime())
+    .slice(0, opts.since ? 30 : 10)
     .map((m) => ({
       wilmaId: m.wilmaId,
       subject: m.subject,
-      sentAt: m.sentAt.toISOString(),
+      sentAt: m.sentAt,
       senderName: m.senderName ?? null,
+      folder: m.folder,
+      unread: Boolean(m.unread),
+      replyCount: m.replyCount ?? 0,
     }));
 
   return {
-    generatedAt: new Date().toISOString(),
-    student: studentLabel ?? null,
     today,
     tomorrow,
-    todaySchedule,
-    tomorrowSchedule,
-    upcomingExams,
-    recentHomework,
-    recentNews,
-    recentMessages,
+    todaySchedule: overview.schedule.filter((l) => l.date === today),
+    tomorrowSchedule: overview.schedule.filter((l) => l.date === tomorrow),
+    upcomingExams: overview.upcomingExams,
+    homework: overview.homework.filter((h) => h.date >= homeworkCutoff),
+    lessonNotes: input.lessonNotes,
+    news,
+    messages,
+    unreadMessages: input.messages.filter((m) => m.unread).length,
+    ...(input.unavailable.length ? { unavailable: input.unavailable } : {}),
   };
 }
 
@@ -199,6 +246,8 @@ export interface AccessAccount {
   /** The Wilma's name, shown to tell children apart when there are several logins. */
   label?: string | null;
   onStudents?: (students: StudentInfo[]) => Promise<void>;
+  /** The children saved with the login, used when Wilma's own list comes back empty. */
+  knownStudents?: { studentNumber: string; name: string }[];
 }
 
 type AccountStudent = StudentInfo & { account: number };
@@ -233,15 +282,34 @@ export function selectNews(news: NewsItem[], opts: { limit?: number; includeOlde
   return [...dated, ...pinnedUndated, ...older];
 }
 
-/** What a daily summary needs, fetched at once; upcoming exams get their start times. */
-export async function fetchSummaryInputs(client: WilmaClient) {
-  const [overview, calendar, news, messages] = await Promise.all([
+/**
+ * What a daily summary needs, fetched at once. The front page, bulletins and
+ * inbox are required; meeting invitations, lesson notes and exam times are
+ * extras — if Wilma can't give one, the summary says so in `unavailable`.
+ */
+export async function fetchSummaryInputs(client: WilmaClient, opts: { notesFrom: string }): Promise<SummaryInputs> {
+  const unavailable: string[] = [];
+  const optional = <T>(name: string, promise: Promise<T>, fallback: T): Promise<T> =>
+    promise.catch((err) => {
+      if (err instanceof NetworkError) throw err;
+      unavailable.push(name);
+      return fallback;
+    });
+  const [overview, calendar, news, inbox, appointments, lessonNotes] = await Promise.all([
     client.overview.get(),
     client.exams.calendarOrEmpty(),
     client.news.list(),
     client.messages.list("inbox"),
+    optional("appointments", client.messages.list("appointments"), [] as Message[]),
+    optional("lessonNotes", client.attendance.list({ from: opts.notesFrom, to: todayString() }), [] as LessonNote[]),
   ]);
-  return { overview: { ...overview, upcomingExams: addExamTimes(overview.upcomingExams, calendar) }, news, messages };
+  return {
+    overview: { ...overview, upcomingExams: addExamTimes(overview.upcomingExams, calendar) },
+    news,
+    messages: [...inbox, ...appointments],
+    lessonNotes,
+    unavailable,
+  };
 }
 
 /** The first day of a period ending today that is `days` long. */
@@ -262,7 +330,25 @@ export function daysBack(days: number): string {
 const POOL_IDLE_MS = 10 * 60 * 1000;
 const pool = new Map<string, { client: Promise<WilmaClient>; lastUsed: number }>();
 
-function poolKey(profile: WilmaProfile): string {
+// Between processes (CLI commands, the local MCP server), sessions are saved
+// in a store when the host sets one; the hosted relay doesn't.
+let sessionStore: SessionStore | undefined;
+
+/** Continue saved sessions instead of logging in for each process (CLI and local MCP server). */
+export function useSessionStore(store: SessionStore | undefined): void {
+  sessionStore = store;
+}
+
+function rememberSession(key: string, client: WilmaClient): void {
+  const store = sessionStore;
+  if (!store) return;
+  const save = () => store.save(key, client.exportSession()).catch(() => {});
+  client.onLogin(() => void save());
+  void save();
+}
+
+/** Identifies one Wilma account and password (a changed password starts fresh). */
+export function poolKey(profile: WilmaProfile): string {
   const { baseUrl, username, password } = profile;
   // The password is part of the key, so a changed password starts a fresh session.
   return createHash("sha256")
@@ -276,7 +362,18 @@ function poolKey(profile: WilmaProfile): string {
  * verification, no second code).
  */
 export function adoptSession(profile: WilmaProfile, client: WilmaClient): void {
-  pool.set(poolKey(profile), { client: Promise.resolve(client), lastUsed: Date.now() });
+  const key = poolKey(profile);
+  pool.set(key, { client: Promise.resolve(client), lastUsed: Date.now() });
+  rememberSession(key, client);
+}
+
+/** Save any sessions still being written (call before a short-lived process exits). */
+export async function flushSessions(): Promise<void> {
+  if (!sessionStore) return;
+  for (const [key, entry] of pool) {
+    const client = await entry.client.catch(() => null);
+    if (client) await sessionStore.save(key, client.exportSession()).catch(() => {});
+  }
 }
 
 function pooledSession(account: AccessAccount): Promise<WilmaClient> {
@@ -287,7 +384,15 @@ function pooledSession(account: AccessAccount): Promise<WilmaClient> {
   const key = poolKey(account.profile);
   let entry = pool.get(key);
   if (!entry) {
-    const client = WilmaClient.login({ ...account.profile, studentNumber: null }, account.mfa);
+    const profile = { ...account.profile, studentNumber: null };
+    const client = (async () => {
+      // A saved session first; it logs in again by itself if Wilma has ended it.
+      const saved = sessionStore ? await sessionStore.load(key).catch(() => null) : null;
+      const resumed = saved ? WilmaClient.resume(profile, saved, account.mfa) : null;
+      const fresh = resumed ?? (await WilmaClient.login(profile, account.mfa));
+      rememberSession(key, fresh);
+      return fresh;
+    })();
     const created = { client, lastUsed: now };
     entry = created;
     pool.set(key, created);
@@ -324,8 +429,15 @@ export function matchStudents<T extends { studentNumber: string; name: string }>
         return name.startsWith(needle) || name.split(/[\s-]+/).some((part) => part.startsWith(needle));
       });
   if (matches.length === 1) return matches;
-  if (!matches.length) throw new Error(`No student matching "${student}". Students on this account: ${names}`);
-  throw new Error(`"${student}" matches several students (${matches.map((s) => s.name).join(", ")}). Use the full name or student number.`);
+  const list = students.map((s) => ({ studentNumber: s.studentNumber, name: s.name }));
+  if (!matches.length) {
+    throw new WilmaAiError("unknown_student", `No student matching "${student}". Students on this account: ${names}`, { students: list });
+  }
+  throw new WilmaAiError(
+    "ambiguous_student",
+    `"${student}" matches several students (${matches.map((s) => s.name).join(", ")}). Use the full name or student number.`,
+    { students: list }
+  );
 }
 
 export class WilmaAccess {
@@ -394,8 +506,11 @@ export class WilmaAccess {
       await account.onStudents?.(result.list);
       const list = result.list.length
         ? result.list
-        : // Accounts that list no students still work against the default page.
-          [{ studentNumber: account.profile.studentNumber ?? "", name: "", href: "/" }];
+        : account.knownStudents?.length
+          ? // An empty answer keeps the children saved with the login.
+            account.knownStudents.map((s) => ({ ...s, href: `/!${s.studentNumber}/` }))
+          : // Accounts that list no students still work against the default page.
+            [{ studentNumber: account.profile.studentNumber ?? "", name: "", href: "/" }];
       for (const student of list) {
         // Two guardians' logins on the same Wilma list the same children once.
         const key = `${account.profile.baseUrl}|${student.studentNumber}`;
@@ -407,6 +522,11 @@ export class WilmaAccess {
     if (!worked) throw firstError instanceof Error ? firstError : new Error("Could not log in to Wilma");
     this.studentsCache = all;
     return all;
+  }
+
+  /** The children as tools and commands show them (with their Wilma when there are several). */
+  async studentList(): Promise<StudentRef[]> {
+    return (await this.students()).map((s) => this.ref(s));
   }
 
   async selectStudents(student?: string): Promise<AccountStudent[]> {
@@ -431,7 +551,8 @@ export class WilmaAccess {
   private async firstStudentWith<T>(student: string | undefined, fn: (client: WilmaClient) => Promise<T>) {
     if (!student && this.multi) {
       // Message and news ids are only unique within one Wilma.
-      throw new Error(
+      throw new WilmaAiError(
+        "student_required",
         "Several Wilmas are connected and ids are only unique within one Wilma. Pass the student the item was listed under."
       );
     }
@@ -448,15 +569,18 @@ export class WilmaAccess {
     throw lastError instanceof Error ? lastError : new Error("Item not found");
   }
 
-  async summary(opts: { student?: string; days?: number } = {}) {
-    const result = await this.perStudent(opts.student, async (client, s) => {
-      const { overview, news, messages } = await fetchSummaryInputs(client);
-      return { summary: buildSummaryData(overview, news, messages, opts.days ?? 7, s.name) };
+  /** The daily briefing per child (see buildSummaryData). `since`: YYYY-MM-DD, "yesterday"… */
+  async summary(opts: { student?: string; days?: number; since?: string } = {}) {
+    const since = opts.since ? parseIsoDate(opts.since) : undefined;
+    const notesFrom = since ?? previousSchoolDay();
+    const result = await this.perStudent(opts.student, async (client) => {
+      const inputs = await fetchSummaryInputs(client, { notesFrom });
+      return { summary: buildSummaryData(inputs, { days: opts.days, since }) };
     });
-    return { generatedAt: new Date().toISOString(), ...result };
+    return { generatedAt: new Date(), ...(since ? { since } : {}), ...result };
   }
 
-  async schedule(opts: { student?: string; when?: "today" | "tomorrow" | "week"; date?: string; weekday?: string } = {}) {
+  async schedule(opts: { student?: string; when?: (typeof SCHEDULE_WHEN)[number]; date?: string; weekday?: string } = {}) {
     const selection = resolveScheduleDateSelection(opts);
     const range =
       selection.startDate === selection.endDate
@@ -488,12 +612,14 @@ export class WilmaAccess {
     });
   }
 
-  /** Lesson notes for one day (default today), or the last `days` days. */
-  async lessonNotes(opts: { student?: string; date?: string; days?: number } = {}) {
-    if (opts.days && opts.date) throw new Error("Use either a date or a number of days, not both.");
-    if (opts.days) {
-      const from = daysBack(opts.days);
-      const to = todayString();
+  /** Lesson notes for one day (default today), the last `days` days, or `from`–`to` (to defaults to today). */
+  async lessonNotes(opts: { student?: string; date?: string; days?: number; from?: string; to?: string } = {}) {
+    const ways = [opts.date, opts.days, opts.from].filter((x) => x !== undefined).length;
+    if (ways > 1) throw new WilmaAiError("invalid_argument", "Use one of a date, a number of days, or from/to.");
+    if (opts.to && !opts.from) throw new WilmaAiError("invalid_argument", "A period needs a start date (from) as well.");
+    if (opts.days || opts.from) {
+      const from = opts.days ? daysBack(opts.days) : parseIsoDate(opts.from!);
+      const to = opts.to ? parseIsoDate(opts.to) : todayString();
       return {
         from,
         to,
@@ -521,7 +647,9 @@ export class WilmaAccess {
 
   async printout(opts: { id: string; student?: string }): Promise<FetchedAttachment & { student: StudentRef }> {
     const { student, item } = await this.firstStudentWith(opts.student, async (client) => {
-      const { printout, response } = await client.printouts.fetch(opts.id);
+      const { printout, response } = await client.printouts.fetch(opts.id).catch((err) => {
+        throw /not found/.test(String(err?.message)) ? new WilmaAiError("not_found", `Printout "${opts.id}" not found`) : err;
+      });
       const resource: NewsResource = { id: printout.id, label: printout.title, url: printout.path, authContext: "wilma" };
       const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim() || null;
       const fileName = fileNameFromResponse(resource, response.headers.get("content-disposition"), contentType);
@@ -560,7 +688,7 @@ export class WilmaAccess {
       const resource = news.resources?.find((r) => r.id === opts.resourceId);
       if (!resource) {
         const known = (news.resources ?? []).map((r) => r.id).join(", ") || "none";
-        throw new Error(`Resource "${opts.resourceId}" not found in news item ${opts.newsId} (available: ${known})`);
+        throw new WilmaAiError("not_found", `Resource "${opts.resourceId}" not found in news item ${opts.newsId} (available: ${known})`);
       }
       const fetched = await client.news.fetchResource(opts.newsId, opts.resourceId, { item: news });
       if (fetched.status === "not_a_file" || !fetched.response) {

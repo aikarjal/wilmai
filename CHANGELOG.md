@@ -1,14 +1,31 @@
 # Changelog
 
-## 1.7.0 (unreleased)
+## 2.0.0 (unreleased)
 
-_Releases: wilma-cli 1.7.0, wilma-client 1.5.3._
+_Releases: wilma-cli 2.0.0, wilma-client 1.6.0. One release for the browser login, the MCP server and Claude Desktop extension, the plugin marketplace, more Wilma data, and a CLI rebuilt for agents._
+
+### CLI 2.0: built for agents (changes for scripts)
+
+Nearly everyone running the CLI is an AI agent, so its defaults and output now suit them. Measured on a family account before the change: a command without `--student` covered one of two children, the same data came in three JSON shapes, times were in UTC, a third of the JSON was whitespace, and a daily triage run took 9 logins.
+
+- **Every child by default**, like the MCP tools; `--student` narrows to one. (`--all-students` is still accepted.)
+- **One JSON shape, the MCP tools' own:** `{ students: [{ student, … }] }`, from the same code, so the CLI and the tools can't drift (about 400 duplicated lines are gone). Reading one item: `{ student, message }` / `{ student, news }`.
+- **Times in Finnish time with their offset** (`2026-10-02T13:37:00+03:00`) instead of UTC, in the CLI and the MCP tools; unknown times are `null`.
+- **JSON when a program reads the output, text in a terminal**; `--json` / `--text` force either. JSON is compact, without bookkeeping fields (`fetchedAt`, internal type classes, sender ids).
+- **One login, not one per command.** Commands and the local MCP server continue the last Wilma session (saved next to the login, readable only by the user) and log in again only when Wilma has ended it. Each login used to log the parent out of Wilma in their browser and, with two-step verification, need a fresh code; three commands in a row now log in at most once. `wilma login` keeps the session it verified. `WILMAI_NO_SESSION_CACHE=1` turns this off.
+- **Shorter commands, matching the tool names:** `wilma schedule tomorrow` (also `week`, `next-week`, a date or a weekday), `wilma notes` (lesson notes; `notes summary`), `wilma messages <id>`, `wilma news <id>`, `wilma news <id> download <resource>`, `wilma printouts <id>`, `wilma students`, `wilma find-school <city>`. The 1.x spellings still work. Dates accept `today`, `yesterday` and `tomorrow`.
+- **A summary for a whole morning briefing:** lesson notes since the previous school day, unread messages (meeting invitations included) and reply counts, exam start times, and `--since <date>` for only what's new (daily runs need one call instead of nine). Parts Wilma can't give are listed in `unavailable`.
+- **Help per command** with examples and the JSON shape: `wilma help <command>` or `wilma <command> --help`. `wilma` without arguments from a program prints the help.
+- **Errors with codes:** `{ status: "error", code, message, hint?, cause? }` — `invalid_argument`, `unknown_command`, `not_logged_in`, `unknown_student` / `ambiguous_student` (with the children listed), `not_found`, `login_failed`, `mfa_required`, `mfa_failed`, `network`, `wilma_error`, `config_invalid` — and exit codes 2 (usage), 3 (not logged in), 1 (other).
+- Fixed on the way: when Wilma's student list came back empty, the shared code showed a nameless student and could save the empty list over the saved children; it now keeps the saved list.
+- MCP: `wilma_summary` takes `since`; `wilma_schedule` takes `next-week`; `wilma_find_school` returns `{ wilmas, hint? }`.
+- client 1.6.0: `WilmaClient.resume()` / `exportSession()` / `onLogin()` to continue a session in another process, and `finnishIsoString()`.
 
 ### New commands
 
 - **`wilma login`** opens a one-time login page in the browser (served on `127.0.0.1` with a random path token, an Origin check and a strict CSP). Pick your school's Wilma from a search box, log in, and the verified login is saved to the config file. The password is never typed into a terminal prompt or an agent's chat. Accounts with two-step verification are asked for the authenticator setup key.
 - **`wilma login --tenant <url|city> --username <name>`** logs in without a browser, reading the password from `WILMA_PASSWORD` or `--password-stdin` (a `--password` flag is refused so it never lands in shell history).
-- **`wilma tenants <city or school>`** searches Wilma addresses, so agents can help a parent pick theirs.
+- **`wilma find-school <city or school>`** searches Wilma addresses, so agents can help a parent pick theirs.
 - **`wilma mcp`** runs a stdio MCP server with 14 read-only tools (summary, schedule, homework, exams, grades, lesson notes, messages, news, bulletin attachments, account status, school search, login). Tools cover all children by default. When nobody is logged in, tools open the browser login and tell the assistant what to relay.
 
 ### New
@@ -17,13 +34,13 @@ _Releases: wilma-cli 1.7.0, wilma-client 1.5.3._
 - **Environment-variable accounts:** `WILMA_TENANT`, `WILMA_USERNAME`, `WILMA_PASSWORD` (and `WILMA_TOTP_SECRET`) work for every command without a saved login — for agents that keep secrets in their own store.
 - **Claude Desktop extension:** `pnpm --filter @wilm-ai/wilma-cli build:mcpb` builds `wilmai.mcpb`; a release workflow attaches it to each CLI release and to a rolling `claude-desktop` release, which `wilm.ai/get/claude` points to (so a newer wilma-client release can't break the link).
 - **Plugin marketplace:** `.claude-plugin/marketplace.json` publishes the `skills/` folder as the `wilma` plugin (both skills plus the MCP server) for Claude Code and Codex.
-- Skills: `wilma` 1.7.0 prefers the MCP tools when present and documents the new login; `wilma-triage` 1.4.0 works with any calendar tool instead of requiring `gog`.
+- Skills: `wilma` 2.0.0 prefers the MCP tools when present and documents the new login and the 2.0 commands; `wilma-triage` 2.0.0 runs on one `summary --since` call and works with any calendar tool instead of requiring `gog`.
 
 ### Changed
 
 - **One login per command instead of one per child.** Wilma allows one live session per account — every new login cancels the previous one (and logs the parent out of Wilma in their own browser). `wilma summary --all-students` for two children went from 4 logins and 26 requests (~2.8 s) to 1 login and 10 requests (~1.9 s); an unused up-front login in every CLI command is gone.
 - **MCP tool calls share a session.** Tool calls in one process (the local MCP server, a relay instance) reuse one session per account for up to 10 idle minutes, so parallel tool calls no longer cancel each other's sessions. Five parallel calls: ~0.8 s with one login, ~0.3 s on the next round with none.
-- **wilma-client 1.5.3:** `client.students()` and `client.forStudent(number)` let one login serve every child; a session cancelled by another login (HTTP 403) or expired (401) logs in again by itself — once, even when many requests notice at the same time — including the two-step verification step.
+- **wilma-client 1.6.0:** `client.students()` and `client.forStudent(number)` let one login serve every child; a session cancelled by another login (HTTP 403) or expired (401) logs in again by itself — once, even when many requests notice at the same time — including the two-step verification step.
 - **Two-step verification (TOTP) is robust to code reuse.** Logins less than 30 seconds apart share one code, which a server may reject. The session the login page verifies is now kept for the first questions (no second login or code), and if Wilma rejects a code, the client asks once more and gets a fresh code from the next 30-second window — no delay unless Wilma actually refuses. The login page explains where to find the authenticator setup key. Covered by an end-to-end test against a mock Wilma that enforces TOTP (`MFA_STRICT=1` also rejects reused codes).
 - Running `wilma` without arguments outside a terminal (e.g. from an agent) prints what to run instead of hanging in an interactive prompt.
 - Student lookups for `--student` / `--all-students` now pass the two-step verification callback, so they work on MFA accounts.
@@ -31,7 +48,7 @@ _Releases: wilma-cli 1.7.0, wilma-client 1.5.3._
 
 ### Fixed
 
-- **Wrong usernames and passwords were accepted (wilma-client 1.5.3).** Wilma answers a failed login with a redirect to `?loginfailed` and an empty body; the client only checked the body, so any username and password "logged in" with no children. A `?loginfailed` redirect now fails with `AuthenticationError`, and a redirect only counts as a login when Wilma sets its session cookie.
+- **Wrong usernames and passwords were accepted (wilma-client 1.6.0).** Wilma answers a failed login with a redirect to `?loginfailed` and an empty body; the client only checked the body, so any username and password "logged in" with no children. A `?loginfailed` redirect now fails with `AuthenticationError`, and a redirect only counts as a login when Wilma sets its session cookie.
 - **Messages came back empty after another login.** When another login (the parent's phone, say) cancelled the session, Wilma answers the message list with a redirect to its login page; the client followed it and read the login page as an empty inbox. A redirect to the login page now counts as a logged-out session: the client logs in again and returns the messages.
 - Wilma search now matches municipality names (the tenant list uses `name_fi`/`name_sv`, which the old search never read), and ranks a city's own Wilma first.
 
@@ -40,13 +57,13 @@ _Releases: wilma-cli 1.7.0, wilma-client 1.5.3._
 Compared field by field against a real Wilma 2.36 account before switching; parsers are tested against anonymised copies of real pages (`packages/wilma-client/test/fixtures/real`, made with `scripts/anonymize-fixture.mjs`).
 
 - **Gradebook** (`wilma gradebook`, `wilma_gradebook`): completed courses and grades by subject, including term and school-year (report card) grades, as a tree with credits and dates.
-- **Printouts** (`wilma printouts list|download`, `wilma_list_printouts`, `wilma_get_printout`): the PDFs a school offers, such as report cards or absence reports.
-- **Lesson notes for a period and a summary.** `wilma attendance list --days 14` (or `--from`/`--to`) and `wilma_lesson_notes` with `days`; `wilma attendance summary` and `wilma_lesson_notes_summary` count notes by kind (absences for health reasons, lateness, praise, missing study materials…) for the school year or a period. Teachers' feedback ("forgot books", "did well") lives here.
+- **Printouts** (`wilma printouts`, `wilma printouts <id>`, `wilma_list_printouts`, `wilma_get_printout`): the PDFs a school offers, such as report cards or absence reports.
+- **Lesson notes for a period and a summary.** `wilma notes --days 14` (or `--from`/`--to`) and `wilma_lesson_notes` with `days`; `wilma notes summary` and `wilma_lesson_notes_summary` count notes by kind (absences for health reasons, lateness, praise, missing study materials…) for the school year or a period. Teachers' feedback ("forgot books", "did well") lives here.
 - **The teacher's own words** on a lesson note are a separate `note` field. They used to be glued onto the label, and a note without a lesson took its label for the subject; labels now come from the page's own legend.
 - **Message threads with replies.** Messages are read from Wilma's thread JSON (`?format=json`): the body, recipients and every reply, with link addresses kept. Before, replies were dropped (or one replaced the message). Lists show the sender, unread messages and reply counts. Older Wilma versions fall back to the message page.
 - **Schedule from the timetable API** (`/api/v1/schedules/timetable`) for any date or week: the same lessons as the schedule page (checked over four weeks, 157 lessons), plus rooms and every teacher of co-taught lessons. Older Wilma versions fall back to the schedule page.
 - **All bulletins.** Pinned bulletins (*Pysyvät tiedotteet*, e.g. the school-year bulletin) and older ones (*Vanhat tiedotteet*) were missing — 22 of 42 on the test account. Lists now include the newest dated ones plus every pinned one (`pinned: true`), and older ones with `--older` / `include_older` (`archived: true`). A bulletin's own page now gives its date and author.
-- **Exam start times.** Upcoming exams (`wilma exams list`, the summary, `wilma_upcoming_exams`) include `time` when the school gives one ("08:30"). Exams still come from the front page's JSON; the time is only on the exam calendar page, which is matched by date and course code (and the exam's name when a course has two exams that day). If the calendar can't be read, exams come without times.
+- **Exam start times.** Upcoming exams (`wilma exams`, the summary, `wilma_upcoming_exams`) include `time` when the school gives one ("08:30"). Exams still come from the front page's JSON; the time is only on the exam calendar page, which is matched by date and course code (and the exam's name when a course has two exams that day). If the calendar can't be read, exams come without times.
 - Searching for a school that has no Wilma of its own suggests searching for its city instead (many city schools share the city's Wilma), in the CLI, the agent tool and the login page.
 
 ### Security and reliability audit
@@ -59,7 +76,7 @@ A review of the whole codebase before this release. Each item has a regression t
 - **Dates follow Finnish time on any computer.** Wilma times were read in the computer's own time zone, so an agent on a UTC cloud machine shifted every message, bulletin and exam by 2–3 hours, and the CLI printed dates in UTC (items between midnight and 3 a.m. showed the previous day). Lesson notes without `--date` now default to today in Finland.
 - **Download file names are safe.** A name like `" .npmrc"` could save a hidden config file into the current folder; names are now cleaned of leading dots and spaces, control and text-direction characters, and Windows device names.
 - **`--student` matches strictly**, like the agent tools: a number, the full name, or the start of a name part. `--student Ella` no longer picks "Daniella".
-- **Reliable `--json`.** Every error is JSON with exit code 1 (unknown commands, options and subcommands, missing values, several students, missing ids, two-step verification). Unknown options are refused instead of ignored; `--limit`, `--days`, `--when`, `--folder` and `--date` are validated; `--student --json` no longer reads `--json` as a name. Debug output goes to stderr.
+- **Reliable `--json`.** Every error is JSON (unknown commands, options and subcommands, missing values, unknown students, missing ids, two-step verification) — with codes and exit codes in 2.0, above. Unknown options are refused instead of ignored; `--limit`, `--days`, `--when`, `--folder` and `--date` are validated; `--student --json` no longer reads `--json` as a name. Debug output goes to stderr.
 - **A damaged config is never overwritten.** It was read as empty, so the next login replaced every saved login; now the CLI stops and says how to fix it. The config file and folder are tightened to the user's own access when found open.
 - **Text from Wilma can't control the terminal:** escape sequences (window title changes, screen clearing, clipboard writes) and carriage returns are removed from printed output and menu choices; `--json` keeps the text intact, escaped.
 - **Interactive two-step verification:** switching between logins no longer reuses another login's key or typed code, and a setup key typed during a new login is saved with that login. New logins in the interactive menu are saved like `wilma login` (one entry per account, any username case).

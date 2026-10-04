@@ -18,99 +18,63 @@ Opens a one-time login page in your browser: pick your school's Wilma and log in
 
 Without a browser: `wilma login --tenant <url|city> --username <name>` with the password in `WILMA_PASSWORD` or piped via `--password-stdin`. Or set `WILMA_TENANT`, `WILMA_USERNAME`, `WILMA_PASSWORD` (and `WILMA_TOTP_SECRET`) and skip the saved login.
 
-## Run
+## Use it
 ```bash
-wilma
-# or
-wilmai
+wilma summary                 # the daily briefing for every child — start here
+wilma schedule tomorrow       # today | tomorrow | week | next-week | 2026-10-07 | thu
+wilma exams                   # upcoming exams, with topics and start times
+wilma homework
+wilma notes --days 7          # lesson notes: absences and teachers' feedback
+wilma notes summary           # those counted by kind for the school year
+wilma messages                # newest first; [new] and reply counts
+wilma messages 27164611       # one message with its whole thread
+wilma news                    # dated bulletins plus pinned ones; --older for the rest
+wilma news 73291              # one bulletin with its links
+wilma news 73291 download 1   # a file linked from it
+wilma grades                  # recent exam grades
+wilma gradebook               # course and report-card grades
+wilma printouts               # PDFs such as report cards; `wilma printouts <id>` saves one
+wilma students
+wilma help <command>          # usage, examples and the JSON shape
 ```
+
+- **Every child by default.** `--student <number|name>` narrows to one (a number, the full name, or the start of a first or last name — never a loose match).
+- **JSON for programs, text for people.** Output is JSON when another program reads it (agents, pipes) and text in a terminal; `--json` or `--text` forces either. The JSON is the same as the MCP tools' — `{ students: [{ student, … }] }` — compact, with times in Finnish time and their offset (`2026-10-02T13:37:00+03:00`).
+- **Dates** are `YYYY-MM-DD`, `today`, `yesterday` or `tomorrow`.
+- **One login, not one per command.** Commands continue the last Wilma session (saved next to the login, readable only by you) and log in again only when Wilma has ended it. Each login would otherwise log you out of Wilma in your browser and, with two-step verification, need a new code. `WILMAI_NO_SESSION_CACHE=1` turns this off.
+- **For daily runs:** `wilma summary --since yesterday` returns only what is new: bulletins, messages, homework and lesson notes from that day on, plus anything unread.
+- **Errors** are JSON too: `{ "status": "error", "code": "unknown_student", "message": "…" }`, with exit code 2 for usage errors, 3 when not logged in, and 1 otherwise. Codes include `invalid_argument`, `unknown_command`, `not_logged_in`, `unknown_student`, `ambiguous_student`, `not_found`, `login_failed`, `mfa_required`, `network` and `wilma_error`.
+
+The 1.x spellings still work: `kids list`, `tenants`, `attendance list`, `<command> list`, `messages read <id>`, `news read <id>`, `news resource download <id> <resource>`, `printouts download <id>` and `--all-students`.
+
+Running `wilma` without arguments in a terminal opens an interactive menu.
 
 ## Use with AI assistants (MCP)
 ```bash
 wilma mcp
 ```
-Starts a stdio MCP server with read-only Wilma tools (`wilma_summary`, `wilma_schedule`, `wilma_read_news`, …). Add it to any MCP client as `npx -y @wilm-ai/wilma-cli mcp`. Setup guides for Claude, ChatGPT, Grok Bot and OpenClaw: https://wilm.ai
+Starts a stdio MCP server with read-only Wilma tools (`wilma_summary`, `wilma_schedule`, `wilma_read_news`, …) that return the same data as the commands. Add it to any MCP client as `npx -y @wilm-ai/wilma-cli mcp`. Setup guides for Claude, ChatGPT, Grok Bot and OpenClaw: https://wilm.ai
 
-## Commands
+## Bulletin attachments
+`wilma news <id>` lists every link in a bulletin (`resources`). Any resource can be downloaded with `wilma news <id> download <resource> [--output <directory>]` (the resource id also accepts a bare number, e.g. `1` for `resource-1`). Wilma-hosted files download through the session; external links are fetched without your Wilma login, and only from public websites. The result's `status` says what happened: `downloaded` (use the returned `path`) or `not_a_file` when the link answered with a web page (for example a sharing link that needs signing in — open it in a browser instead). `--output` defaults to the current directory; existing files are never overwritten.
 
-### Daily briefing
+## Several Wilmas
+Children at schools on different Wilmas need one login per Wilma. Run `wilma login` again (or press "Add another Wilma" on the login page); commands then cover every child, and each child carries the `wilma` it belongs to.
 ```bash
-wilma summary [--days 7] [--student <id|name>] [--all-students] [--json]
-```
-Combines today's and tomorrow's schedule, upcoming exams, recent homework, news, and messages into one view. Designed for AI agents to surface what matters.
-
-### Schedule
-```bash
-wilma schedule list [--when today|tomorrow|week] [--date YYYY-MM-DD] [--weekday mon|tue|wed|thu|fri|sat|sun] [--student <id|name>] [--all-students] [--json]
-```
-
-Examples:
-```bash
-# Specific day by date
-wilma schedule list --date 2026-02-25 --student "Stella" --json
-
-# Next Thursday (also accepts Finnish short forms like to/ke/pe)
-wilma schedule list --weekday thu --student "Stella" --json
-
-# Tomorrow
-wilma schedule list --when tomorrow --student "Stella" --json
-```
-
-### Homework
-```bash
-wilma homework list [--limit 10] [--student <id|name>] [--all-students] [--json]
-```
-
-### Upcoming exams
-```bash
-wilma exams list [--limit 20] [--student <id|name>] [--all-students] [--json]
-```
-
-### Exam grades
-```bash
-wilma grades list [--limit 20] [--student <id|name>] [--all-students] [--json]
-```
-
-### News and messages
-```bash
-wilma news list [--limit 20] [--older] [--student <id|name>] [--all-students] [--json]
-wilma news read <id> [--student <id|name>] [--json]
-wilma news resource download <news-id> <resource-id> [--student <id|name>] [--output <directory>] [--json]
-wilma messages list [--folder inbox] [--limit 20] [--student <id|name>] [--all-students] [--json]
-wilma messages read <id> [--student <id|name>] [--json]
-```
-
-`news list` shows the newest dated bulletins and every pinned one; `--older` adds older bulletins. Message lists mark unread messages and threads with replies, and `messages read` shows the whole thread.
-
-`news read --json` includes a `resources` array with every link in the bulletin. Any resource can be passed to the download command (the resource id also accepts a bare number, e.g. `1` for `resource-1`). Wilma-hosted files download through the authenticated session; external URLs are fetched with an isolated, unauthenticated request — no Wilma credentials are ever sent to external hosts. The result `status` reports what actually happened: `downloaded` (use the returned `path`), or `not_a_file` when the URL answered with a web page instead of a file (for example a sharing link that requires signing in — open it in a browser instead). `--output` defaults to the current directory; existing files are never overwritten.
-
-### Several Wilmas
-Children at schools on different Wilmas need one login per Wilma. Run `wilma login` again (or press "Add another Wilma" on the login page); commands then cover every child.
-```bash
-wilma accounts [--json]            # saved logins, numbered
+wilma accounts                     # saved logins, numbered
 wilma accounts remove <number>     # or the Wilma name or username
 ```
 
-### Find your Wilma
+## Find your Wilma
 ```bash
-wilma tenants <city or school> [--json]
+wilma find-school <city or school>
 ```
 
-### Lesson notes, absences and grades
+## Other
 ```bash
-wilma attendance list [--date YYYY-MM-DD | --days 14 | --from YYYY-MM-DD --to YYYY-MM-DD] [--json]
-wilma attendance summary [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--json]   # counts by kind, this school year by default
-wilma gradebook [--json]                                                  # course and report-card grades
-wilma printouts list [--json]                                             # PDFs such as report cards
-wilma printouts download <id> [--output <directory>]
-```
-Lesson notes include teachers' feedback (praise, missing books or homework) and absences, with the teacher's own words when given.
-
-### Other
-```bash
-wilma kids list [--json]
 wilma update
-wilma config clear
+wilma config clear                 # deletes every saved login and session
+wilma --version
 ```
 
 ## MFA (Multi-Factor Authentication)
@@ -122,8 +86,7 @@ If your Wilma account has MFA/TOTP enabled:
 **Without a saved login:** set `WILMA_TOTP_SECRET` along with the other `WILMA_*` variables. `--totp-secret <key>` also works, but a key on the command line ends up in shell history and is visible to other programs on the computer.
 
 ## Config
-Local config is stored in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`).
-Use `wilma config clear` to remove it. Override with `WILMAI_CONFIG_PATH`.
+Logins are saved in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`; override with `WILMAI_CONFIG_PATH`) and the current Wilma sessions in `wilmai-sessions.json` next to it, both readable only by you. `wilma config clear` deletes both.
 
 ## Troubleshooting: TLS errors on a managed laptop
 
@@ -134,21 +97,22 @@ A successful `npm install` is not evidence that TLS is healthy — the npm regis
 commonly exempt from inspection.
 
 ```bash
-NODE_USE_SYSTEM_CA=1 wilma summary --json                        # Node >=22.19 / >=24.6
-node --use-system-ca "$(command -v wilma)" summary --json        # Node >=22.15
-NODE_EXTRA_CA_CERTS=/path/to/root-ca.pem wilma summary --json    # explicit root
+NODE_USE_SYSTEM_CA=1 wilma summary                        # Node >=22.19 / >=24.6
+node --use-system-ca "$(command -v wilma)" summary        # Node >=22.15
+NODE_EXTRA_CA_CERTS=/path/to/root-ca.pem wilma summary    # explicit root
 ```
 
 Never use `NODE_TLS_REJECT_UNAUTHORIZED=0` — it turns verification off entirely.
 
-With `--json`, transport failures carry a `code` and a `hint` alongside `status` and
-`message`, so agents can branch on the cause:
+In JSON, transport failures have the code `network`, with the underlying `cause` and a
+`hint`, so agents can branch on it:
 
 ```json
 {
   "status": "error",
+  "code": "network",
   "message": "TLS certificate verification failed for https://example.inschool.fi (UNABLE_TO_GET_ISSUER_CERT_LOCALLY)",
-  "code": "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+  "cause": "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
   "hint": "..."
 }
 ```
@@ -156,5 +120,4 @@ With `--json`, transport failures carry a `code` and a `hint` alongside `status`
 ## Notes
 - Credentials and TOTP secrets are stored with lightweight obfuscation (not encryption) in a file only your user can read.
 - Bulletin links are fetched only from public websites (never local or private network addresses), without your Wilma login.
-- For multi-child accounts, you can pass `--student <id|name>` or `--all-students`.
-- All list commands support `--json` for agent-friendly structured output.
+- Commands cover every child; `--student <number|name>` narrows to one.

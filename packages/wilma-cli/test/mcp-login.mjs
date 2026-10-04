@@ -126,7 +126,7 @@ try {
   }
 
   const schools = jsonOf(await client.callTool({ name: "wilma_find_school", arguments: { query: "Tampere" } }));
-  assert.equal(schools[0].url, "https://opetustampere.inschool.fi");
+  assert.equal(schools.wilmas[0].url, "https://opetustampere.inschool.fi");
 
   const notLoggedIn = await client.callTool({ name: "wilma_summary", arguments: {} });
   assert.equal(notLoggedIn.isError, true);
@@ -245,16 +245,19 @@ try {
 
   /* ---------------- CLI across several Wilmas ---------------- */
   const kids = JSON.parse((await execFileAsync(process.execPath, [cliPath, "kids", "list", "--json"], { env: baseEnv(mcpConfig) })).stdout);
-  assert.deepEqual(kids.map((k) => k.name).sort(), ["Eino Kolmas", "Test Student", "Toinen Oppilas"]);
+  assert.deepEqual(kids.students.map((k) => k.name).sort(), ["Eino Kolmas", "Test Student", "Toinen Oppilas"]);
+  assert.ok(kids.students.every((k) => k.wilma), "children are labelled with their Wilma");
   const einoSummary = JSON.parse((await execFileAsync(process.execPath, [cliPath, "summary", "--student", "Eino", "--json"], { env: baseEnv(mcpConfig) })).stdout);
-  assert.equal(einoSummary.student, "Eino Kolmas");
-  const allSummary = JSON.parse((await execFileAsync(process.execPath, [cliPath, "summary", "--all-students", "--json"], { env: baseEnv(mcpConfig) })).stdout);
+  assert.deepEqual(einoSummary.students.map((s) => s.student.name), ["Eino Kolmas"]);
+  // Every child by default, on both Wilmas; --all-students is still accepted.
+  const allSummary = JSON.parse((await execFileAsync(process.execPath, [cliPath, "summary"], { env: baseEnv(mcpConfig) })).stdout);
   assert.equal(allSummary.students.length, 3);
+  assert.equal(JSON.parse((await execFileAsync(process.execPath, [cliPath, "summary", "--all-students"], { env: baseEnv(mcpConfig) })).stdout).students.length, 3);
   const accountsList = JSON.parse((await execFileAsync(process.execPath, [cliPath, "accounts", "--json"], { env: baseEnv(mcpConfig) })).stdout);
-  assert.deepEqual(accountsList.map((a) => a.wilma), ["Test Wilma", "Second Wilma"]);
+  assert.deepEqual(accountsList.accounts.map((a) => a.wilma), ["Test Wilma", "Second Wilma"]);
   await execFileAsync(process.execPath, [cliPath, "accounts", "remove", "2"], { env: baseEnv(mcpConfig) });
   const afterRemove = JSON.parse((await execFileAsync(process.execPath, [cliPath, "accounts", "--json"], { env: baseEnv(mcpConfig) })).stdout);
-  assert.deepEqual(afterRemove.map((a) => a.wilma), ["Test Wilma"]);
+  assert.deepEqual(afterRemove.accounts.map((a) => a.wilma), ["Test Wilma"]);
 
   /* ---------------- CLI: non-interactive login ---------------- */
   const cliConfig = join(tempDirectory, "cli-config.json");
@@ -280,7 +283,10 @@ try {
     execFileAsync(process.execPath, [cliPath, "login", "--tenant", wilmaUrl, "--username", "u", "--password", "x"], {
       env: baseEnv(cliConfig),
     }),
-    /shell history/
+    (err) => {
+      const failure = JSON.parse(err.stdout);
+      return err.code === 2 && failure.code === "invalid_argument" && /shell history/.test(failure.message);
+    }
   );
 
   /* ---------------- CLI: env-var account, no config ---------------- */
@@ -291,7 +297,7 @@ try {
       WILMA_PASSWORD: "test-password",
     }),
   });
-  assert.deepEqual(JSON.parse(kidsOut).map((s) => s.name), ["Test Student", "Toinen Oppilas"]);
+  assert.deepEqual(JSON.parse(kidsOut).students.map((s) => s.name), ["Test Student", "Toinen Oppilas"]);
 
   /* ---------------- CLI: browser login flow ---------------- */
   const browserConfig = join(tempDirectory, "browser-config.json");

@@ -49,6 +49,8 @@ interface SessionAuth {
   relogin: Promise<void> | null;
   /** Bumped on every successful login, so a late 401/403 from an older login isn't mistaken for a new problem. */
   generation: number;
+  /** Called after every successful login (first or again), e.g. to save the session. */
+  onLogin?: () => void;
   /**
    * Set when Wilma refused the saved login itself (its explicit "login
    * failed" answer, or a code is needed and there is no way to make one).
@@ -70,6 +72,38 @@ export class WilmaSession {
     this.auth = { cookieJar: new CookieJar(), loggedIn: false, relogin: null, generation: 0, failed: null };
     this.studentNumber = opts?.studentNumber ?? null;
     this.debug = Boolean(opts?.debug);
+  }
+
+  /** The login's cookies, so another process can resume the session (see resumeState). */
+  exportState(): string {
+    return JSON.stringify(this.auth.cookieJar.serializeSync());
+  }
+
+  /**
+   * Continue a session saved by exportState() instead of logging in. If Wilma
+   * has ended it meanwhile, the first request notices (401/403 or the login
+   * page) and logs in again with these credentials. Returns false when the
+   * state holds no session to resume.
+   */
+  resumeState(state: string, username: string, password: string): boolean {
+    let jar: CookieJar;
+    try {
+      jar = CookieJar.deserializeSync(JSON.parse(state));
+    } catch {
+      return false;
+    }
+    if (!jar.getCookiesSync(this.baseUrl).some((cookie: Cookie) => cookie.key === "Wilma2SID")) return false;
+    this.auth.cookieJar = jar;
+    this.auth.loggedIn = true;
+    this.auth.generation += 1;
+    this.auth.username = username;
+    this.auth.password = password;
+    return true;
+  }
+
+  /** Called after every successful login (first or again). */
+  onLogin(callback: (() => void) | undefined): void {
+    this.auth.onLogin = callback;
   }
 
   /** Used to answer the two-step verification challenge when the session has to log in again. */
@@ -175,6 +209,7 @@ export class WilmaSession {
       this.auth.failed = null;
       this.auth.username = username;
       this.auth.password = password;
+      this.auth.onLogin?.();
       return;
     }
 
@@ -228,6 +263,7 @@ export class WilmaSession {
     this.auth.loggedIn = true;
     this.auth.generation += 1;
     this.auth.failed = null;
+    this.auth.onLogin?.();
     if (this.debug) {
       console.error(`[wilmai] MFA verification successful`);
     }

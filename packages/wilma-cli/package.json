@@ -1,6 +1,6 @@
 {
   "name": "@wilm-ai/wilma-cli",
-  "version": "1.7.0",
+  "version": "2.0.0",
   "description": "Read your children's Wilma (Finnish school system) from the terminal or an AI assistant: schedule, homework, exams, messages and news.",
   "license": "MIT",
   "repository": {
@@ -30,7 +30,7 @@
   "dependencies": {
     "@inquirer/prompts": "^5.3.8",
     "@modelcontextprotocol/sdk": "^1.32.0",
-    "@wilm-ai/wilma-client": "^1.5.3",
+    "@wilm-ai/wilma-client": "^1.6.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {

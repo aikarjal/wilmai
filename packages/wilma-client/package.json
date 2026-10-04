@@ -1,6 +1,6 @@
 {
   "name": "@wilm-ai/wilma-client",
-  "version": "1.5.3",
+  "version": "1.6.0",
   "description": "Unofficial client for Wilma, the Finnish school information system: login (with two-step verification), schedule, homework, exams, messages and news.",
   "license": "MIT",
   "repository": {

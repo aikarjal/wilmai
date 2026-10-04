@@ -159,20 +159,21 @@ try {
     }
   };
 
-  // Empty live enumeration preserves and returns the cached student list.
+  // Empty live enumeration preserves and returns the cached student list
+  // (the 1.x spelling `kids list` still works).
   const kids = await runJson(["kids", "list", "--json"]);
   assert.equal(kids.exitCode, 0);
-  assert.deepEqual(kids.output, [{
-    studentNumber: "123",
-    name: "Test Student",
-    href: "/!123/",
-  }]);
+  assert.deepEqual(kids.output, { students: [{ studentNumber: "123", name: "Test Student" }] });
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  assert.deepEqual(config.profiles[0].students, [{ studentNumber: "123", name: "Test Student" }], "an empty answer doesn't wipe the saved list");
 
   // Every resource is attemptable; no kind guessing in the schema.
-  const read = await runJson(["news", "read", "42", "--student", "123", "--json"]);
-  assert.equal(read.output.resources[0].authContext, "wilma");
-  assert.equal(read.output.resources[0].fileName, "retkilupa.pdf");
-  assert.equal(read.output.resources[0].kind, undefined);
+  const read = await runJson(["news", "42", "--student", "123"]);
+  assert.equal(read.output.student.name, "Test Student");
+  assert.equal(read.output.news.resources[0].authContext, "wilma");
+  assert.equal(read.output.news.resources[0].fileName, "retkilupa.pdf");
+  assert.equal(read.output.news.resources[0].kind, undefined);
+  assert.equal((await runJson(["news", "read", "42", "--student", "123", "--json"])).output.news.wilmaId, 42, "1.x spelling");
 
   // Wilma-hosted attachment downloads via the session.
   const downloaded = await runJson([
@@ -183,10 +184,7 @@ try {
   assert.equal(await readFile(downloaded.output.path, "utf8"), "test-pdf-bytes");
 
   // Numeric shorthand resolves to resource-1; collision naming appends -1.
-  const shorthand = await runJson([
-    "news", "resource", "download", "42", "1",
-    "--student", "123", "--output", outputDirectory, "--json",
-  ]);
+  const shorthand = await runJson(["news", "42", "download", "1", "--student", "123", "--output", outputDirectory]);
   assert.equal(shorthand.output.status, "downloaded");
   assert.equal(basename(shorthand.output.path), "retkilupa-1.pdf");
 
@@ -207,8 +205,8 @@ try {
     "--student", "123", "--output", outputDirectory, "--json",
   ]);
   assert.equal(page.output.status, "not_a_file");
-  assert.deepEqual(page.output.availableActions, ["open_in_browser"]);
-  assert.ok(page.output.resource.url.includes("/external/page"));
+  assert.ok(page.output.url.includes("/external/page"));
+  assert.match(page.output.message, /web page/);
 
   // Oversized downloads fail with a JSON error envelope and exit code 1.
   const oversized = await runJson([

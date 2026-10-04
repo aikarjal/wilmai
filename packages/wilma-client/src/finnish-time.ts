@@ -48,6 +48,22 @@ export function finnishDateString(date: Date = new Date()): string {
   return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
 
+/**
+ * "2026-10-02T13:37:00+03:00": an instant as Finnish wall-clock time with its
+ * offset — unambiguous, and readable without converting from UTC.
+ */
+export function finnishIsoString(date: Date): string {
+  const p = finnishParts(date);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const offset = Math.round(offsetMs(date.getTime()) / 60000);
+  const sign = offset < 0 ? "-" : "+";
+  const abs = Math.abs(offset);
+  return (
+    `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}:${pad(p.second)}` +
+    `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`
+  );
+}
+
 function offsetMs(instant: number): number {
   const p = finnishParts(new Date(instant));
   return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(instant / 1000) * 1000;
