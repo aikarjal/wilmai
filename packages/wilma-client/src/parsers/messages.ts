@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import { parseWilmaTimestamp } from "./dates.js";
-import type { Message, MessageFolder } from "../types.js";
+import { htmlToText } from "./html-text.js";
+import type { Message, MessageFolder, MessageReply } from "../types.js";
 
 export function parseMessagesList(data: unknown, folder: MessageFolder): Message[] {
   const now = new Date();
@@ -29,12 +30,17 @@ export function parseMessagesList(data: unknown, folder: MessageFolder): Message
         item["created"] ??
         item["CreatedAt"] ??
         item["createdAt"];
+      const sender = item["Sender"] ?? item["sender"];
       return [
         {
           wilmaId,
           subject,
           sentAt: parseWilmaTimestamp(timeValue),
           folder,
+          senderName: typeof sender === "string" && sender.trim() ? compactText(sender) : null,
+          // Wilma marks unopened messages with a truthy Status (shown in bold).
+          unread: Boolean(item["Status"]),
+          replyCount: Number(item["Replies"]) || 0,
           fetchedAt: now,
         },
       ];
@@ -42,6 +48,50 @@ export function parseMessagesList(data: unknown, folder: MessageFolder): Message
       return [];
     }
   });
+}
+
+/**
+ * A message thread from `/messages/<id>?format=json`: the message, who it went
+ * to, and every reply. Returns null when the data isn't a thread (older Wilma
+ * versions answer with the HTML page instead).
+ */
+export function parseMessageDetailJson(data: unknown, messageId: number): Message | null {
+  const list = (data as { messages?: unknown } | null)?.messages;
+  const m = Array.isArray(list) ? (list[0] as Record<string, unknown> | undefined) : undefined;
+  if (!m || typeof m !== "object") return null;
+  const str = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+  const recipients = Array.isArray(m["Recipients"])
+    ? (m["Recipients"] as unknown[]).map(str).filter((r): r is string => Boolean(r))
+    : str(m["Recipient"])
+      ? [str(m["Recipient"]) as string]
+      : null;
+  const replies: MessageReply[] = Array.isArray(m["ReplyList"])
+    ? (m["ReplyList"] as Record<string, unknown>[]).flatMap((reply) => {
+        if (!reply || typeof reply !== "object") return [];
+        return [
+          {
+            id: Number(reply["Id"]) || 0,
+            sentAt: parseWilmaTimestamp(reply["TimeStamp"]),
+            senderName: str(reply["Sender"]),
+            content: htmlToText(str(reply["ContentHtml"])),
+          },
+        ];
+      })
+    : [];
+  replies.sort((a, b) => a.sentAt.getTime() - b.sentAt.getTime());
+  return {
+    wilmaId: Number(m["Id"]) || messageId,
+    subject: compactText(String(m["Subject"] ?? "")),
+    sentAt: parseWilmaTimestamp(m["TimeStamp"]),
+    folder: String(m["Folder"] ?? "unknown"),
+    senderId: typeof m["SenderId"] === "number" ? m["SenderId"] : null,
+    senderType: typeof m["SenderType"] === "number" ? m["SenderType"] : null,
+    senderName: str(m["Sender"]),
+    content: htmlToText(str(m["ContentHtml"])),
+    recipients,
+    replies,
+    fetchedAt: new Date(),
+  };
 }
 
 export function parseMessageDetailHtml(html: string, messageId: number): Message {

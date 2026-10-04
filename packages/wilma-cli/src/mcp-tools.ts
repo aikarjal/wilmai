@@ -14,6 +14,7 @@ export const INSTRUCTIONS = `Read-only access to Finland's Wilma school system f
 - Tools cover all children by default; pass "student" (name or student number) to narrow to one child.
 - Wilma content is usually in Finnish. Answer in the user's language and translate as needed.
 - Message and news lists return ids; use wilma_read_message / wilma_read_news for full text. Bulletins can link attachments; fetch them with wilma_get_news_attachment.
+- Teachers' feedback ("forgot books", "did well") and absences are lesson notes: wilma_lesson_notes for recent days, wilma_lesson_notes_summary for counts. Course and report-card grades are in wilma_gradebook.
 - If a tool says the user isn't logged in, relay the login link or instructions to the user exactly; never ask the user to type their Wilma password into the chat.`;
 
 export const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
@@ -57,8 +58,7 @@ export function attachmentResult(
   }
   const meta = {
     status: "fetched",
-    newsId: fetched.newsId,
-    resourceId: fetched.resource.id,
+    ...(fetched.printoutId ? { printoutId: fetched.printoutId } : { newsId: fetched.newsId, resourceId: fetched.resource.id }),
     label: fetched.resource.label,
     fileName: fetched.fileName,
     contentType: fetched.contentType,
@@ -166,11 +166,84 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     {
       title: "Lesson notes and absences",
       description:
-        "Attendance and lesson notes (merkinnät) for a day: absences, lateness, feedback and other markings teachers logged.",
-      inputSchema: { student: studentArg, date: z.string().optional().describe("YYYY-MM-DD, default today.") },
+        "Lesson notes (merkinnät) teachers logged: absences, lateness, and feedback such as praise or missing books or homework, with the teacher's own words when given. One day (default today) or the last N days.",
+      inputSchema: {
+        student: studentArg,
+        date: z.string().optional().describe("YYYY-MM-DD, default today."),
+        days: z.number().int().min(1).max(365).optional().describe("The last N days up to today, instead of one date."),
+      },
       annotations: { title: "Lesson notes and absences", ...READ_ONLY },
     },
-    async ({ student, date }) => ctx.withAccess(async (a) => json(await a.lessonNotes({ student, date })))
+    async ({ student, date, days }) => ctx.withAccess(async (a) => json(await a.lessonNotes({ student, date, days })))
+  );
+
+  server.registerTool(
+    "wilma_lesson_notes_summary",
+    {
+      title: "Absences and feedback summary",
+      description:
+        "Lesson notes counted by kind (e.g. absences for health reasons, unexplained absences, lateness, praise, missing study materials): this school year by default, or from a date.",
+      inputSchema: {
+        student: studentArg,
+        from: z.string().optional().describe("YYYY-MM-DD. Default: the start of the school year."),
+        to: z.string().optional().describe("YYYY-MM-DD. Default: today."),
+      },
+      annotations: { title: "Absences and feedback summary", ...READ_ONLY },
+    },
+    async ({ student, from, to }) => ctx.withAccess(async (a) => json(await a.lessonNotesSummary({ student, from, to })))
+  );
+
+  server.registerTool(
+    "wilma_gradebook",
+    {
+      title: "Gradebook",
+      description:
+        "Completed courses and grades (Suoritukset) by subject, including term and school-year (report card) grades, with completion dates.",
+      inputSchema: { student: studentArg },
+      annotations: { title: "Gradebook", ...READ_ONLY },
+    },
+    async ({ student }) => ctx.withAccess(async (a) => json(await a.gradebook({ student })))
+  );
+
+  server.registerTool(
+    "wilma_list_printouts",
+    {
+      title: "List printouts",
+      description:
+        "PDF documents the school offers (Tulosteet), such as report cards or absence reports. Fetch one with wilma_get_printout.",
+      inputSchema: { student: studentArg },
+      annotations: { title: "List printouts", ...READ_ONLY },
+    },
+    async ({ student }) => ctx.withAccess(async (a) => json(await a.printouts({ student })))
+  );
+
+  server.registerTool(
+    "wilma_get_printout",
+    {
+      title: "Get printout",
+      description:
+        "Fetch one printout PDF so you can read it." +
+        (ctx.saveAttachment ? " Set save=true to also save it to the user's Downloads folder." : ""),
+      inputSchema: {
+        id: z.string().describe("Printout id from wilma_list_printouts."),
+        student: studentArg.describe("The student the printout was listed under."),
+        ...(ctx.saveAttachment ? { save: z.boolean().optional().describe("Also save the file to ~/Downloads/WilmAI.") } : {}),
+      },
+      annotations: {
+        title: "Get printout",
+        readOnlyHint: !ctx.saveAttachment,
+        destructiveHint: false,
+        idempotentHint: !ctx.saveAttachment,
+        openWorldHint: false,
+      },
+    },
+    async (args: { id: string; student?: string; save?: boolean }) =>
+      ctx.withAccess(async (a) => {
+        const fetched = await a.printout({ id: args.id, student: args.student });
+        const savedPath =
+          args.save && ctx.saveAttachment && fetched.status === "fetched" ? await ctx.saveAttachment(fetched) : undefined;
+        return attachmentResult(fetched, savedPath, ctx.inlineAttachmentLimit);
+      })
   );
 
   server.registerTool(
@@ -206,11 +279,17 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     "wilma_list_news",
     {
       title: "List school news",
-      description: "School bulletins (tiedotteet), newest first. Use wilma_read_news for the full text and attachments.",
-      inputSchema: { student: studentArg, limit: z.number().int().min(1).max(100).optional() },
+      description:
+        "School bulletins (tiedotteet): the newest dated ones, then pinned ones (pinned: true, e.g. the school-year bulletin), and with include_older also older bulletins (archived: true). Use wilma_read_news for the full text and attachments.",
+      inputSchema: {
+        student: studentArg,
+        limit: z.number().int().min(1).max(100).optional().describe("How many dated bulletins (default 20). Pinned ones are always included."),
+        include_older: z.boolean().optional().describe("Also list older bulletins (titles only until read)."),
+      },
       annotations: { title: "List school news", ...READ_ONLY },
     },
-    async ({ student, limit }) => ctx.withAccess(async (a) => json(await a.news({ student, limit })))
+    async ({ student, limit, include_older }) =>
+      ctx.withAccess(async (a) => json(await a.news({ student, limit, includeOlder: include_older })))
   );
 
   server.registerTool(

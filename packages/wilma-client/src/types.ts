@@ -15,8 +15,23 @@ export interface Message {
   senderName?: string | null;
   sendersJson?: Record<string, unknown> | null;
   status?: number | null;
+  /** In lists: Wilma hasn't seen it opened yet. */
+  unread?: boolean;
+  /** In lists: how many replies the thread has (read them with the message). */
+  replyCount?: number;
   content?: string | null;
+  /** Message detail: who it went to (Wilma may hide the list). */
+  recipients?: string[] | null;
+  /** Message detail: the thread's replies, oldest first. */
+  replies?: MessageReply[];
   fetchedAt: Date;
+}
+
+export interface MessageReply {
+  id: number;
+  sentAt: Date;
+  senderName: string | null;
+  content: string;
 }
 
 export interface NewsItem {
@@ -27,6 +42,10 @@ export interface NewsItem {
   published?: Date | null;
   content?: string | null;
   resources?: NewsResource[];
+  /** A pinned bulletin (Wilma: "Pysyvät tiedotteet"), kept on the page until removed. */
+  pinned?: boolean;
+  /** Listed among older bulletins (Wilma: "Vanhat tiedotteet"); its date is on the bulletin itself. */
+  archived?: boolean;
   fetchedAt: Date;
 }
 
@@ -98,6 +117,8 @@ export interface ScheduleLesson {
   teacher: string;
   teacherCode: string;
   groupId: number;
+  /** Room code(s), e.g. "407"; null when Wilma gives none. */
+  room?: string | null;
 }
 
 export interface UpcomingExam {
@@ -158,4 +179,36 @@ export interface LessonNote {
   typeLabel: string;
   typeClass: string;
   teacher: string;
+  /** The teacher's own words, when they wrote any (e.g. what was missing, or praise). */
+  note?: string | null;
+}
+
+/** How many lesson notes of each kind in a period (absences, lateness, feedback…). */
+export interface LessonNoteSummary {
+  /** YYYY-MM-DD, or null for "the whole school year" as Wilma defines it. */
+  from: string | null;
+  to: string | null;
+  total: number;
+  byType: { type: string; count: number }[];
+}
+
+/** One row of the gradebook (Suoritukset): a subject, a syllabus or a course, with its sub-rows. */
+export interface GradebookEntry {
+  name: string;
+  /** Course code such as "MA_81" (null for subject rows). */
+  code: string | null;
+  grade: string | null;
+  /** Scope as Wilma shows it (e.g. "2 vvt"), if any. */
+  credits: string | null;
+  /** YYYY-MM-DD when completed. */
+  date: string | null;
+  children: GradebookEntry[];
+}
+
+/** A printable document Wilma offers as a PDF (report cards, absence reports…). */
+export interface Printout {
+  id: string;
+  title: string;
+  /** Path on this Wilma, e.g. "/!123/printouts/456.pdf". */
+  path: string;
 }

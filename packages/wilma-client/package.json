@@ -30,7 +30,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm run build && node test/login.mjs && node test/parser-messages.mjs && node test/parser-news.mjs && node test/parser-schedule.mjs && node test/parser-students.mjs && node test/client-students.mjs && node test/client-schedule.mjs && node test/client-news-resources.mjs && node test/network-error.mjs && node test/audit.mjs",
+    "test": "pnpm run build && node test/login.mjs && node test/parser-messages.mjs && node test/parser-news.mjs && node test/parser-schedule.mjs && node test/parser-students.mjs && node test/client-students.mjs && node test/client-schedule.mjs && node test/client-news-resources.mjs && node test/network-error.mjs && node test/audit.mjs && node test/real-pages.mjs && node test/client-features.mjs",
     "test:smoke": "tsc -p tsconfig.json && node test/smoke.mjs",
     "test:live": "tsc -p tsconfig.json && node test/live.spec.mjs"
   },

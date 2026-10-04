@@ -1,7 +1,7 @@
 ---
 name: wilma
 version: 1.7.0
-description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades, attendance/lesson notes (merkinnät), messages, news, and linked news resources — through the WilmAI MCP tools (`wilma_*`) when connected, or the wilma CLI. Start with a summary, drill into messages and news, and fetch linked attachments.
+description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades and the gradebook, lesson notes (merkinnät) and absence summaries, messages with replies, news, printouts and linked news resources — through the WilmAI MCP tools (`wilma_*`) when connected, or the wilma CLI. Start with a summary, drill into messages and news, and fetch linked attachments.
 metadata:
   {
     "openclaw":
@@ -48,6 +48,9 @@ There are two ways to reach Wilma. Both return the same data.
 | `wilma_upcoming_exams` | `wilma exams list --json` |
 | `wilma_grades` | `wilma grades list --json` |
 | `wilma_lesson_notes` | `wilma attendance list --json` |
+| `wilma_lesson_notes_summary` | `wilma attendance summary --json` |
+| `wilma_gradebook` | `wilma gradebook --json` |
+| `wilma_list_printouts` / `wilma_get_printout` | `wilma printouts list` / `download <id>` |
 | `wilma_list_messages` / `wilma_read_message` | `wilma messages list` / `read <id>` |
 | `wilma_list_news` / `wilma_read_news` | `wilma news list` / `read <id>` |
 | `wilma_get_news_attachment` | `wilma news resource download` |
@@ -94,7 +97,7 @@ wilma schedule list --when week --student <id|name> --json
 wilma schedule list --date 2026-03-10 --student <id|name> --json
 wilma schedule list --weekday thu --student <id|name> --json
 ```
-`--weekday` also accepts Finnish short forms: `ma`, `ti`, `ke`, `to`, `pe`, `la`, `su`. Use `--date` or `--weekday`, not both.
+`--weekday` also accepts Finnish short forms: `ma`, `ti`, `ke`, `to`, `pe`, `la`, `su`. Use `--date` or `--weekday`, not both. Lessons include the teacher(s) and, when Wilma gives one, the `room`.
 
 ### Homework
 ```bash
@@ -111,13 +114,22 @@ wilma exams list --student <id|name> --json
 wilma grades list --student <id|name> --json
 ```
 
+### Gradebook (course and report-card grades)
+```bash
+wilma gradebook --student <id|name> --json
+```
+The gradebook (Suoritukset) as a tree: subject → syllabus → course, each with `grade`, `credits` and completion `date`. Course codes ending in `LV` are usually school-year (report card) grades. An empty list means nothing has been graded yet.
+
 ### Attendance / lesson notes (merkinnät)
 ```bash
 wilma attendance list --student <id|name> --json
 wilma attendance list --date 2026-03-10 --student <id|name> --json
-wilma attendance list --all-students --json
+wilma attendance list --days 14 --all-students --json
+wilma attendance summary --student <id|name> --json
 ```
-Returns Wilma's per-lesson notes ("merkinnät") for a single day: positive feedback, behavioral remarks, missing materials, and absence categorizations (medical, explained, unexplained). Defaults to today if `--date` is omitted; teachers usually fill notes during or after class, so for a morning agent run prefer `--date <yesterday>`.
+Returns Wilma's per-lesson notes ("merkinnät"): positive feedback, behavioral remarks, missing books or homework, and absence categorizations (medical, explained, unexplained). One day (default today), `--days N` for the last N days, or `--from`/`--to`. Teachers usually fill notes during or after class, so for a morning agent run prefer `--date <yesterday>` or `--days 2`. When the teacher wrote something, it's in `note`.
+
+`attendance summary` counts the notes by `typeLabel` for this school year (or `--from`/`--to`), e.g. how many lessons were missed for health reasons.
 
 Each note has `start`/`end` times derived from Wilma's hour-grid headers — accurate to the lesson hour, with 45-minute period assumed. `subject` is the Wilma course code (e.g. `MA_8LV` = math, 8th grade), and `typeLabel` is the human-readable Finnish reason or remark.
 
@@ -133,6 +145,14 @@ wilma news read <id> --student <id|name> --json
 wilma messages list --student <id|name> --folder inbox --json
 wilma messages read <id> --student <id|name> --json
 ```
+`news list` returns the newest dated bulletins plus every pinned one (`pinned: true`, e.g. the school-year bulletin); add `--older` for older bulletins (`archived: true`, dated once read). In message lists, `unread` marks unopened messages and `replyCount` threads with replies; `messages read` returns the thread with its `replies`.
+
+#### Printouts
+```bash
+wilma printouts list --student <id|name> --json
+wilma printouts download <id> --student <id|name> --output <directory> --json
+```
+PDF documents the school offers, such as report cards or absence reports (it varies by school).
 
 #### News resources and attachments
 

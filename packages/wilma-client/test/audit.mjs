@@ -91,7 +91,7 @@ const wilma = createServer(async (req, res) => {
   // Wilma hands the file to another site.
   if (req.url === "/!1/files/x.pdf") return send(302, { Location: `${externalUrl}/stored/x.pdf` });
   if (req.url === "/!1/elsewhere") return send(302, { Location: `${externalUrl}/page` });
-  if (req.url === "/!1/attendance/view") {
+  if (req.url.startsWith("/!1/attendance/view")) {
     return send(200, { "Content-Type": "text/html" }, `<table><thead><tr><th>Pv</th><th>Pvm</th><th colspan="1">8</th></tr></thead>
       <tbody><tr><td>Ma</td><td>${today}</td><td class="at-tp1" title="Myöhästyminen /Opettaja">M</td></tr></tbody></table>`);
   }

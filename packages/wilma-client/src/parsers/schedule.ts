@@ -112,3 +112,51 @@ function firstTeacher(
 function firstSubjectToken(subject: string): string {
   return subject.trim().split(/\s+/, 1)[0] ?? "";
 }
+
+interface TimetableLesson {
+  startAt?: string;
+  endsAt?: string;
+  dates?: string[];
+  modules?: {
+    id?: number;
+    caption?: string;
+    teachers?: { firstname?: string; lastname?: string; abbreviation?: string }[];
+    rooms?: { abbreviation?: string; caption?: string }[];
+  }[];
+}
+
+/**
+ * Lessons from the timetable API (`/api/v1/schedules/timetable`): one entry
+ * per date a lesson takes place, with every teacher and room. Field values
+ * match the schedule page's ("BI_ Biologia", "Lastname Firstname").
+ */
+export function parseTimetableJson(payload: unknown): ScheduleLesson[] {
+  if (!Array.isArray(payload)) return [];
+  const lessons: ScheduleLesson[] = [];
+  for (const lesson of payload as TimetableLesson[]) {
+    const start = (lesson.startAt ?? "").slice(0, 5);
+    const end = (lesson.endsAt ?? "").slice(0, 5);
+    for (const rawDate of lesson.dates ?? []) {
+      const date = rawDate.slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+      for (const module of lesson.modules ?? []) {
+        const subject = (module.caption ?? "").trim();
+        const teachers = module.teachers ?? [];
+        const rooms = (module.rooms ?? []).map((room) => (room.abbreviation ?? room.caption ?? "").trim()).filter(Boolean);
+        lessons.push({
+          date,
+          dayOfWeek: new Date(`${date}T12:00:00Z`).getUTCDay(),
+          start,
+          end,
+          subject,
+          subjectCode: firstSubjectToken(subject),
+          teacher: teachers.map((t) => [t.lastname, t.firstname].filter(Boolean).join(" ")).join(", "),
+          teacherCode: teachers.map((t) => t.abbreviation ?? "").filter(Boolean).join(", "),
+          groupId: Number(module.id) || 0,
+          room: rooms.length ? rooms.join(", ") : null,
+        });
+      }
+    }
+  }
+  return lessons.sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
+}

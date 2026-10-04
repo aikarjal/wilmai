@@ -90,17 +90,33 @@ export function parseNewsDetailHtml(html: string, newsId: number, baseUrl?: stri
     content = proseOnly.text().trim() ? text : null;
   }
 
+  // "Sär (Teacher Name) Julkaistu 27.9." — the date (this year's lack the
+  // year) and the author's profile link sit together under the bulletin.
+  let published: Date | null = null;
+  let author: string | null = null;
+  const meta = $("p, span, div")
+    .filter((_, el) => PUBLISHED_RE.test($(el).text()) && $(el).find("p, div").length === 0)
+    .first();
+  const publishedMatch = PUBLISHED_RE.exec(meta.text().replace(/\s+/g, " "));
+  if (publishedMatch) {
+    published = parseWilmaTimestamp(publishedMatch[1]);
+    const authorLink = meta.find("a.profile-link").first();
+    author = authorLink.attr("title")?.trim() || authorLink.text().trim() || null;
+  }
+
   return {
     wilmaId: newsId,
     title,
     subtitle,
-    author: null,
-    published: null,
+    author,
+    published,
     content,
     resources,
     fetchedAt: new Date(),
   };
 }
+
+const PUBLISHED_RE = /(?:Julkaistu|Publicerad|Published)\s*:?\s*(\d{1,2}\.\d{1,2}\.(?:\d{4})?)/i;
 
 function extractNewsResources(
   $: cheerio.CheerioAPI,
@@ -171,9 +187,6 @@ export function parseNewsListHtml(html: string): NewsItem[] {
   const seenIds = new Set<number>();
 
   const headers = $("div.left h2.no-border, h2.no-border");
-  if (!headers.length) {
-    return newsItems;
-  }
 
   headers.each((_, header) => {
     const headerEl = $(header);
@@ -233,6 +246,9 @@ export function parseNewsListHtml(html: string): NewsItem[] {
           subtitle,
           author,
           published,
+          // A padlock icon marks a bulletin pinned to the page.
+          pinned: container.find(".vismaicon-locked").length > 0,
+          archived: false,
           fetchedAt: now,
         });
       }
@@ -241,5 +257,41 @@ export function parseNewsListHtml(html: string): NewsItem[] {
     }
   });
 
+  // The side panels list pinned bulletins and older ones (titles only; the
+  // date is on each bulletin). Recognised by their heading, in Finnish,
+  // Swedish or English.
+  $("div.panel-body > h2").each((_, heading) => {
+    const label = $(heading).text().trim();
+    const pinned = SIDE_PANEL_PINNED.test(label);
+    const archived = SIDE_PANEL_OLDER.test(label);
+    if (!pinned && !archived) return;
+    $(heading)
+      .parent()
+      .find("a[href*='/news/']")
+      .each((_, anchor) => {
+        const match = /\/news\/(\d+)/.exec($(anchor).attr("href") ?? "");
+        const newsId = match ? Number(match[1]) : null;
+        if (!newsId) return;
+        const known = newsItems.find((item) => item.wilmaId === newsId);
+        if (known) {
+          if (pinned) known.pinned = true;
+          return;
+        }
+        newsItems.push({
+          wilmaId: newsId,
+          title: $(anchor).text().trim() || "Untitled News",
+          subtitle: null,
+          author: null,
+          published: null,
+          pinned,
+          archived,
+          fetchedAt: now,
+        });
+      });
+  });
+
   return newsItems;
 }
+
+const SIDE_PANEL_PINNED = /^(pysyvät|permanent|pinned|bestående|fasta|stående)/i;
+const SIDE_PANEL_OLDER = /^(vanhat|vanhemmat|old|older|gamla|äldre|arkiv|archive)/i;

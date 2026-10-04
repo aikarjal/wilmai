@@ -35,6 +35,20 @@ _Releases: wilma-cli 1.7.0, wilma-client 1.5.3._
 - **Messages came back empty after another login.** When another login (the parent's phone, say) cancelled the session, Wilma answers the message list with a redirect to its login page; the client followed it and read the login page as an empty inbox. A redirect to the login page now counts as a logged-out session: the client logs in again and returns the messages.
 - Wilma search now matches municipality names (the tenant list uses `name_fi`/`name_sv`, which the old search never read), and ranks a city's own Wilma first.
 
+### Wilma data: more of it, from JSON where Wilma has it
+
+Compared field by field against a real Wilma 2.36 account before switching; parsers are tested against anonymised copies of real pages (`packages/wilma-client/test/fixtures/real`, made with `scripts/anonymize-fixture.mjs`).
+
+- **Gradebook** (`wilma gradebook`, `wilma_gradebook`): completed courses and grades by subject, including term and school-year (report card) grades, as a tree with credits and dates.
+- **Printouts** (`wilma printouts list|download`, `wilma_list_printouts`, `wilma_get_printout`): the PDFs a school offers, such as report cards or absence reports.
+- **Lesson notes for a period and a summary.** `wilma attendance list --days 14` (or `--from`/`--to`) and `wilma_lesson_notes` with `days`; `wilma attendance summary` and `wilma_lesson_notes_summary` count notes by kind (absences for health reasons, lateness, praise, missing study materials…) for the school year or a period. Teachers' feedback ("forgot books", "did well") lives here.
+- **The teacher's own words** on a lesson note are a separate `note` field. They used to be glued onto the label, and a note without a lesson took its label for the subject; labels now come from the page's own legend.
+- **Message threads with replies.** Messages are read from Wilma's thread JSON (`?format=json`): the body, recipients and every reply, with link addresses kept. Before, replies were dropped (or one replaced the message). Lists show the sender, unread messages and reply counts. Older Wilma versions fall back to the message page.
+- **Schedule from the timetable API** (`/api/v1/schedules/timetable`) for any date or week: the same lessons as the schedule page (checked over four weeks, 157 lessons), plus rooms and every teacher of co-taught lessons. Older Wilma versions fall back to the schedule page.
+- **All bulletins.** Pinned bulletins (*Pysyvät tiedotteet*, e.g. the school-year bulletin) and older ones (*Vanhat tiedotteet*) were missing — 22 of 42 on the test account. Lists now include the newest dated ones plus every pinned one (`pinned: true`), and older ones with `--older` / `include_older` (`archived: true`). A bulletin's own page now gives its date and author.
+- Exams stay on the front page's JSON (unchanged). The exam calendar page is the only source of exam start times, so `client.exams.list()` keeps reading it.
+- Searching for a school that has no Wilma of its own suggests searching for its city instead (many city schools share the city's Wilma), in the CLI, the agent tool and the login page.
+
 ### Security and reliability audit
 
 A review of the whole codebase before this release. Each item has a regression test (`packages/wilma-client/test/audit.mjs`, `packages/wilma-cli/test/audit.mjs`).

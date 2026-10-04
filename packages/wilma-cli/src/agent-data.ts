@@ -205,7 +205,10 @@ type AccountStudent = StudentInfo & { account: number };
 export type FetchedAttachment =
   | {
       status: "fetched";
-      newsId: number;
+      /** Set for a bulletin attachment. */
+      newsId?: number;
+      /** Set for a printout (Tulosteet); `resource` then describes the printout. */
+      printoutId?: string;
       resource: NewsResource;
       fileName: string;
       contentType: string | null;
@@ -217,6 +220,23 @@ export type FetchedAttachment =
       resource: NewsResource;
       message: string;
     };
+
+/**
+ * Bulletins to show: the newest `limit` dated ones, every pinned one (they
+ * stay relevant all year), and the older ones only when asked for.
+ */
+export function selectNews(news: NewsItem[], opts: { limit?: number; includeOlder?: boolean } = {}): NewsItem[] {
+  const dated = news.filter((item) => !item.archived && item.published).slice(0, opts.limit ?? 20);
+  const pinnedUndated = news.filter((item) => !item.archived && !item.published);
+  const older = opts.includeOlder ? news.filter((item) => item.archived) : [];
+  return [...dated, ...pinnedUndated, ...older];
+}
+
+/** The first day of a period ending today that is `days` long. */
+export function daysBack(days: number): string {
+  const today = todayString();
+  return addDays(today, -(days - 1));
+}
 
 /* ------------------------------------------------------------------ */
 /*  Session pool                                                       */
@@ -434,10 +454,9 @@ export class WilmaAccess {
       selection.startDate === selection.endDate
         ? { date: selection.startDate }
         : { weekStart: selection.startDate, weekEnd: selection.endDate };
-    const result = await this.perStudent(opts.student, async (client) => {
-      const schedule = await client.schedule.list(selection.queryDate ? { date: selection.queryDate } : undefined);
-      return { lessons: schedule.filter((l) => l.date >= selection.startDate && l.date <= selection.endDate) };
-    });
+    const result = await this.perStudent(opts.student, async (client) => ({
+      lessons: await client.schedule.list({ from: selection.startDate, to: selection.endDate }),
+    }));
     return { when: selection.outputWhen, ...range, ...result };
   }
 
@@ -462,12 +481,47 @@ export class WilmaAccess {
     });
   }
 
-  async lessonNotes(opts: { student?: string; date?: string } = {}) {
-    const date = opts.date ? parseIsoDate(opts.date) : undefined;
-    return this.perStudent(opts.student, async (client) => ({
-      date: date ?? todayString(),
-      notes: await client.attendance.list({ date }),
-    }));
+  /** Lesson notes for one day (default today), or the last `days` days. */
+  async lessonNotes(opts: { student?: string; date?: string; days?: number } = {}) {
+    if (opts.days && opts.date) throw new Error("Use either a date or a number of days, not both.");
+    if (opts.days) {
+      const from = daysBack(opts.days);
+      const to = todayString();
+      return {
+        from,
+        to,
+        ...(await this.perStudent(opts.student, async (client) => ({ notes: await client.attendance.list({ from, to }) }))),
+      };
+    }
+    const date = opts.date ? parseIsoDate(opts.date) : todayString();
+    return { date, ...(await this.perStudent(opts.student, async (client) => ({ notes: await client.attendance.list({ date }) }))) };
+  }
+
+  /** Lesson notes counted by kind (absences, lateness, feedback…): this school year, or from a date. */
+  async lessonNotesSummary(opts: { student?: string; from?: string; to?: string } = {}) {
+    const from = opts.from ? parseIsoDate(opts.from) : undefined;
+    const to = opts.to ? parseIsoDate(opts.to) : undefined;
+    return this.perStudent(opts.student, async (client) => ({ summary: await client.attendance.summary({ from, to }) }));
+  }
+
+  async gradebook(opts: { student?: string } = {}) {
+    return this.perStudent(opts.student, async (client) => ({ gradebook: await client.gradebook.get() }));
+  }
+
+  async printouts(opts: { student?: string } = {}) {
+    return this.perStudent(opts.student, async (client) => ({ printouts: await client.printouts.list() }));
+  }
+
+  async printout(opts: { id: string; student?: string }): Promise<FetchedAttachment & { student: StudentRef }> {
+    const { student, item } = await this.firstStudentWith(opts.student, async (client) => {
+      const { printout, response } = await client.printouts.fetch(opts.id);
+      const resource: NewsResource = { id: printout.id, label: printout.title, url: printout.path, authContext: "wilma" };
+      const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim() || null;
+      const fileName = fileNameFromResponse(resource, response.headers.get("content-disposition"), contentType);
+      const data = await readResponseCapped(response as Parameters<typeof readResponseCapped>[0]);
+      return { status: "fetched" as const, printoutId: printout.id, resource, fileName, contentType, data };
+    });
+    return { ...item, student };
   }
 
   async messages(opts: { student?: string; folder?: MessageFolder; limit?: number } = {}) {
@@ -482,11 +536,10 @@ export class WilmaAccess {
     return { student, message: item };
   }
 
-  async news(opts: { student?: string; limit?: number } = {}) {
-    return this.perStudent(opts.student, async (client) => {
-      const news = await client.news.list();
-      return { news: news.slice(0, opts.limit ?? 20) };
-    });
+  async news(opts: { student?: string; limit?: number; includeOlder?: boolean } = {}) {
+    return this.perStudent(opts.student, async (client) => ({
+      news: selectNews(await client.news.list(), { limit: opts.limit, includeOlder: opts.includeOlder }),
+    }));
   }
 
   async newsItem(opts: { id: number; student?: string }) {

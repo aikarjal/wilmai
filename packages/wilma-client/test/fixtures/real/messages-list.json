@@ -1,0 +1,125 @@
+{
+ "Messages": [
+  {
+   "Id": 11551667,
+   "Subject": "Tiedote KYLA NOSA -risuvikegejov Rimuhahoral pehofada",
+   "TimeStamp": "2026-10-02 13:37",
+   "Folder": "bygoh",
+   "SenderId": 82040,
+   "SenderType": 1,
+   "Sender": "Gilim Fahobopu (Jyt)",
+   "Senders": [
+    {
+     "Name": "Gilim Fahobopu (Jyt)",
+     "Href": "/!50114735/rujuburu/vyvoneje/82040"
+    }
+   ]
+  },
+  {
+   "Id": 10430046,
+   "Subject": "Dajig sykiga lekyk gahov Lybidebeba?-kohaben",
+   "TimeStamp": "2026-10-02 09:01",
+   "Folder": "bygoh",
+   "SenderId": 2838,
+   "SenderType": 3,
+   "Sender": "Sypogu Vyvod (B.M)",
+   "Senders": [
+    {
+     "Name": "Sypogu Vyvod (B.M)",
+     "Href": "/!50114735/rujuburu/desydunyr/2838"
+    }
+   ]
+  },
+  {
+   "Id": 24396506,
+   "Subject": "Repobelesugohymofi Ruhyma dumimogiryl garoja pafenaje ke 7.10. klo 19.30 bi 208 ja Nutob  - davyfibif hifu kasobol - letobo hopyty!",
+   "TimeStamp": "2026-10-02 08:58",
+   "Folder": "bygoh",
+   "SenderId": 82040,
+   "SenderType": 1,
+   "Sender": "Gilim Fahobopu (Jyt)",
+   "Senders": [
+    {
+     "Name": "Gilim Fahobopu (Jyt)",
+     "Href": "/!50114735/rujuburu/vyvoneje/82040"
+    }
+   ]
+  },
+  {
+   "Id": 27522174,
+   "Subject": "Hobibesyj batugyfomigybovol Dijaby va:l dirorahyhotyfedo ke 30.9. klo 17.15 bi 208",
+   "TimeStamp": "2026-09-27 20:59",
+   "Folder": "bygoh",
+   "SenderId": 82040,
+   "SenderType": 1,
+   "Sender": "Gilim Fahobopu (Jyt)",
+   "Senders": [
+    {
+     "Name": "Gilim Fahobopu (Jyt)",
+     "Href": "/!50114735/rujuburu/vyvoneje/82040"
+    }
+   ]
+  },
+  {
+   "Id": 86517615,
+   "Subject": "Hujevon gybilukutary ma ja ti",
+   "TimeStamp": "2026-05-03 21:05",
+   "Folder": "bygoh",
+   "SenderId": 515758,
+   "SenderType": 4,
+   "Sender": "Lifavuvutal Lymil (Tasyf Lifavuvutal, BE)",
+   "SenderStudentName": "Lifavuvutal Tasyf",
+   "SenderPasswdID": 882275,
+   "SenderGuardianName": "Lifavuvutal Lymil",
+   "Senders": [
+    {
+     "Name": "Lifavuvutal Lymil (Tasyf Lifavuvutal, BE)",
+     "Href": ""
+    }
+   ],
+   "Replies": 1
+  },
+  {
+   "Id": 93363068,
+   "Subject": "Tasyf sovedodopehef nysy tytijup",
+   "TimeStamp": "2026-02-04 12:33",
+   "Folder": "bygoh",
+   "SenderId": 515758,
+   "SenderType": 4,
+   "Sender": "Lifavuvutal Lymil (Tasyf Lifavuvutal, BE)",
+   "SenderStudentName": "Lifavuvutal Tasyf",
+   "SenderPasswdID": 882275,
+   "SenderGuardianName": "Lifavuvutal Lymil",
+   "Senders": [
+    {
+     "Name": "Lifavuvutal Lymil (Tasyf Lifavuvutal, BE)",
+     "Href": ""
+    }
+   ],
+   "Replies": 2
+  },
+  {
+   "Id": 36887190,
+   "Subject": "Dyhatibaka dodytem (kusyjo rup jejenykylugire) + vufakeboh gyvylojomo",
+   "TimeStamp": "2026-05-26 15:08",
+   "Folder": "bygoh",
+   "SenderId": 98053,
+   "SenderType": 1,
+   "Sender": "Sigilufovo Fygas (Jyf)",
+   "Senders": [
+    {
+     "Name": "Sigilufovo Fygas (Jyf)",
+     "Href": "/!50114735/rujuburu/vyvoneje/98053"
+    }
+   ],
+   "IsEvent": true,
+   "Applying": {
+    "Status": "Kakavor",
+    "ExtraInfo": "29.05.2026 13:00",
+    "SortValue": "kakavor-93900,5606337712"
+   },
+   "Status": 1
+  }
+ ],
+ "Status": 200
+}

@@ -6,11 +6,15 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { execFile } from "node:child_process";
 import { chmod, cp, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fileNameFromResponse, sanitizeFileName } from "../dist/downloads.js";
 import { matchStudents } from "../dist/agent-data.js";
+
+// Anonymised real pages, shared with the client's tests.
+const real = (name) => readFileSync(new URL(`../../wilma-client/test/fixtures/real/${name}`, import.meta.url), "utf8");
 
 /* ---------------- download names ---------------- */
 assert.equal(sanitizeFileName(" .npmrc"), "npmrc", "no hidden files via a leading space");
@@ -55,6 +59,13 @@ const wilma = createServer(async (req, res) => {
     }));
   }
   if (/^\/!\d+\/overview$/.test(req.url)) return send(200, "application/json", "{}");
+  if (/^\/!\d+\/messages\/41\?format=json$/.test(req.url)) return send(200, "application/json", real("message-thread.json"));
+  if (/^\/!\d+\/news$/.test(req.url)) return send(200, "text/html", real("news-list.html"));
+  if (/^\/!\d+\/attendance\/view/.test(req.url)) return send(200, "text/html", real("attendance.html"));
+  if (/^\/!7\/gradebook$/.test(req.url)) return send(200, "text/html", real("gradebook.html"));
+  if (/^\/!8\/gradebook$/.test(req.url)) return send(200, "text/html", real("gradebook-empty.html"));
+  if (/^\/!\d+\/printouts$/.test(req.url)) return send(200, "text/html", real("printouts.html"));
+  if (/^\/!\d+\/printouts\/\d+\.pdf$/.test(req.url)) return send(200, "application/pdf", "%PDF-1.4 test");
   send(404, "text/plain", "");
 });
 await new Promise((r) => wilma.listen(0, "127.0.0.1", r));
@@ -119,6 +130,38 @@ try {
   const listJson = JSON.parse(listRaw);
   assert.equal(listJson[0].wilmaId, 41);
   assert.equal(listJson[0].subject, "\u001b]0;pwned\u0007Retki\u001b[2J huomenna\u009b", "JSON keeps the data as it is");
+
+  // Bulletins: newest dated ones and every pinned one by default; older ones with --older.
+  const news = JSON.parse((await run(["news", "list", "--student", "8", "--json"])).stdout);
+  assert.equal(news.length, 24);
+  assert.equal(news.filter((n) => n.pinned).length, 11);
+  assert.equal(JSON.parse((await run(["news", "list", "--student", "8", "--older", "--json"])).stdout).length, 42);
+  assert.match((await run(["news", "list", "--student", "8"])).stdout, /\[pinned\][\s\S]*add --older/);
+
+  // A thread's replies, in JSON and in the terminal.
+  const thread = JSON.parse((await run(["messages", "read", "41", "--student", "8", "--json"])).stdout);
+  assert.equal(thread.replies.length, 1);
+  assert.match((await run(["messages", "read", "41", "--student", "8"])).stdout, /--- Reply from .+\n\S/);
+
+  // Lesson notes with the teacher's words, and the summary.
+  const notes = JSON.parse((await run(["attendance", "list", "--student", "8", "--from", "2026-08-01", "--to", "2026-10-31", "--json"])).stdout);
+  assert.equal(notes.length, 57);
+  assert.ok(notes.some((n) => n.note));
+  const summary = JSON.parse((await run(["attendance", "summary", "--student", "8", "--json"])).stdout);
+  assert.equal(summary.total, 57);
+  await jsonError(["attendance", "list", "--days", "3", "--date", "2026-09-30"], /--days, --date or --from/, "conflicting periods");
+
+  // Gradebook (one child graded, one not yet) and printouts.
+  const gradebooks = JSON.parse((await run(["gradebook", "--all-students", "--json"])).stdout);
+  assert.deepEqual(gradebooks.students.map((s) => s.gradebook.length), [21, 0]);
+  assert.match((await run(["gradebook", "--student", "8"])).stdout, /No graded courses yet/);
+  const printouts = JSON.parse((await run(["printouts", "list", "--student", "8", "--json"])).stdout);
+  assert.equal(printouts.length, 1);
+  const dl = await mkdtemp(join(tmpdir(), "wilmai-printout-"));
+  const saved = JSON.parse((await run(["printouts", "download", printouts[0].id, "--student", "8", "--output", dl, "--json"])).stdout);
+  assert.equal(saved.status, "downloaded");
+  assert.equal(await readFile(saved.path, "utf8"), "%PDF-1.4 test");
+  await rm(dl, { recursive: true, force: true });
 
   // A loose config file is tightened to this user only.
   if (process.platform !== "win32") {

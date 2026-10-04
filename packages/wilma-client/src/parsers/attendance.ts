@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import type { LessonNote } from "../types.js";
+import type { LessonNote, LessonNoteSummary } from "../types.js";
 
 /**
  * Parse Wilma's /attendance/view HTML page into structured LessonNote objects.
@@ -17,10 +17,19 @@ import type { LessonNote } from "../types.js";
  * Title attribute on event cells: "TypeLabel /TeacherName" or
  * "SubjectCode; TypeLabel /TeacherName".
  */
-export function parseAttendanceHtml(html: string, date: string): LessonNote[] {
+export function parseAttendanceHtml(html: string, date?: string): LessonNote[] {
   const $ = cheerio.load(html);
   const notes: LessonNote[] = [];
-  const targetFinnish = dateToFinnish(date);
+  // One day, or every day the page shows (the page covers a chosen period).
+  const targetFinnish = date ? dateToFinnish(date) : null;
+  // The legend table: type class (at-tpN) -> label.
+  const legend = new Map<string, string>();
+  $("tr").each((_, row) => {
+    const cells = $(row).find("td");
+    const tp = (($(cells[0]).attr("class") ?? "").match(/\bat-tp\d+\b/) ?? [])[0];
+    const label = $(cells[cells.length - 1]).text().trim();
+    if (tp && cells.length === 2 && label && !legend.has(tp)) legend.set(tp, label);
+  });
 
   $("table").each((_, table) => {
     const $table = $(table);
@@ -45,7 +54,9 @@ export function parseAttendanceHtml(html: string, date: string): LessonNote[] {
       if (cells.length < 3) return; // need at least weekday, date, and one slot
 
       const rowDate = $(cells[1]).text().trim();
-      if (!rowDate || rowDate !== targetFinnish) return;
+      if (!rowDate || (targetFinnish && rowDate !== targetFinnish)) return;
+      const rowIso = finnishToIso(rowDate);
+      if (!rowIso) return;
 
       // Walk event-grid cells. Indices 0..1 are weekday + date (outside grid).
       let gridCol = 0;
@@ -61,25 +72,32 @@ export function parseAttendanceHtml(html: string, date: string): LessonNote[] {
           // Title formats observed:
           //   "TypeLabel /TeacherFullName"
           //   "SubjectCode; TypeLabel /TeacherFullName"
-          //   "SubjectCode; TypeLabel; ExtraNote /TeacherFullName"
+          //   "SubjectCode; TypeLabel; teacher's note /TeacherFullName"
+          //   "TypeLabel; teacher's note /TeacherFullName" (no lesson)
+          // The page's legend names each type class, which tells the label
+          // apart from a subject code or a note.
           let subject = "";
           let typeLabel = "";
+          let note: string | null = null;
           let teacher = cellText;
 
           if (title) {
             let rest = title;
-            const semiIdx = rest.indexOf(";");
-            if (semiIdx > 0) {
-              subject = rest.slice(0, semiIdx).trim();
-              rest = rest.slice(semiIdx + 1).trim();
-            }
             const slashIdx = rest.lastIndexOf(" /");
             if (slashIdx > 0) {
-              const afterSlash = rest.slice(slashIdx + 2);
-              const spaceAfter = afterSlash.startsWith(" ") ? 1 : 0;
-              typeLabel = rest.slice(0, slashIdx).trim();
-              teacher = rest.slice(slashIdx + 2 + spaceAfter).trim();
+              teacher = rest.slice(slashIdx + 2).trim();
+              rest = rest.slice(0, slashIdx).trim();
             }
+            const parts = rest.split(";").map((part) => part.trim());
+            const known = legend.get(tpClass);
+            let labelAt = known ? parts.indexOf(known) : -1;
+            if (labelAt < 0) {
+              // No legend: a leading course code (no spaces, e.g. "MA_71") is the subject.
+              labelAt = parts.length > 1 && !/\s/.test(parts[0]) ? 1 : 0;
+            }
+            subject = parts.slice(0, labelAt).join("; ");
+            typeLabel = parts[labelAt] ?? "";
+            note = parts.slice(labelAt + 1).join("; ") || null;
           }
 
           // Map cell's grid range to start/end via the thead-derived map.
@@ -97,13 +115,14 @@ export function parseAttendanceHtml(html: string, date: string): LessonNote[] {
           }
 
           notes.push({
-            date,
+            date: rowIso,
             start,
             end,
             subject,
             typeLabel: typeLabel || tpClass.replace("at-tp", "Type "),
             typeClass: tpClass,
             teacher,
+            note,
           });
         }
         gridCol += colspan;
@@ -112,6 +131,23 @@ export function parseAttendanceHtml(html: string, date: string): LessonNote[] {
   });
 
   return notes;
+}
+
+/** Count lesson notes by kind (absences, lateness, feedback…), most common first. */
+export function summarizeLessonNotes(notes: LessonNote[], from: string | null, to: string | null): LessonNoteSummary {
+  const counts = new Map<string, number>();
+  for (const note of notes) counts.set(note.typeLabel, (counts.get(note.typeLabel) ?? 0) + 1);
+  return {
+    from,
+    to,
+    total: notes.length,
+    byType: [...counts].map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count || a.type.localeCompare(b.type)),
+  };
+}
+
+function finnishToIso(value: string): string | null {
+  const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value);
+  return match ? `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}` : null;
 }
 
 function pad(n: number): string {

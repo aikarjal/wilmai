@@ -1,0 +1,1157 @@
+{
+ "statusCode": 200,
+ "payload": [
+  {
+   "id": 2575,
+   "caption": "BI_ Vojehavi",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "08:30",
+   "endsAt": "10:05",
+   "dates": [
+    "2026-10-05"
+   ],
+   "modules": [
+    {
+     "id": 2575,
+     "caption": "BI_ Vojehavi",
+     "abbreviation": "BI_",
+     "courseName": "Vojehavi",
+     "extraInfo": "",
+     "moduleBaseId": 222592,
+     "groupId": 6440,
+     "teachers": [
+      {
+       "id": 4051,
+       "baseId": 89236,
+       "firstname": "Gutu",
+       "lastname": "Lamik",
+       "abbreviation": "Tah"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 179,
+       "baseId": 6385,
+       "abbreviation": "407",
+       "caption": "407 407"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 1943,
+   "caption": "MA_ Tyhijibysyvi",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "10:15",
+   "endsAt": "11:00",
+   "dates": [
+    "2026-10-05"
+   ],
+   "modules": [
+    {
+     "id": 1943,
+     "caption": "MA_ Tyhijibysyvi",
+     "abbreviation": "MA_",
+     "courseName": "Tyhijibysyvi",
+     "extraInfo": "",
+     "moduleBaseId": 358706,
+     "groupId": 998,
+     "teachers": [
+      {
+       "id": 8895,
+       "baseId": 50268,
+       "firstname": "Rufym-Rina",
+       "lastname": "Kuhokum",
+       "abbreviation": "Kop"
+      },
+      {
+       "id": 159,
+       "baseId": 44680,
+       "firstname": "Litov",
+       "lastname": "Digyvaji",
+       "abbreviation": "Pan"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 182,
+       "baseId": 9854,
+       "abbreviation": "410",
+       "caption": "410 410"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 2636,
+   "caption": "Lirutusy",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "11:05",
+   "endsAt": "11:50",
+   "dates": [
+    "2026-10-05"
+   ],
+   "modules": [
+    {
+     "id": 2636,
+     "caption": "Lirutusy",
+     "abbreviation": "PE",
+     "courseName": null,
+     "extraInfo": "",
+     "moduleBaseId": null,
+     "groupId": null,
+     "teachers": [],
+     "rooms": [],
+     "colors": {
+      "background": "#PABUNO",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 983,
+   "caption": "vLDE_ Dosove-tybuv gipomyhyk.1",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "11:50",
+   "endsAt": "13:25",
+   "dates": [
+    "2026-10-05"
+   ],
+   "modules": [
+    {
+     "id": 2318,
+     "caption": "vLDE_ Dosove-tybuv gipomyhyk.1",
+     "abbreviation": "vLDE_.1",
+     "courseName": "Dosove-tybuv gipomyhyk",
+     "extraInfo": "",
+     "moduleBaseId": 689476,
+     "groupId": 5271,
+     "teachers": [
+      {
+       "id": 124,
+       "baseId": 18292,
+       "firstname": "Gamij",
+       "lastname": "Gebyryh",
+       "abbreviation": "Fan"
+      },
+      {
+       "id": 13,
+       "baseId": 58583,
+       "firstname": "Muvofylov",
+       "lastname": "Sygibapumu",
+       "abbreviation": "Sud"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 165,
+       "baseId": 1076,
+       "abbreviation": "107",
+       "caption": "107 NI 107"
+      },
+      {
+       "id": 171,
+       "baseId": 1733,
+       "abbreviation": "213",
+       "caption": "213 HE 213"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 1835,
+   "caption": "SUK_ Nelyla pivos ja hofujeliheja",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "13:35",
+   "endsAt": "14:20",
+   "dates": [
+    "2026-10-05"
+   ],
+   "modules": [
+    {
+     "id": 7236,
+     "caption": "SUK_ Nelyla pivos ja hofujeliheja",
+     "abbreviation": "SUK_",
+     "courseName": "Nelyla pivos ja hofujeliheja",
+     "extraInfo": "",
+     "moduleBaseId": 514714,
+     "groupId": 954,
+     "teachers": [
+      {
+       "id": 20,
+       "baseId": 6758,
+       "firstname": "Vigob",
+       "lastname": "Kipesi",
+       "abbreviation": "Fiv"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 185,
+       "baseId": 9371,
+       "abbreviation": "415",
+       "caption": "415 415"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 4592,
+   "caption": "RUB1_ Runeril pivos, BA.j",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "14:35",
+   "endsAt": "15:20",
+   "dates": [
+    "2026-10-05"
+   ],
+   "modules": [
+    {
+     "id": 4592,
+     "caption": "RUB1_ Runeril pivos, BA.j",
+     "abbreviation": "RUB1_.t",
+     "courseName": "Runeril pivos, BA",
+     "extraInfo": "",
+     "moduleBaseId": 266611,
+     "groupId": 928,
+     "teachers": [
+      {
+       "id": 133,
+       "baseId": 52680,
+       "firstname": "Suvapi",
+       "lastname": "Kusobyti",
+       "abbreviation": "Sij"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 186,
+       "baseId": 5170,
+       "abbreviation": "504",
+       "caption": "504 504"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 5983,
+   "caption": "vKU2_ Logoluvovep holyd tihupud 2.1",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "08:30",
+   "endsAt": "10:05",
+   "dates": [
+    "2026-10-06"
+   ],
+   "modules": [
+    {
+     "id": 2353,
+     "caption": "vKU2_ Logoluvovep holyd tihupud 2.1",
+     "abbreviation": "vKU2_.1",
+     "courseName": "Logoluvovep holyd tihupud 2",
+     "extraInfo": "",
+     "moduleBaseId": 140629,
+     "groupId": 3435,
+     "teachers": [
+      {
+       "id": 13,
+       "baseId": 58583,
+       "firstname": "Muvofylov",
+       "lastname": "Sygibapumu",
+       "abbreviation": "Sud"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 171,
+       "baseId": 1733,
+       "abbreviation": "213",
+       "caption": "213 HE 213"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 9655,
+   "caption": "LI_ Kemepuku",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "10:15",
+   "endsAt": "11:50",
+   "dates": [
+    "2026-10-06"
+   ],
+   "modules": [
+    {
+     "id": 9655,
+     "caption": "LI_ Kemepuku",
+     "abbreviation": "LI_",
+     "courseName": "Kemepuku",
+     "extraInfo": "",
+     "moduleBaseId": 379525,
+     "groupId": 6580,
+     "teachers": [
+      {
+       "id": 22,
+       "baseId": 1534,
+       "firstname": "Hot",
+       "lastname": "Golyhukula",
+       "abbreviation": "Sar"
+      }
+     ],
+     "rooms": [],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 1469,
+   "caption": "Lirutusy",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "11:50",
+   "endsAt": "12:35",
+   "dates": [
+    "2026-10-06"
+   ],
+   "modules": [
+    {
+     "id": 1469,
+     "caption": "Lirutusy",
+     "abbreviation": "PE",
+     "courseName": null,
+     "extraInfo": "",
+     "moduleBaseId": null,
+     "groupId": null,
+     "teachers": [],
+     "rooms": [],
+     "colors": {
+      "background": "#PABUNO",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 1691,
+   "caption": "FY_ Lybavafi",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "12:40",
+   "endsAt": "14:20",
+   "dates": [
+    "2026-10-06"
+   ],
+   "modules": [
+    {
+     "id": 1691,
+     "caption": "FY_ Lybavafi",
+     "abbreviation": "FY_",
+     "courseName": "Lybavafi",
+     "extraInfo": "",
+     "moduleBaseId": 913203,
+     "groupId": 890,
+     "teachers": [
+      {
+       "id": 8895,
+       "baseId": 50268,
+       "firstname": "Rufym-Rina",
+       "lastname": "Kuhokum",
+       "abbreviation": "Kop"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 178,
+       "baseId": 9928,
+       "abbreviation": "318",
+       "caption": "318 318"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 4387,
+   "caption": "BI_ Vojehavi",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "14:35",
+   "endsAt": "15:20",
+   "dates": [
+    "2026-10-06"
+   ],
+   "modules": [
+    {
+     "id": 4387,
+     "caption": "BI_ Vojehavi",
+     "abbreviation": "BI_",
+     "courseName": "Vojehavi",
+     "extraInfo": "",
+     "moduleBaseId": 222592,
+     "groupId": 6440,
+     "teachers": [
+      {
+       "id": 4051,
+       "baseId": 89236,
+       "firstname": "Gutu",
+       "lastname": "Lamik",
+       "abbreviation": "Tah"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 181,
+       "baseId": 6950,
+       "abbreviation": "409",
+       "caption": "409 409"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 1898,
+   "caption": "KE_ Molep",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "10:15",
+   "endsAt": "11:50",
+   "dates": [
+    "2026-10-07"
+   ],
+   "modules": [
+    {
+     "id": 1898,
+     "caption": "KE_ Molep",
+     "abbreviation": "KE_",
+     "courseName": "Molep",
+     "extraInfo": "",
+     "moduleBaseId": 199663,
+     "groupId": 872,
+     "teachers": [
+      {
+       "id": 23,
+       "baseId": 37543,
+       "firstname": "Bes-Gypep",
+       "lastname": "Jakiridiv",
+       "abbreviation": "Fyv"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 173,
+       "baseId": 1859,
+       "abbreviation": "311",
+       "caption": "311 VIFO 311"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 1590,
+   "caption": "Lirutusy",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "11:50",
+   "endsAt": "12:35",
+   "dates": [
+    "2026-10-07"
+   ],
+   "modules": [
+    {
+     "id": 1590,
+     "caption": "Lirutusy",
+     "abbreviation": "PE",
+     "courseName": null,
+     "extraInfo": "",
+     "moduleBaseId": null,
+     "groupId": null,
+     "teachers": [],
+     "rooms": [],
+     "colors": {
+      "background": "#PABUNO",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 6917,
+   "caption": "MA_ Tyhijibysyvi",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "12:40",
+   "endsAt": "13:25",
+   "dates": [
+    "2026-10-07"
+   ],
+   "modules": [
+    {
+     "id": 6917,
+     "caption": "MA_ Tyhijibysyvi",
+     "abbreviation": "MA_",
+     "courseName": "Tyhijibysyvi",
+     "extraInfo": "",
+     "moduleBaseId": 358706,
+     "groupId": 998,
+     "teachers": [
+      {
+       "id": 8895,
+       "baseId": 50268,
+       "firstname": "Rufym-Rina",
+       "lastname": "Kuhokum",
+       "abbreviation": "Kop"
+      },
+      {
+       "id": 159,
+       "baseId": 44680,
+       "firstname": "Litov",
+       "lastname": "Digyvaji",
+       "abbreviation": "Pan"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 168,
+       "baseId": 3973,
+       "abbreviation": "208",
+       "caption": "208 208"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 4474,
+   "caption": "SUK_ Nelyla pivos ja hofujeliheja",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "13:35",
+   "endsAt": "14:20",
+   "dates": [
+    "2026-10-07"
+   ],
+   "modules": [
+    {
+     "id": 9936,
+     "caption": "SUK_ Nelyla pivos ja hofujeliheja",
+     "abbreviation": "SUK_",
+     "courseName": "Nelyla pivos ja hofujeliheja",
+     "extraInfo": "",
+     "moduleBaseId": 514714,
+     "groupId": 954,
+     "teachers": [
+      {
+       "id": 20,
+       "baseId": 6758,
+       "firstname": "Vigob",
+       "lastname": "Kipesi",
+       "abbreviation": "Fiv"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 185,
+       "baseId": 9371,
+       "abbreviation": "415",
+       "caption": "415 415"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 5681,
+   "caption": "Tuvajavulahume teroba",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "14:20",
+   "endsAt": "14:35",
+   "dates": [
+    "2026-10-07"
+   ],
+   "modules": [
+    {
+     "id": 5681,
+     "caption": "Tuvajavulahume teroba",
+     "abbreviation": "Lyh",
+     "courseName": null,
+     "extraInfo": "",
+     "moduleBaseId": null,
+     "groupId": null,
+     "teachers": [],
+     "rooms": [],
+     "colors": {
+      "background": "#PABUNO",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 6169,
+   "caption": "OP_ Pujatinydypero",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "08:30",
+   "endsAt": "10:05",
+   "dates": [
+    "2026-10-08"
+   ],
+   "modules": [
+    {
+     "id": 6169,
+     "caption": "OP_ Pujatinydypero",
+     "abbreviation": "OP_",
+     "courseName": "Pujatinydypero",
+     "extraInfo": "",
+     "moduleBaseId": 300248,
+     "groupId": 968,
+     "teachers": [
+      {
+       "id": 5190,
+       "baseId": 12051,
+       "firstname": "Bedid",
+       "lastname": "Dakydadygi",
+       "abbreviation": "Tan"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 166,
+       "baseId": 2987,
+       "abbreviation": "120",
+       "caption": "120 120"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 6564,
+   "caption": "YH_ Tusotutetogupud",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "10:15",
+   "endsAt": "11:00",
+   "dates": [
+    "2026-10-08"
+   ],
+   "modules": [
+    {
+     "id": 6564,
+     "caption": "YH_ Tusotutetogupud",
+     "abbreviation": "YH_",
+     "courseName": "Tusotutetogupud",
+     "extraInfo": "",
+     "moduleBaseId": 478835,
+     "groupId": 3545,
+     "teachers": [
+      {
+       "id": 218,
+       "baseId": 14394,
+       "firstname": "Vohyk",
+       "lastname": "Hipanyvavu",
+       "abbreviation": "Buk"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 179,
+       "baseId": 6385,
+       "abbreviation": "407",
+       "caption": "407 407"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 4231,
+   "caption": "Lirutusy",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "11:05",
+   "endsAt": "11:50",
+   "dates": [
+    "2026-10-08"
+   ],
+   "modules": [
+    {
+     "id": 4231,
+     "caption": "Lirutusy",
+     "abbreviation": "PE",
+     "courseName": null,
+     "extraInfo": "",
+     "moduleBaseId": null,
+     "groupId": null,
+     "teachers": [],
+     "rooms": [],
+     "colors": {
+      "background": "#PABUNO",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 7512,
+   "caption": "ENA1_ Jeroveto, PE.p",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "11:50",
+   "endsAt": "13:25",
+   "dates": [
+    "2026-10-08"
+   ],
+   "modules": [
+    {
+     "id": 7512,
+     "caption": "ENA1_ Jeroveto, PE.p",
+     "abbreviation": "ENA1_.d",
+     "courseName": "Jeroveto, PE",
+     "extraInfo": "",
+     "moduleBaseId": 270553,
+     "groupId": 4412,
+     "teachers": [
+      {
+       "id": 3034,
+       "baseId": 98053,
+       "firstname": "Fygas",
+       "lastname": "Sigilufovo",
+       "abbreviation": "Jyf"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 170,
+       "baseId": 7837,
+       "abbreviation": "210",
+       "caption": "210 210"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 7689,
+   "caption": "RUB1_ Runeril pivos, BA.j",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "13:35",
+   "endsAt": "14:20",
+   "dates": [
+    "2026-10-08"
+   ],
+   "modules": [
+    {
+     "id": 7689,
+     "caption": "RUB1_ Runeril pivos, BA.j",
+     "abbreviation": "RUB1_.t",
+     "courseName": "Runeril pivos, BA",
+     "extraInfo": "",
+     "moduleBaseId": 266611,
+     "groupId": 928,
+     "teachers": [
+      {
+       "id": 133,
+       "baseId": 52680,
+       "firstname": "Suvapi",
+       "lastname": "Kusobyti",
+       "abbreviation": "Sij"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 186,
+       "baseId": 5170,
+       "abbreviation": "504",
+       "caption": "504 504"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 2935,
+   "caption": "BI_ Vojehavi",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "14:35",
+   "endsAt": "15:20",
+   "dates": [
+    "2026-10-08"
+   ],
+   "modules": [
+    {
+     "id": 2935,
+     "caption": "BI_ Vojehavi",
+     "abbreviation": "BI_",
+     "courseName": "Vojehavi",
+     "extraInfo": "",
+     "moduleBaseId": 222592,
+     "groupId": 6440,
+     "teachers": [
+      {
+       "id": 4051,
+       "baseId": 89236,
+       "firstname": "Gutu",
+       "lastname": "Lamik",
+       "abbreviation": "Tah"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 180,
+       "baseId": 4608,
+       "abbreviation": "408",
+       "caption": "408 408"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 1246,
+   "caption": "ENA1_ Jeroveto, PE.p",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "08:30",
+   "endsAt": "09:15",
+   "dates": [
+    "2026-10-09"
+   ],
+   "modules": [
+    {
+     "id": 1246,
+     "caption": "ENA1_ Jeroveto, PE.p",
+     "abbreviation": "ENA1_.d",
+     "courseName": "Jeroveto, PE",
+     "extraInfo": "",
+     "moduleBaseId": 270553,
+     "groupId": 4412,
+     "teachers": [
+      {
+       "id": 3034,
+       "baseId": 98053,
+       "firstname": "Fygas",
+       "lastname": "Sigilufovo",
+       "abbreviation": "Jyf"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 186,
+       "baseId": 5170,
+       "abbreviation": "504",
+       "caption": "504 504"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 2926,
+   "caption": "MA_ Tyhijibysyvi",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "09:20",
+   "endsAt": "11:00",
+   "dates": [
+    "2026-10-09"
+   ],
+   "modules": [
+    {
+     "id": 2926,
+     "caption": "MA_ Tyhijibysyvi",
+     "abbreviation": "MA_",
+     "courseName": "Tyhijibysyvi",
+     "extraInfo": "",
+     "moduleBaseId": 358706,
+     "groupId": 998,
+     "teachers": [
+      {
+       "id": 8895,
+       "baseId": 50268,
+       "firstname": "Rufym-Rina",
+       "lastname": "Kuhokum",
+       "abbreviation": "Kop"
+      },
+      {
+       "id": 159,
+       "baseId": 44680,
+       "firstname": "Litov",
+       "lastname": "Digyvaji",
+       "abbreviation": "Pan"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 182,
+       "baseId": 9854,
+       "abbreviation": "410",
+       "caption": "410 410"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 6158,
+   "caption": "Lirutusy",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "11:05",
+   "endsAt": "11:50",
+   "dates": [
+    "2026-10-09"
+   ],
+   "modules": [
+    {
+     "id": 6158,
+     "caption": "Lirutusy",
+     "abbreviation": "PE",
+     "courseName": null,
+     "extraInfo": "",
+     "moduleBaseId": null,
+     "groupId": null,
+     "teachers": [],
+     "rooms": [],
+     "colors": {
+      "background": "#PABUNO",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 5537,
+   "caption": "SUK_ Nelyla pivos ja hofujeliheja",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "11:50",
+   "endsAt": "12:35",
+   "dates": [
+    "2026-10-09"
+   ],
+   "modules": [
+    {
+     "id": 8634,
+     "caption": "SUK_ Nelyla pivos ja hofujeliheja",
+     "abbreviation": "SUK_",
+     "courseName": "Nelyla pivos ja hofujeliheja",
+     "extraInfo": "",
+     "moduleBaseId": 514714,
+     "groupId": 954,
+     "teachers": [
+      {
+       "id": 20,
+       "baseId": 6758,
+       "firstname": "Vigob",
+       "lastname": "Kipesi",
+       "abbreviation": "Fiv"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 185,
+       "baseId": 9371,
+       "abbreviation": "415",
+       "caption": "415 415"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  },
+  {
+   "id": 5510,
+   "caption": "YH_ Tusotutetogupud",
+   "schedule": {
+    "identifier": "7373867520",
+    "caption": "Rimuhahoral tykahir 3527-27"
+   },
+   "startAt": "12:40",
+   "endsAt": "14:20",
+   "dates": [
+    "2026-10-09"
+   ],
+   "modules": [
+    {
+     "id": 5510,
+     "caption": "YH_ Tusotutetogupud",
+     "abbreviation": "YH_",
+     "courseName": "Tusotutetogupud",
+     "extraInfo": "",
+     "moduleBaseId": 478835,
+     "groupId": 3545,
+     "teachers": [
+      {
+       "id": 218,
+       "baseId": 14394,
+       "firstname": "Vohyk",
+       "lastname": "Hipanyvavu",
+       "abbreviation": "Buk"
+      }
+     ],
+     "rooms": [
+      {
+       "id": 181,
+       "baseId": 6950,
+       "abbreviation": "409",
+       "caption": "409 409"
+      }
+     ],
+     "colors": {
+      "background": "#SYVOHY",
+      "font": "#259455"
+     }
+    }
+   ]
+  }
+ ]
+}

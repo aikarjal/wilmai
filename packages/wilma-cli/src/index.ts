@@ -11,9 +11,13 @@ import {
   MfaRequiredError,
   NetworkError,
   listTenants,
+  type GradebookEntry,
+  type LessonNote,
+  type LessonNoteSummary,
   type MfaCallback,
   type MessageFolder,
   type NewsItem,
+  type Printout,
   type TenantInfo,
   type WilmaProfile,
   type StudentInfo,
@@ -27,7 +31,16 @@ import {
   saveConfig,
   type StoredProfile,
 } from "./config.js";
-import { buildSummaryData, finnishDate, matchStudents, parseIsoDate, resolveScheduleDateSelection } from "./agent-data.js";
+import {
+  buildSummaryData,
+  daysBack,
+  finnishDate,
+  matchStudents,
+  parseIsoDate,
+  resolveScheduleDateSelection,
+  selectNews,
+  todayString,
+} from "./agent-data.js";
 import {
   ENV_VARS,
   mfaCallbackFor,
@@ -59,6 +72,8 @@ const ACTIONS = [
   { value: "homework", name: "Recent homework" },
   { value: "exams", name: "Upcoming exams" },
   { value: "grades", name: "Exam grades" },
+  { value: "notes", name: "Lesson notes (last 14 days)" },
+  { value: "gradebook", name: "Gradebook" },
   { value: "news", name: "List news" },
   { value: "messages", name: "List messages" },
   { value: "exit", name: "Exit" },
@@ -286,6 +301,17 @@ async function runInteractive(config: { profiles: StoredProfile[]; lastProfileId
       if (nextAction === "grades") {
         console.clear();
         await outputGrades(client, { limit: 20, json: false });
+      }
+
+      if (nextAction === "notes") {
+        console.clear();
+        await outputAttendance(client, { from: daysBack(14), to: todayString(), json: false });
+      }
+
+      if (nextAction === "gradebook") {
+        console.clear();
+        console.log("\nGradebook");
+        printGradebook(await client.gradebook.get());
       }
 
       if (nextAction === "news") {
@@ -534,7 +560,7 @@ async function handleCommand(
       return;
     }
     if (flags.allStudents) {
-      await outputAllNews(profile, config, flags.limit ?? 20, flags.json, mfaCallback);
+      await outputAllNews(profile, config, flags.limit ?? 20, flags.json, mfaCallback, flags.older);
       return;
     }
     const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
@@ -544,6 +570,7 @@ async function handleCommand(
     const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
     await outputNews(perStudentClient, {
       limit: flags.limit ?? 20,
+      older: flags.older,
       json: flags.json,
       label: studentInfo?.name ?? undefined,
     });
@@ -585,8 +612,16 @@ async function handleCommand(
   }
 
   if (command === "attendance") {
+    if (flags.days && (flags.date || flags.from)) throw new Error("Use --days, --date or --from, not several.");
+    if (flags.date && (flags.from || flags.to)) throw new Error("Use either --date or --from/--to, not both.");
+    const from = flags.days ? daysBack(flags.days) : flags.from;
+    const period = subcommand === "summary"
+      ? { from, to: flags.to }
+      : from
+        ? { from, to: flags.to ?? todayString() }
+        : { date: flags.date };
     if (flags.allStudents) {
-      await outputAllAttendance(profile, config, { date: flags.date, json: flags.json }, mfaCallback);
+      await outputAllAttendance(profile, config, { ...period, summary: subcommand === "summary", json: flags.json }, mfaCallback);
       return;
     }
     const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
@@ -594,11 +629,68 @@ async function handleCommand(
       throw await studentChoiceError(profile, config);
     }
     const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
-    await outputAttendance(perStudentClient, {
-      date: flags.date,
-      json: flags.json,
-      label: studentInfo?.name ?? undefined,
-    });
+    const label = studentInfo?.name ?? undefined;
+    if (subcommand === "summary") {
+      await outputLessonNoteSummary(perStudentClient, { ...period, json: flags.json, label });
+    } else {
+      await outputAttendance(perStudentClient, { ...period, json: flags.json, label });
+    }
+    return;
+  }
+
+  if (command === "gradebook") {
+    if (flags.allStudents) {
+      await outputForEachStudent(profile, config, mfaCallback, flags.json, "gradebook", (client) => client.gradebook.get(), printGradebook);
+      return;
+    }
+    const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
+    if (!studentInfo && !profile.studentNumber) {
+      throw await studentChoiceError(profile, config);
+    }
+    const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
+    const gradebook = await perStudentClient.gradebook.get();
+    if (flags.json) {
+      console.log(JSON.stringify(gradebook, null, 2));
+      return;
+    }
+    console.log(`\n${studentInfo?.name ? `[${studentInfo.name}] ` : ""}Gradebook`);
+    printGradebook(gradebook);
+    return;
+  }
+
+  if (command === "printouts") {
+    if (subcommand === "download") {
+      if (!flags.id) throw new Error('Missing printout id. Expected "wilma printouts download <id>".');
+      if (!flags.student) await requireOneStudent(profile, config);
+      const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
+      const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
+      const { printout, response } = await perStudentClient.printouts.fetch(flags.id);
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new Error(`Printout download failed with HTTP ${response.status}`);
+      }
+      const resource = { id: printout.id, label: printout.title, url: printout.path };
+      const saved = await saveResponseToFile(response as never, resource, flags.output);
+      if (flags.json) console.log(JSON.stringify({ status: "downloaded", printoutId: printout.id, ...saved }, null, 2));
+      else console.log(`Downloaded ${printout.title} to ${saved.path}`);
+      return;
+    }
+    if (flags.allStudents) {
+      await outputForEachStudent(profile, config, mfaCallback, flags.json, "printouts", (client) => client.printouts.list(), printPrintouts);
+      return;
+    }
+    const studentInfo = await resolveStudentForFlags(profile, config, flags.student);
+    if (!studentInfo && !profile.studentNumber) {
+      throw await studentChoiceError(profile, config);
+    }
+    const perStudentClient = await loginForStudent(studentInfo, profile, mfaCallback);
+    const printouts = await perStudentClient.printouts.list();
+    if (flags.json) {
+      console.log(JSON.stringify(printouts, null, 2));
+      return;
+    }
+    console.log(`\n${studentInfo?.name ? `[${studentInfo.name}] ` : ""}Printouts`);
+    printPrintouts(printouts);
     return;
   }
 
@@ -703,12 +795,16 @@ function printUsage() {
   console.log("  wilma exams list [--limit 20] [--student <id|name>] [--all-students] [--json]");
   console.log("  wilma grades list [--limit 20] [--student <id|name>] [--all-students] [--json]");
   console.log("  wilma kids list [--json]");
-  console.log("  wilma news list [--limit 20] [--student <id|name>] [--all-students] [--json]");
+  console.log("  wilma news list [--limit 20] [--older] [--student <id|name>] [--all-students] [--json]");
   console.log("  wilma news read <id> [--student <id|name>] [--json]");
   console.log("  wilma news resource download <news-id> <resource-id> [--student <id|name>] [--output <directory>] [--json]");
   console.log("  wilma messages list [--folder inbox] [--limit 20] [--student <id|name>] [--all-students] [--json]");
   console.log("  wilma messages read <id> [--student <id|name>] [--json]");
-  console.log("  wilma attendance list [--date YYYY-MM-DD] [--student <id|name>] [--all-students] [--json]");
+  console.log("  wilma attendance list [--date YYYY-MM-DD | --days 14 | --from YYYY-MM-DD [--to YYYY-MM-DD]] [--student <id|name>] [--all-students] [--json]");
+  console.log("  wilma attendance summary [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--student <id|name>] [--all-students] [--json]");
+  console.log("  wilma gradebook [--student <id|name>] [--all-students] [--json]");
+  console.log("  wilma printouts list [--student <id|name>] [--all-students] [--json]");
+  console.log("  wilma printouts download <id> [--student <id|name>] [--output <directory>] [--json]");
   console.log("  wilma login [--no-browser] [--json]");
   console.log("  wilma login --tenant <url|city> --username <name> [--password-stdin] [--totp-secret <key>] [--json]");
   console.log("  wilma tenants <city or school> [--json]   find your Wilma address");
@@ -855,7 +951,7 @@ const NO_TERMINAL_HELP = [
 const HEADLESS_LOGIN_HELP = [
   "This computer has no browser, so the login page can't be shown here.",
   "If you are an agent on a cloud computer, set up the login with the user instead:",
-  "  1. Ask the user which city or school their children's Wilma belongs to,",
+  "  1. Ask the user which city their children's school is in (or the school's name),",
   "     run `wilma tenants <city>` and let them pick their Wilma from the list.",
   `  2. Ask them to store their Wilma username and password in your secret settings as`,
   `     ${ENV_VARS.username} and ${ENV_VARS.password} (plus ${ENV_VARS.totpSecret} for two-step verification),`,
@@ -920,7 +1016,7 @@ async function handleTenants(args: string[]) {
     return;
   }
   if (!tenants.length) {
-    console.log(`No Wilma found for "${query}".`);
+    console.log(`No Wilma found for "${query}". Many schools use their city's Wilma: try the city or municipality the school is in.`);
     return;
   }
   for (const t of tenants) console.log(`${t.url}  ${t.name}`);
@@ -942,7 +1038,9 @@ const COMMANDS: Record<string, Array<string | undefined>> = {
   kids: [undefined, "list"],
   news: [undefined, "list", "read", "resource"],
   messages: [undefined, "list", "read"],
-  attendance: [undefined, "list"],
+  attendance: [undefined, "list", "summary"],
+  gradebook: [undefined, "list"],
+  printouts: [undefined, "list", "download"],
 };
 
 const MESSAGE_FOLDERS: MessageFolder[] = ["inbox", "archive", "outbox", "drafts", "appointments"];
@@ -966,6 +1064,9 @@ function parseArgs(args: string[]) {
     weekday?: string;
     totpSecret?: string;
     days?: number;
+    from?: string;
+    to?: string;
+    older?: boolean;
     resourceId?: string;
     output?: string;
   } = {};
@@ -1003,8 +1104,17 @@ function parseArgs(args: string[]) {
       flags.limit = positiveInt(i, 1000);
       i += 2;
     } else if (arg === "--days") {
-      flags.days = positiveInt(i, 60);
+      flags.days = positiveInt(i, 365);
       i += 2;
+    } else if (arg === "--from") {
+      flags.from = parseIsoDate(value(i));
+      i += 2;
+    } else if (arg === "--to") {
+      flags.to = parseIsoDate(value(i));
+      i += 2;
+    } else if (arg === "--older") {
+      flags.older = true;
+      i += 1;
     } else if (arg === "--student") {
       flags.student = value(i);
       i += 2;
@@ -1207,20 +1317,29 @@ async function showUpdateNotice(check: UpdateCheck): Promise<void> {
 
 async function outputNews(
   client: WilmaClient,
-  opts: { limit: number; json?: boolean; label?: string }
+  opts: { limit: number; older?: boolean; json?: boolean; label?: string }
 ) {
   const news = await client.news.list();
-  const slice = news.slice(0, opts.limit);
+  const slice = selectNews(news, { limit: opts.limit, includeOlder: opts.older });
   if (opts.json) {
     console.log(JSON.stringify(slice, null, 2));
     return;
   }
   console.log(`\nNews (${news.length})`);
   slice.forEach((item) => {
-    const date = item.published ? finnishDate(item.published) : "";
     const prefix = opts.label ? `[${opts.label}] ` : "";
-    console.log(`- ${prefix}${date} ${compactText(item.title)} (id:${item.wilmaId})`.trim());
+    console.log(`- ${prefix}${newsLine(item)}`);
   });
+  if (!opts.older && news.some((item) => item.archived)) {
+    console.log("  Older bulletins: add --older.");
+  }
+}
+
+/** "2026-09-27 Title (id:1)", marking pinned and older bulletins. */
+function newsLine(item: NewsItem): string {
+  const date = item.published ? `${finnishDate(item.published)} ` : "";
+  const mark = item.pinned ? " [pinned]" : item.archived ? " [older]" : "";
+  return `${date}${compactText(item.title)}${mark} (id:${item.wilmaId})`;
 }
 
 async function outputNewsItem(
@@ -1255,6 +1374,60 @@ async function outputNewsItem(
   return item;
 }
 
+
+/** Save a downloaded file in the output folder (default: the current one), never overwriting. */
+async function saveResponseToFile(
+  response: {
+    headers: { get(name: string): string | null };
+    body: { getReader(): { read(): Promise<{ done: boolean; value?: Uint8Array }>; cancel(): Promise<void> }; cancel(): Promise<void> } | null;
+  },
+  resource: { id: string; label: string; url: string; fileName?: string | null },
+  outputOption?: string
+): Promise<{ path: string; contentType: string | null; sizeBytes: number }> {
+  const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim() || null;
+  const declaredLength = Number(response.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_NEWS_RESOURCE_BYTES) {
+    await response.body?.cancel();
+    throw new Error("The file exceeds the 50 MB download limit");
+  }
+
+  // "~/Downloads" typed at the interactive prompt (no shell to expand it).
+  const output = outputOption?.replace(/^~(?=$|[\\/])/, homedir());
+  const outputDirectory = resolve(output ?? process.cwd());
+  await mkdir(outputDirectory, { recursive: true });
+  const preferredName = fileNameFromResponse(resource as never, response.headers.get("content-disposition"), contentType);
+  const { path, handle } = await createUniqueDownloadFile(outputDirectory, preferredName);
+  let sizeBytes = 0;
+  try {
+    if (!response.body) {
+      throw new Error("The download had no content");
+    }
+    const reader = response.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done || !value) break;
+      sizeBytes += value.byteLength;
+      if (sizeBytes > MAX_NEWS_RESOURCE_BYTES) {
+        await reader.cancel();
+        throw new Error("The file exceeds the 50 MB download limit");
+      }
+      let offset = 0;
+      while (offset < value.byteLength) {
+        const { bytesWritten } = await handle.write(value, offset, value.byteLength - offset);
+        if (bytesWritten === 0) {
+          throw new Error("Could not write the file to disk");
+        }
+        offset += bytesWritten;
+      }
+    }
+    await handle.close();
+  } catch (error) {
+    await handle.close().catch(() => undefined);
+    await rm(path, { force: true });
+    throw error;
+  }
+  return { path, contentType, sizeBytes };
+}
 
 async function outputNewsResourceDownload(
   client: WilmaClient,
@@ -1295,48 +1468,7 @@ async function outputNewsResourceDownload(
     await response.body?.cancel();
     throw new Error(`News resource download failed with HTTP ${response.status}`);
   }
-  const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim() || null;
-  const declaredLength = Number(response.headers.get("content-length") ?? "0");
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_NEWS_RESOURCE_BYTES) {
-    await response.body?.cancel();
-    throw new Error("News resource exceeds the 50 MB download limit");
-  }
-
-  // "~/Downloads" typed at the interactive prompt (no shell to expand it).
-  const output = opts.output?.replace(/^~(?=$|[\\/])/, homedir());
-  const outputDirectory = resolve(output ?? process.cwd());
-  await mkdir(outputDirectory, { recursive: true });
-  const preferredName = fileNameFromResponse(resource, response.headers.get("content-disposition"), contentType);
-  const { path, handle } = await createUniqueDownloadFile(outputDirectory, preferredName);
-  let sizeBytes = 0;
-  try {
-    if (!response.body) {
-      throw new Error("News resource response had no body");
-    }
-    const reader = response.body.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      sizeBytes += value.byteLength;
-      if (sizeBytes > MAX_NEWS_RESOURCE_BYTES) {
-        await reader.cancel();
-        throw new Error("News resource exceeds the 50 MB download limit");
-      }
-      let offset = 0;
-      while (offset < value.byteLength) {
-        const { bytesWritten } = await handle.write(value, offset, value.byteLength - offset);
-        if (bytesWritten === 0) {
-          throw new Error("Could not write news resource to disk");
-        }
-        offset += bytesWritten;
-      }
-    }
-    await handle.close();
-  } catch (error) {
-    await handle.close().catch(() => undefined);
-    await rm(path, { force: true });
-    throw error;
-  }
+  const { path, contentType, sizeBytes } = await saveResponseToFile(response, resource, opts.output);
 
   const result = {
     status: "downloaded",
@@ -1366,13 +1498,7 @@ async function outputSchedule(
 ) {
   const selection = resolveScheduleDateSelection(opts);
   const { when, startDate, endDate } = selection;
-  const schedule = await client.schedule.list(
-    selection.queryDate ? { date: selection.queryDate } : undefined
-  );
-
-  const lessons = schedule.filter(
-    (l) => l.date >= startDate && l.date <= endDate
-  );
+  const lessons = await client.schedule.list({ from: startDate, to: endDate });
 
   if (opts.json) {
     const result = !opts.date && !opts.weekday && when === "week"
@@ -1406,7 +1532,8 @@ async function outputSchedule(
       console.log(`  ${DAY_NAMES[d.getDay()]} ${l.date}`);
     }
     const teacher = l.teacherCode ? ` - ${l.teacher}` : "";
-    console.log(`    ${l.start}-${l.end}  ${l.subject}${teacher}`);
+    const room = l.room ? `, ${l.room}` : "";
+    console.log(`    ${l.start}-${l.end}  ${l.subject}${teacher}${room}`);
   }
 }
 
@@ -1448,27 +1575,102 @@ async function outputUpcomingExams(
 
 async function outputAttendance(
   client: WilmaClient,
-  opts: { date?: string; json?: boolean; label?: string }
+  opts: { date?: string; from?: string; to?: string; json?: boolean; label?: string }
 ) {
-  const notes = await client.attendance.list({ date: opts.date });
+  const notes = await client.attendance.list({ date: opts.date, from: opts.from, to: opts.to });
   if (opts.json) {
     console.log(JSON.stringify(notes, null, 2));
     return;
   }
-  const date = opts.date ?? finnishDate();
   const prefix = opts.label ? `[${opts.label}] ` : "";
-  console.log(`\n${prefix}Lesson notes for ${date} (${notes.length})`);
+  const period = opts.from ? `${opts.from} – ${opts.to}` : (opts.date ?? finnishDate());
+  console.log(`\n${prefix}Lesson notes for ${period} (${notes.length})`);
   if (!notes.length) {
     console.log("  No lesson notes found.");
     return;
   }
-  notes.forEach((note) => {
-    const time = note.start && note.end ? ` (${note.start}-${note.end})` : "";
-    const type = note.typeLabel ? ` [${note.typeLabel}]` : "";
-    const teacher = note.teacher ? ` ${note.teacher}` : "";
-    const subject = note.subject ? ` [${note.subject}]` : "";
-    console.log(`-${time}${type}${teacher}${subject}`);
-  });
+  notes.forEach((note) => console.log(lessonNoteLine(note, Boolean(opts.from))));
+}
+
+/** "- 2026-09-30 (09:00-09:45) [Hyvä!] Teacher [MA_71]: the teacher's words" */
+function lessonNoteLine(note: LessonNote, withDate: boolean): string {
+  const date = withDate ? ` ${note.date}` : "";
+  const time = note.start && note.end ? ` (${note.start}-${note.end})` : "";
+  const type = note.typeLabel ? ` [${note.typeLabel}]` : "";
+  const teacher = note.teacher ? ` ${note.teacher}` : "";
+  const subject = note.subject ? ` [${note.subject}]` : "";
+  const words = note.note ? `: ${compactText(note.note)}` : "";
+  return `-${date}${time}${type}${teacher}${subject}${words}`;
+}
+
+async function outputLessonNoteSummary(
+  client: WilmaClient,
+  opts: { from?: string; to?: string; json?: boolean; label?: string }
+) {
+  const summary = await client.attendance.summary({ from: opts.from, to: opts.to });
+  if (opts.json) {
+    console.log(JSON.stringify(summary, null, 2));
+    return;
+  }
+  console.log(opts.label ? `\n[${opts.label}]` : "");
+  printLessonNoteSummary(summary);
+}
+
+function printLessonNoteSummary(summary: LessonNoteSummary): void {
+  const period = summary.from ? `${summary.from} – ${summary.to}` : "this school year";
+  console.log(`Lesson notes, ${period}: ${summary.total} in total`);
+  if (!summary.byType.length) console.log("  None.");
+  for (const { type, count } of summary.byType) console.log(`  ${type}: ${count}`);
+}
+
+function printGradebook(entries: GradebookEntry[], depth = 0): void {
+  if (!entries.length && depth === 0) {
+    console.log("  No graded courses yet.");
+    return;
+  }
+  for (const entry of entries) {
+    const code = entry.code ? `${entry.code} ` : "";
+    const grade = entry.grade ? `  ${entry.grade}` : "";
+    const credits = entry.credits ? `  (${entry.credits})` : "";
+    const date = entry.date ? `  ${entry.date}` : "";
+    console.log(`${"  ".repeat(depth + 1)}${code}${compactText(entry.name)}${grade}${credits}${date}`);
+    printGradebook(entry.children, depth + 1);
+  }
+}
+
+function printPrintouts(printouts: Printout[]): void {
+  if (!printouts.length) {
+    console.log("  No printouts.");
+    return;
+  }
+  for (const p of printouts) console.log(`- ${compactText(p.title)} (id:${p.id})`);
+  console.log("Download one with: wilma printouts download <id> [--output <directory>]");
+}
+
+/** Run one per-student query for every child and print or return it as JSON. */
+async function outputForEachStudent<T>(
+  profile: WilmaProfile,
+  config: { profiles: StoredProfile[]; lastProfileId?: string | null },
+  onMfa: MfaCallback | undefined,
+  json: boolean | undefined,
+  key: string,
+  fetch: (client: WilmaClient) => Promise<T>,
+  print: (data: T) => void
+) {
+  const students = await getStudentsForCommand(profile, config);
+  const results: { student: StudentInfo; data: T }[] = [];
+  for (const student of students) {
+    const client = await loginForStudent(student, profile, onMfa);
+    results.push({ student, data: await fetch(client) });
+  }
+  if (json) {
+    console.log(JSON.stringify({ students: results.map((r) => ({ student: r.student, [key]: r.data })) }, null, 2));
+    return;
+  }
+  for (const r of results) {
+    console.log(`\n[${r.student.name}]`);
+    print(r.data);
+  }
 }
 
 async function outputGrades(
@@ -1572,7 +1774,9 @@ async function outputMessages(
   slice.forEach((msg) => {
     const date = finnishDate(msg.sentAt);
     const prefix = opts.label ? `[${opts.label}] ` : "";
-    console.log(`- ${prefix}${date} ${compactText(msg.subject)} (id:${msg.wilmaId})`);
+    const sender = msg.senderName ? ` — ${compactText(msg.senderName)}` : "";
+    const replies = msg.replyCount ? ` [${msg.replyCount} ${msg.replyCount === 1 ? "reply" : "replies"}]` : "";
+    console.log(`- ${prefix}${date} ${compactText(msg.subject)}${sender}${msg.unread ? " [new]" : ""}${replies} (id:${msg.wilmaId})`);
   });
 }
 
@@ -1584,8 +1788,13 @@ async function outputMessageItem(client: WilmaClient, id: number, json?: boolean
   }
   console.log(`\n${msg.subject}`);
   if (msg.senderName) console.log(`From: ${msg.senderName}`);
+  if (msg.recipients?.length) console.log(`To: ${msg.recipients.join(", ")}`);
   console.log(`Sent: ${finnishDateTime(msg.sentAt)}`);
   if (msg.content) console.log(`\n${formatContent(msg.content)}`);
+  for (const reply of msg.replies ?? []) {
+    console.log(`\n--- Reply from ${reply.senderName ?? "unknown"}, ${finnishDateTime(reply.sentAt)}`);
+    if (reply.content) console.log(formatContent(reply.content));
+  }
 }
 
 async function selectNewsToRead(client: WilmaClient) {
@@ -2048,14 +2257,15 @@ async function outputAllNews(
   config: { profiles: StoredProfile[]; lastProfileId?: string | null },
   limit: number,
   json?: boolean,
-  onMfa?: MfaCallback
+  onMfa?: MfaCallback,
+  older?: boolean
 ) {
   const students = await getStudentsForCommand(profile, config);
   const results = [];
   for (const student of students) {
     const client = await loginForStudent(student, profile, onMfa);
     const news = await client.news.list();
-    results.push({ student, items: news.slice(0, limit) });
+    results.push({ student, items: selectNews(news, { limit, includeOlder: older }) });
   }
   if (json) {
     console.log(JSON.stringify({ students: results }, null, 2));
@@ -2064,8 +2274,7 @@ async function outputAllNews(
   results.forEach((entry) => {
     console.log(`\n[${entry.student.name}]`);
     entry.items.forEach((item) => {
-      const date = item.published ? finnishDate(item.published) : "";
-      console.log(`- ${date} ${item.title} (id:${item.wilmaId})`.trim());
+      console.log(`- ${newsLine(item)}`);
     });
   });
 }
@@ -2126,14 +2335,18 @@ async function outputAllExams(
 async function outputAllAttendance(
   profile: WilmaProfile,
   config: { profiles: StoredProfile[]; lastProfileId?: string | null },
-  opts: { date?: string; json?: boolean },
+  opts: { date?: string; from?: string; to?: string; summary?: boolean; json?: boolean },
   onMfa?: MfaCallback
 ) {
+  if (opts.summary) {
+    await outputForEachStudent(profile, config, onMfa, opts.json, "summary", (client) => client.attendance.summary({ from: opts.from, to: opts.to }), printLessonNoteSummary);
+    return;
+  }
   const students = await getStudentsForCommand(profile, config);
-  const results: { student: StudentInfo; notes: Awaited<ReturnType<WilmaClient["attendance"]["list"]>> }[] = [];
+  const results: { student: StudentInfo; notes: LessonNote[] }[] = [];
   for (const student of students) {
     const client = await loginForStudent(student, profile, onMfa);
-    const notes = await client.attendance.list({ date: opts.date });
+    const notes = await client.attendance.list({ date: opts.date, from: opts.from, to: opts.to });
     results.push({ student, notes });
   }
   if (opts.json) {
@@ -2146,13 +2359,7 @@ async function outputAllAttendance(
       continue;
     }
     console.log(`\n[${r.student.name}]`);
-    r.notes.forEach((note) => {
-      const time = note.start && note.end ? ` (${note.start}-${note.end})` : "";
-      const type = note.typeLabel ? ` [${note.typeLabel}]` : "";
-      const teacher = note.teacher ? ` ${note.teacher}` : "";
-      const subject = note.subject ? ` [${note.subject}]` : "";
-      console.log(`-${time}${type}${teacher}${subject}`);
-    });
+    r.notes.forEach((note) => console.log(lessonNoteLine(note, Boolean(opts.from))));
   }
 }
 
@@ -2211,14 +2418,9 @@ async function outputAllOverviewCommand(
   for (const student of students) {
     const client = await loginForStudent(student, profile, onMfa);
     if (command === "schedule" && scheduleSelection) {
-      const schedule = await client.schedule.list(
-        scheduleSelection.queryDate ? { date: scheduleSelection.queryDate } : undefined
-      );
       results.push({
         student,
-        data: schedule.filter(
-          (l) => l.date >= scheduleSelection.startDate && l.date <= scheduleSelection.endDate
-        ),
+        data: await client.schedule.list({ from: scheduleSelection.startDate, to: scheduleSelection.endDate }),
       });
     } else if (command === "homework") {
       const overview = await client.overview.get();
@@ -2242,7 +2444,7 @@ async function outputAllOverviewCommand(
     }
     if (command === "schedule") {
       for (const l of items) {
-        console.log(`  ${l.date} ${l.start}-${l.end}  ${l.subject} - ${l.teacher}`);
+        console.log(`  ${l.date} ${l.start}-${l.end}  ${l.subject} - ${l.teacher}${l.room ? `, ${l.room}` : ""}`);
       }
     } else if (command === "homework") {
       for (const hw of items) {

@@ -73,21 +73,16 @@ wilma grades list [--limit 20] [--student <id|name>] [--all-students] [--json]
 
 ### News and messages
 ```bash
-wilma news list [--limit 20] [--student <id|name>] [--all-students] [--json]
+wilma news list [--limit 20] [--older] [--student <id|name>] [--all-students] [--json]
 wilma news read <id> [--student <id|name>] [--json]
 wilma news resource download <news-id> <resource-id> [--student <id|name>] [--output <directory>] [--json]
 wilma messages list [--folder inbox] [--limit 20] [--student <id|name>] [--all-students] [--json]
 wilma messages read <id> [--student <id|name>] [--json]
 ```
 
+`news list` shows the newest dated bulletins and every pinned one; `--older` adds older bulletins. Message lists mark unread messages and threads with replies, and `messages read` shows the whole thread.
+
 `news read --json` includes a `resources` array with every link in the bulletin. Any resource can be passed to the download command (the resource id also accepts a bare number, e.g. `1` for `resource-1`). Wilma-hosted files download through the authenticated session; external URLs are fetched with an isolated, unauthenticated request — no Wilma credentials are ever sent to external hosts. The result `status` reports what actually happened: `downloaded` (use the returned `path`), or `not_a_file` when the URL answered with a web page instead of a file (for example a sharing link that requires signing in — open it in a browser instead). `--output` defaults to the current directory; existing files are never overwritten.
-
-### Attendance / lesson notes
-```bash
-wilma attendance list [--date YYYY-MM-DD] [--student <id|name>] [--all-students] [--json]
-```
-
-Shows lesson notes (type labels, subjects, teachers) for a given date. Defaults to today if --date is omitted.
 
 ### Several Wilmas
 Children at schools on different Wilmas need one login per Wilma. Run `wilma login` again (or press "Add another Wilma" on the login page); commands then cover every child.
@@ -100,6 +95,16 @@ wilma accounts remove <number>     # or the Wilma name or username
 ```bash
 wilma tenants <city or school> [--json]
 ```
+
+### Lesson notes, absences and grades
+```bash
+wilma attendance list [--date YYYY-MM-DD | --days 14 | --from YYYY-MM-DD --to YYYY-MM-DD] [--json]
+wilma attendance summary [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--json]   # counts by kind, this school year by default
+wilma gradebook [--json]                                                  # course and report-card grades
+wilma printouts list [--json]                                             # PDFs such as report cards
+wilma printouts download <id> [--output <directory>]
+```
+Lesson notes include teachers' feedback (praise, missing books or homework) and absences, with the teacher's own words when given.
 
 ### Other
 ```bash

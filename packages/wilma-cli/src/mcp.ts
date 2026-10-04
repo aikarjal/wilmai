@@ -16,7 +16,7 @@ import { searchTenants } from "./tenant-search.js";
 
 const SECRET_SETTINGS_HINT = [
   "If the user is not at this computer (for example, this agent runs on a cloud computer), the link won't work for them. Instead:",
-  "  1. Ask which city or school their children's Wilma belongs to, call wilma_find_school, and let them pick their Wilma from the results.",
+  "  1. Ask which city their children's school is in (or the school's name), call wilma_find_school, and let them pick their Wilma from the results.",
   `  2. Ask them to add their Wilma login to this agent's secret or environment settings: ${ENV_VARS.username}=<username>, ${ENV_VARS.password}=<password>`,
   `     (${ENV_VARS.totpSecret}=<authenticator setup key> if the account uses two-step verification), and set ${ENV_VARS.tenant} to the Wilma address they picked.`,
   "Never ask the user to type their Wilma password into the chat.",
@@ -162,11 +162,15 @@ export function createWilmaMcpServer(version: string): McpServer {
     {
       title: "Find a school's Wilma",
       description:
-        "Search Finland's Wilma addresses by city or school name. Use it to help the user pick their Wilma, e.g. when setting WILMA_TENANT. Several Wilmas can serve one city (city schools, private schools, colleges); ask the user which is theirs.",
-      inputSchema: { query: z.string().min(1).describe("City or school name, e.g. Tampere or Kalevan lukio.") },
+        "Search Finland's Wilma addresses by city or by school or organisation name. Most city schools share their city's Wilma (big cities don't list each school), while many colleges, private schools and small municipalities' schools have their own. Use it to help the user pick their Wilma, e.g. when setting WILMA_TENANT; several can serve one city, so ask which is theirs.",
+      inputSchema: { query: z.string().min(1).describe("City, municipality or school name, e.g. Tampere or Kalevan lukio.") },
       annotations: { title: "Find a school's Wilma", ...READ_ONLY },
     },
-    async ({ query }) => json((await searchTenants(query, 15)).map((t) => ({ url: t.url, name: t.name })))
+    async ({ query }) => {
+      const found = await searchTenants(query, 15);
+      if (!found.length) return textResult(`No Wilma found for "${query}". Many schools use their city's Wilma: try the city or municipality the school is in.`);
+      return json(found.map((t) => ({ url: t.url, name: t.name })));
+    }
   );
 
   server.registerTool(

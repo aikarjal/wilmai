@@ -1,8 +1,21 @@
-import { WilmaSession, MfaRequiredError } from "./session.js";
-import type { Exam, Message, MessageFolder, NewsItem, NewsResource, OverviewData, WilmaProfile, StudentInfo, LessonNote } from "./types.js";
+import { WilmaSession, MfaRequiredError, APIError } from "./session.js";
+import type {
+  Exam,
+  GradebookEntry,
+  LessonNote,
+  LessonNoteSummary,
+  Message,
+  MessageFolder,
+  NewsItem,
+  NewsResource,
+  OverviewData,
+  Printout,
+  StudentInfo,
+  WilmaProfile,
+} from "./types.js";
 import { parseWilmaTimestamp } from "./parsers/dates.js";
 import { finnishDateString } from "./finnish-time.js";
-import { parseMessagesList, parseMessageDetailHtml } from "./parsers/messages.js";
+import { parseMessagesList, parseMessageDetailHtml, parseMessageDetailJson } from "./parsers/messages.js";
 import {
   parseNewsDetailHtml,
   parseNewsDetailJson,
@@ -10,9 +23,11 @@ import {
   parseNewsListHtml,
 } from "./parsers/news.js";
 import { parseExamsHtml } from "./parsers/exams.js";
-import { parseAttendanceHtml } from "./parsers/attendance.js";
+import { parseAttendanceHtml, summarizeLessonNotes } from "./parsers/attendance.js";
+import { parseGradebookHtml } from "./parsers/gradebook.js";
+import { parsePrintoutsHtml } from "./parsers/printouts.js";
 import { parseOverview } from "./parsers/overview.js";
-import { parseScheduleHtml } from "./parsers/schedule.js";
+import { parseScheduleHtml, parseTimetableJson } from "./parsers/schedule.js";
 import { parseStudentsFromAccountsRoles, parseStudentsFromHome } from "./parsers/students.js";
 import type { Response } from "undici";
 import { NetworkError } from "./network-error.js";
@@ -101,11 +116,22 @@ export class WilmaClient {
       return parseMessagesList(data, folder);
     },
 
+    /**
+     * One message with its replies. Wilma answers `?format=json` with the whole
+     * thread; older versions only have the HTML page, which is parsed instead.
+     */
     get: async (messageId: number): Promise<Message> => {
+      try {
+        const resp = await this.session.get(`/messages/${messageId}?format=json`);
+        const thread = parseMessageDetailJson(safeJson(await resp.text()), messageId);
+        if (thread) return thread;
+      } catch (err) {
+        if (err instanceof NetworkError || !(err instanceof APIError) || err.status !== 404) throw err;
+      }
+      // Older versions: the message page (flat JSON on some, HTML on most).
       const resp = await this.session.get(`/messages/${messageId}`);
       const contentType = resp.headers.get("content-type")?.toLowerCase() ?? "";
       const text = await resp.text();
-
       if (contentType.includes("application/json")) {
         const data = safeJson(text) as Record<string, unknown>;
         return {
@@ -122,7 +148,6 @@ export class WilmaClient {
           fetchedAt: new Date(),
         };
       }
-
       return parseMessageDetailHtml(text, messageId);
     },
   };
@@ -215,30 +240,87 @@ export class WilmaClient {
   };
 
   attendance = {
-    list: async (opts?: { date?: string }): Promise<LessonNote[]> => {
-      const params = new URLSearchParams();
-      if (opts?.date) {
-        params.set("date", opts.date);
+    /**
+     * Lesson notes (merkinnät): absences, lateness and teachers' feedback, with
+     * any words the teacher wrote. One day (default today), or a period with
+     * `from`/`to` (YYYY-MM-DD).
+     */
+    list: async (opts?: { date?: string; from?: string; to?: string }): Promise<LessonNote[]> => {
+      const from = opts?.from ?? opts?.date ?? finnishDateString();
+      const to = opts?.to ?? opts?.date ?? from;
+      const notes = parseAttendanceHtml(await this.attendancePage(`range=-3&first=${isoDateToFinnish(from)}&last=${isoDateToFinnish(to)}`));
+      return notes.filter((note) => note.date >= from && note.date <= to);
+    },
+
+    /** How many lesson notes of each kind from `from` to `to` (default today); without `from`, this school year. */
+    summary: async (opts?: { from?: string; to?: string }): Promise<LessonNoteSummary> => {
+      if (!opts?.from) {
+        const notes = parseAttendanceHtml(await this.attendancePage("range=-4"));
+        return summarizeLessonNotes(opts?.to ? notes.filter((note) => note.date <= opts.to!) : notes, null, opts?.to ?? null);
       }
-      const query = params.toString();
-      const path = query ? `/attendance/view?${query}` : "/attendance/view";
-      const resp = await this.session.get(path);
-      const text = await resp.text();
-      // Wilma shows today's page without a date; match its rows against today in Finnish time.
-      return parseAttendanceHtml(text, opts?.date ?? finnishDateString());
+      const to = opts.to ?? finnishDateString();
+      return summarizeLessonNotes(await this.attendance.list({ from: opts.from, to }), opts.from, to);
     },
   };
 
+  /** The lesson notes page for a period ("range" as Wilma's own period links use it). */
+  private async attendancePage(range: string): Promise<string> {
+    const resp = await this.session.get(`/attendance/view?${range}`);
+    return resp.text();
+  }
+
   schedule = {
-    list: async (opts?: { date?: string }): Promise<OverviewData["schedule"]> => {
-      if (!opts?.date) {
-        return (await this.overview.get()).schedule;
+    /**
+     * Lessons on a date or in a period (YYYY-MM-DD), from Wilma's timetable
+     * API, with teachers and rooms. Without dates: this week, from the front
+     * page. Older Wilma versions without the API fall back to the schedule
+     * page (one date) or the front page (this week).
+     */
+    list: async (opts?: { date?: string; from?: string; to?: string }): Promise<OverviewData["schedule"]> => {
+      const from = opts?.from ?? opts?.date;
+      const to = opts?.to ?? opts?.date ?? from;
+      if (from && to) {
+        try {
+          const resp = await this.session.get(`/api/v1/schedules/timetable?startdate=${from}&enddate=${to}`);
+          const data = safeJson(await resp.text()) as { payload?: unknown };
+          if (Array.isArray(data.payload)) {
+            return parseTimetableJson(data.payload).filter((lesson) => lesson.date >= from && lesson.date <= to);
+          }
+        } catch (err) {
+          if (!(err instanceof APIError) || (err.status !== 403 && err.status !== 404)) throw err;
+        }
+        if (from === to) {
+          const params = new URLSearchParams({ date: isoDateToFinnish(from) });
+          const resp = await this.session.get(`/schedule?${params.toString()}`);
+          return parseScheduleHtml(await resp.text()).filter((lesson) => lesson.date === from);
+        }
+        return (await this.overview.get()).schedule.filter((lesson) => lesson.date >= from && lesson.date <= to);
       }
-      const params = new URLSearchParams();
-      params.set("date", isoDateToFinnish(opts.date));
-      const resp = await this.session.get(`/schedule?${params.toString()}`);
-      const text = await resp.text();
-      return parseScheduleHtml(text);
+      return (await this.overview.get()).schedule;
+    },
+  };
+
+  gradebook = {
+    /** Completed courses and grades (Suoritukset), as a tree: subject > syllabus > course. */
+    get: async (): Promise<GradebookEntry[]> => {
+      const resp = await this.session.get("/gradebook");
+      return parseGradebookHtml(await resp.text());
+    },
+  };
+
+  printouts = {
+    /** PDF documents the school offers (Tulosteet): report cards, absence reports… */
+    list: async (): Promise<Printout[]> => {
+      const resp = await this.session.get("/printouts");
+      return parsePrintoutsHtml(await resp.text());
+    },
+
+    /** Download one printout; the response body is the PDF. */
+    fetch: async (id: string): Promise<{ printout: Printout; response: Response }> => {
+      const printout = (await this.printouts.list()).find((candidate) => candidate.id === id);
+      if (!printout) throw new Error(`Printout "${id}" not found`);
+      const response = await this.session.get(printout.path, undefined, { timeoutMs: DOWNLOAD_TIMEOUT_MS });
+      return { printout, response: response as unknown as Response };
     },
   };
 

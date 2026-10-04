@@ -119,7 +119,9 @@ export async function resolveTenant(query: string): Promise<TenantInfo> {
   const best = Math.min(...ranked.map((entry) => entry.rank));
   const top = ranked.filter((entry) => entry.rank === best).map((entry) => entry.tenant);
   if (top.length === 1) return top[0];
-  if (!top.length) throw new Error(`No Wilma found for "${value}". Use the full address, e.g. https://<school>.inschool.fi`);
+  if (!top.length) {
+    throw new Error(`No Wilma found for "${value}". Many schools use their city's Wilma: try the city or municipality the school is in. Or use the full address, e.g. https://<school>.inschool.fi`);
+  }
   const options = top.slice(0, 10).map((t) => `  ${t.url}  ${t.name}`).join("\n");
   throw new Error(`"${value}" matches several Wilmas. Use the address instead:\n${options}`);
 }

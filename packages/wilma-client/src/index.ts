@@ -1,15 +1,19 @@
 export type {
   Exam,
   ExamGrade,
+  GradebookEntry,
   HomeworkItem,
   LessonNote,
+  LessonNoteSummary,
   Message,
+  MessageReply,
   MessageFolder,
   Municipality,
   NewsItem,
   NewsResource,
   NewsResourceAuthContext,
   OverviewData,
+  Printout,
   ScheduleLesson,
   TenantDiscoveryResponse,
   TenantInfo,
@@ -36,3 +40,4 @@ export { parseWilmaTimestamp } from "./parsers/dates.js";
 export { finnishDateString, finnishParts, finnishTime } from "./finnish-time.js";
 
 export { parseStudentsFromHome } from "./parsers/students.js";
+export { htmlToText } from "./parsers/html-text.js";
