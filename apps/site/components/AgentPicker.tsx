@@ -31,17 +31,31 @@ export default function AgentPicker({
   const active = items.find((item) => item.id === activeId) ?? items[0];
 
   useEffect(() => {
-    const openFromHash = (scroll: boolean) => {
-      const hash = window.location.hash.slice(1);
-      const match = items.find((item) => item.id === hash);
-      if (!match) return;
+    // Opens a guide and shows it with its section heading ("Choose your assistant").
+    const open = (id: string) => {
+      const match = items.find((item) => item.id === id);
+      if (!match) return false;
       setActiveId(match.id);
-      if (scroll) rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const target = rootRef.current?.closest("section") ?? rootRef.current;
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return true;
     };
-    openFromHash(true);
-    const onHashChange = () => openFromHash(true);
+    open(window.location.hash.slice(1));
+    const onHashChange = () => open(window.location.hash.slice(1));
+    // Links to a guide elsewhere on the page (#claude, #openclaw). Handled here
+    // because a link to the hash already in the address fires no hashchange.
+    const onClick = (event: MouseEvent) => {
+      const href = (event.target as Element | null)?.closest?.("a")?.getAttribute("href");
+      if (!href?.startsWith("#") || !open(href.slice(1))) return;
+      event.preventDefault();
+      history.replaceState(null, "", href);
+    };
     window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    document.addEventListener("click", onClick);
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+      document.removeEventListener("click", onClick);
+    };
   }, [items]);
 
   const choose = (id: AgentId) => {

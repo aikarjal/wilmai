@@ -89,7 +89,7 @@ const en: Dictionary = {
       "This is an independent open-source project by a parent, not affiliated with, endorsed by, or connected to Visma or the official Wilma service.",
     sub: "Keeping up with school is work — schedules, homework, exams, messages, and news, times every kid, sometimes across different schools. WilmAI connects Wilma to Claude, ChatGPT and other assistants, so you can ask in plain words and get one briefing for the whole family.",
     ctaPrimary: "Choose your assistant",
-    ctaSecondary: "Use the terminal",
+    ctaSecondary: "What can I ask?",
     downloads: "downloads",
     downloadsFallback: "Downloaded thousands of times",
     proof: "in daily use by parents across Finland",
@@ -190,8 +190,8 @@ const en: Dictionary = {
     lead: "Install the skill, then tell your agent what mornings should look like. Parents run things like:",
     quote:
       "“Every weekday at 7, post a school briefing for both kids to the family channel, and put new exams in the family calendar.”",
-    tail: "One instruction — your agent handles the rest. Or skip the setup and grab the ready-made wilma-triage skill from the repo.",
-    linkLabel: "Get the skill on ClawHub →"
+    tail: "One instruction — your agent handles the rest. The ready-made wilma-triage skill does exactly this, exams in the calendar included.",
+    linkLabel: "Set it up →"
   },
   faq: {
     eyebrow: "good questions",
@@ -313,7 +313,7 @@ const fi: Dictionary = {
       "Tämä on vanhemman tekemä itsenäinen avoimen lähdekoodin projekti. Kyseessä ei ole Visman tai virallisen Wilma-palvelun tekemä, tukema tai hyväksymä ratkaisu.",
     sub: "Koulun kuulumisten mukana pysyminen on työtä — lukujärjestykset, läksyt, kokeet, viestit ja tiedotteet, jokaisen lapsen osalta, joskus eri kouluissa. WilmAI yhdistää Wilman Claudeen, ChatGPT:hen ja muihin avustajiin, joten voit kysyä omin sanoin ja saada koko perheen kuulumiset yhteen koosteeseen.",
     ctaPrimary: "Valitse avustajasi",
-    ctaSecondary: "Käytä terminaalissa",
+    ctaSecondary: "Mitä voin kysyä?",
     downloads: "latausta",
     downloadsFallback: "Ladattu tuhansia kertoja",
     proof: "päivittäisessä käytössä suomalaisperheissä",
@@ -414,8 +414,8 @@ const fi: Dictionary = {
     lead: "Asenna taito ja kerro agentillesi, miltä aamujen pitäisi näyttää. Vanhemmat käyttävät esimerkiksi tällaista:",
     quote:
       "”Joka arkiaamu klo 7: kokoa molempien lasten päivän kooste perhekanavalle ja lisää uudet kokeet perhekalenteriin.”",
-    tail: "Yksi ohje — agenttisi hoitaa loput. Tai ohita säätäminen ja ota valmis wilma-triage-taito suoraan reposta.",
-    linkLabel: "Hae taito ClawHubista →"
+    tail: "Yksi ohje — agenttisi hoitaa loput. Valmis wilma-triage-taito tekee juuri tämän ja vie kokeet kalenteriin.",
+    linkLabel: "Ota käyttöön →"
   },
   faq: {
     eyebrow: "hyviä kysymyksiä",

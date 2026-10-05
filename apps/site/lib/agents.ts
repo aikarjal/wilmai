@@ -107,6 +107,16 @@ Never ask me to type my Wilma password into this chat.`,
 Älä koskaan pyydä minua kirjoittamaan Wilma-salasanaani tähän keskusteluun.`
 };
 
+// The second OpenClaw message: the daily briefing (the wilma-triage skill).
+const triageMessage = {
+  en: `Please install the wilma-triage skill: clawhub install wilma-triage
+Then run it every weekday at 7:00: send me a school briefing for all my kids here, and add new exams and school events to my calendar.
+Ask me which calendar to use, and remember what I tell you to report or skip.`,
+  fi: `Asenna wilma-triage-taito: clawhub install wilma-triage
+Aja se sitten joka arkiaamu klo 7: lähetä minulle tänne koulukooste kaikista lapsistani ja lisää uudet kokeet ja koulun tapahtumat kalenteriini.
+Kysy, mitä kalenteria käytetään, ja muista, mitä pyydän raportoimaan tai jättämään pois.`
+};
+
 // Where it works. The FAQ explains why not on the web or phone.
 const whereNote = {
   claude: {
@@ -234,17 +244,21 @@ export const agents: Agent[] = [
     guide: {
       en: {
         name: "OpenClaw",
-        tagline: "Skill from ClawHub",
-        summary: "OpenClaw installs WilmAI itself. Send it one message.",
+        tagline: "Daily briefings",
+        summary: "OpenClaw installs WilmAI itself. One message sets it up, a second one starts a daily school briefing.",
         steps: [
           { title: "Send this to OpenClaw", action: { kind: "message", text: openclawMessage.en } },
           {
-            title: "Make it a routine",
-            body: "For a morning briefing that also puts new exams in your calendar, add the wilma-triage skill.",
-            action: { kind: "link", href: `${REPO}/tree/main/skills/wilma-triage`, label: "wilma-triage skill" }
+            title: "Start the daily briefing",
+            body: "Then send this. OpenClaw asks which calendar to use, and from then on you get a briefing every school morning.",
+            action: { kind: "message", text: triageMessage.en }
+          },
+          {
+            title: "Tell it what matters",
+            body: "Reply to a briefing with what to skip or always mention. It remembers."
           }
         ],
-        notes: ["The wilma skill on ClawHub: https://clawhub.ai/aikarjal/wilma"],
+        notes: ["The skills on ClawHub: https://clawhub.ai/aikarjal/skills/wilma and https://clawhub.ai/aikarjal/skills/wilma-triage"],
         others: [
           {
             title: "Prefer the terminal?",
@@ -255,17 +269,21 @@ export const agents: Agent[] = [
       },
       fi: {
         name: "OpenClaw",
-        tagline: "Taito ClawHubista",
-        summary: "OpenClaw asentaa WilmAI:n itse. Lähetä sille yksi viesti.",
+        tagline: "Päivittäiset koosteet",
+        summary: "OpenClaw asentaa WilmAI:n itse. Yksi viesti ottaa sen käyttöön, toinen aloittaa päivittäisen koulukoosteen.",
         steps: [
           { title: "Lähetä tämä OpenClaw'lle", action: { kind: "message", text: openclawMessage.fi } },
           {
-            title: "Tee siitä rutiini",
-            body: "Aamukoostetta varten, joka lisää myös uudet kokeet kalenteriin, lisää wilma-triage-taito.",
-            action: { kind: "link", href: `${REPO}/tree/main/skills/wilma-triage`, label: "wilma-triage-taito" }
+            title: "Aloita päivittäinen kooste",
+            body: "Lähetä sitten tämä. OpenClaw kysyy, mitä kalenteria käytetään, ja sen jälkeen saat koosteen joka kouluaamu.",
+            action: { kind: "message", text: triageMessage.fi }
+          },
+          {
+            title: "Kerro, mikä on tärkeää",
+            body: "Vastaa koosteeseen, mitä jättää pois tai mainita aina. Se muistaa sen."
           }
         ],
-        notes: ["wilma-taito ClawHubissa: https://clawhub.ai/aikarjal/wilma"],
+        notes: ["Taidot ClawHubissa: https://clawhub.ai/aikarjal/skills/wilma ja https://clawhub.ai/aikarjal/skills/wilma-triage"],
         others: [
           {
             title: "Terminaali tuntuu omimmalta?",

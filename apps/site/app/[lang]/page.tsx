@@ -33,10 +33,10 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
         />
         <p className="hero-sub">{t.hero.sub}</p>
         <div className="hero-actions">
-          <a className="button primary" href="#quickstart">
+          <a className="button primary" href="#claude">
             {t.hero.ctaPrimary}
           </a>
-          <a className="button secondary" href="#cli">
+          <a className="button secondary" href="#ask">
             {t.hero.ctaSecondary}
           </a>
         </div>
@@ -132,7 +132,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
         </div>
       </section>
 
-      <section className="section">
+      <section className="section" id="ask">
         <div className="section-head">
           <p className="eyebrow">{t.ask.eyebrow}</p>
           <h2>{t.ask.title}</h2>
@@ -161,13 +161,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
           <p className="recipe-quote">{t.recipe.quote}</p>
           <p className="recipe-tail">
             {t.recipe.tail}{" "}
-            <a
-              href="https://clawhub.ai/aikarjal/wilma"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t.recipe.linkLabel}
-            </a>
+            <a href="#openclaw">{t.recipe.linkLabel}</a>
           </p>
         </div>
       </section>
