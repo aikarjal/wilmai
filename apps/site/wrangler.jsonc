@@ -17,8 +17,10 @@
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   },
-  // workers.dev stays on for previews. The custom domain (wilm.ai) is added
-  // here at the DNS cutover, once the wilm.ai zone is on this account.
+  // wilm.ai is this Worker's custom domain. www.wilm.ai → wilm.ai is a
+  // redirect rule on the zone (see README.md). workers.dev stays on because
+  // branch previews are served there.
+  "routes": [{ "pattern": "wilm.ai", "custom_domain": true }],
   "workers_dev": true,
   "observability": { "enabled": false }
 }

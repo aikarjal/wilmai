@@ -41,6 +41,7 @@ By hand, from this computer (needs `wrangler login` with access to the Wilm.ai a
 pnpm --filter @wilm-ai/site run deploy
 ```
 
-www.wilm.ai → wilm.ai is a redirect rule on the Cloudflare zone (not in this
-repository): a proxied `www` DNS record plus a single redirect rule,
-`https://www.wilm.ai/*` → `https://wilm.ai/${1}`, status 301, query string kept.
+wilm.ai is the Worker's custom domain (`routes` in `wrangler.jsonc`). www.wilm.ai →
+wilm.ai is a redirect rule on the Cloudflare zone (not in this repository): Rules →
+Redirect Rules, "Redirect from WWW to root", `https://www.*` → `https://${1}`,
+301, query string kept. It needs the `www` DNS record to stay proxied.
