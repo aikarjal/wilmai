@@ -14,8 +14,13 @@ import type { LessonNote, LessonNoteSummary } from "../types.js";
  * three grid columns but consumes one index, so by the third or fourth cell
  * the index has drifted from the true grid column.
  *
- * Title attribute on event cells: "TypeLabel /TeacherName" or
- * "SubjectCode; TypeLabel /TeacherName".
+ * Two kinds of event cells: absence-type marks (`<td class="at-tpN">`, whose
+ * text is the teacher's code) and free-text remarks such as praise or
+ * behaviour notes (`<td class="at-tp-other">`, whose text is a `<small>`
+ * label plus an optional `<sup>` footnote marker pointing at the
+ * "Huomioita" column). The title attribute carries the details:
+ * "TypeLabel /TeacherName", "SubjectCode; TypeLabel /TeacherName" or
+ * "SubjectCode; TypeLabel; teacher's note /TeacherName".
  */
 export function parseAttendanceHtml(html: string, date?: string): LessonNote[] {
   const $ = cheerio.load(html);
@@ -63,11 +68,15 @@ export function parseAttendanceHtml(html: string, date?: string): LessonNote[] {
       for (let i = 2; i < cells.length; i++) {
         const $cell = $(cells[i]);
         const colspan = parseInt($cell.attr("colspan") ?? "1", 10) || 1;
-        const tpClass = (($cell.attr("class") ?? "").match(/\bat-tp\d+\b/) ?? [])[0];
+        const tpClass = (($cell.attr("class") ?? "").match(/\bat-tp(?:\d+|-other)\b/) ?? [])[0];
 
         if (tpClass) {
+          const isRemark = tpClass === "at-tp-other";
           const title = ($cell.attr("title") ?? "").trim();
-          const cellText = $cell.text().trim();
+          // The visible text: a remark's <small> label, or an absence mark's
+          // teacher code; a <sup> footnote marker is never part of either.
+          const $small = $cell.find("small");
+          const cellText = ($small.length ? $small.text() : $cell.clone().find("sup").remove().end().text()).trim();
 
           // Title formats observed:
           //   "TypeLabel /TeacherFullName"
@@ -79,7 +88,8 @@ export function parseAttendanceHtml(html: string, date?: string): LessonNote[] {
           let subject = "";
           let typeLabel = "";
           let note: string | null = null;
-          let teacher = cellText;
+          // A remark's cell text is its label, never a teacher.
+          let teacher = isRemark ? "" : cellText;
 
           if (title) {
             let rest = title;
@@ -119,7 +129,7 @@ export function parseAttendanceHtml(html: string, date?: string): LessonNote[] {
             start,
             end,
             subject,
-            typeLabel: typeLabel || tpClass.replace("at-tp", "Type "),
+            typeLabel: typeLabel || (isRemark ? cellText : tpClass.replace("at-tp", "Type ")),
             typeClass: tpClass,
             teacher,
             note,
