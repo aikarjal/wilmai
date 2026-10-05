@@ -43,6 +43,7 @@ try {
   assert.ok(JSON.parse(found.stdout).wilmas.length > 0);
   assert.match(found.stderr, new RegExp(`Update available: ${version.replace(/\./g, "\\.")} → 99\\.0\\.0`));
   assert.match(found.stderr, /wilma update/);
+  assert.match(found.stderr, /What's new: https:\/\/wilm\.ai\/changes/);
 
   // At most once a day: the next commands stay quiet...
   const run = async (extraEnv = {}) => (await execFileAsync(process.execPath, [cliPath, "find-school", "Tampere"], { env: { ...env, ...extraEnv } })).stderr;
@@ -81,6 +82,7 @@ try {
   const firstText = first.content.map((c) => c.text ?? "").join("\n");
   assert.match(firstText, /Update note: WilmAI 99\.0\.0 is available/);
   assert.match(firstText, /wilm\.ai\/get\/claude/);
+  assert.match(firstText, /wilm\.ai\/changes/);
   const second = await client.callTool({ name: "wilma_summary", arguments: {} });
   assert.doesNotMatch(second.content.map((c) => c.text ?? "").join("\n"), /Update note/);
   await client.close();

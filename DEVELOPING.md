@@ -54,7 +54,8 @@ The plugin, the skill and the site pin `@wilm-ai/wilma-cli@2`. A 3.0 needs those
 - The client and the CLI have their own versions (semver). The CLI requires the client with `^x.y.z`; raise it when the CLI needs a client fix, so new installs and the extension get it.
 - Raise the skill's `version:` and `plugin.json`'s `version` when the skill text changes.
 - A fix to an old major (say 1.x after 2.0) is published with `npm publish --tag v1`, so `latest` stays on the current major. Otherwise `wilma update` would move people back.
-- `CHANGELOG.md` gets one section per release: `## 2.1.0 (unreleased)` while preparing, dated once it's out, with a `_Releases: …_` line naming what was published.
+- `CHANGELOG.md` gets one section per release: `## 2.1.0 (unreleased)` while preparing, dated once it's out, with a `_Releases: …_` line naming what was published, then an **In short:** line for parents (one plain sentence: the biggest addition or fix), then the details.
+- That section is the release note everywhere: the GitHub release (which https://wilm.ai/changes points to, and which the update notices link to) and, for skills, the ClawHub changelog (the "In short" line).
 
 ## Releasing
 
@@ -81,7 +82,7 @@ Only `aikarjal` can publish to npm and ClawHub.
    ```bash
    gh release create wilma-cli@x.y.z --title "wilma-cli x.y.z" --notes-file notes.md --latest
    ```
-   The notes start with an "**Update:** `wilma update` …" line, followed by the changelog section. The `release-mcpb` workflow then attaches `wilmai.mcpb` and updates the `claude-desktop` release. Check that https://wilm.ai/get/claude serves the new version (`unzip -p wilmai.mcpb manifest.json`).
+   The notes start with an "**Update:** `wilma update` …" line, followed by the changelog section (with its "In short" line). The `release-mcpb` workflow then attaches `wilmai.mcpb` and updates the `claude-desktop` release. Check that https://wilm.ai/get/claude serves the new version (`unzip -p wilmai.mcpb manifest.json`).
 4. **ClawHub, last** (ClawHub can't withdraw a skill's latest version):
    ```bash
    npx clawhub publish skills/wilma --slug wilma --version x.y.z --changelog "…" \

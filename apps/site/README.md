@@ -5,7 +5,7 @@ static files and served by Cloudflare Workers.
 
 - `app/`, `components/`, `lib/` — the page; all copy is in `lib/i18n.tsx` and `lib/agents.ts`
 - `public/_headers` — security and cache headers
-- `public/_redirects` — `/get/claude` (the Claude Desktop extension)
+- `public/_redirects` — `/get/claude` (the Claude Desktop extension) and `/changes` (release notes, linked from the update notices)
 - `worker/index.ts` — sends `/` to `/en` or `/fi` (the EN/FI choice, else the browser's language), and answers `/api/downloads`, the CLI's npm downloads for the counter in the hero (`lib/npm-downloads.ts`)
 - `wrangler.jsonc` — the Cloudflare Worker (account Wilm.ai)
 

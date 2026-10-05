@@ -46,8 +46,11 @@ export function isNewerVersion(latest: string, current: string): boolean {
 }
 
 /** The CLI's notice, for a person or an agent reading stderr. */
+/** Release notes: a wilm.ai redirect, so the target can move without a CLI release. */
+export const CHANGES_URL = "https://wilm.ai/changes";
+
 export function cliUpdateNotice(current: string, latest: string): string {
-  return `Update available: ${current} → ${latest}\nRun "wilma update" to update.`;
+  return `Update available: ${current} → ${latest}\nWhat's new: ${CHANGES_URL}\nRun "wilma update" to update.`;
 }
 
 /** The note the MCP server adds for the assistant, who passes it on. */
@@ -56,7 +59,7 @@ export function mcpUpdateNote(kind: InstallKind, current: string, latest: string
     kind === "claude-desktop"
       ? "download https://wilm.ai/get/claude and open the file; Claude Desktop asks to install it"
       : 'run "wilma update" in a terminal';
-  return `Update note: WilmAI ${latest} is available (this computer has ${current}). After answering, tell the user in one sentence that they can update: ${how}.`;
+  return `Update note: WilmAI ${latest} is available (this computer has ${current}; what's new: ${CHANGES_URL}). After answering, tell the user in one sentence that they can update: ${how}.`;
 }
 
 interface VersionCache {

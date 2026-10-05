@@ -4,6 +4,12 @@
 
 _Releases: wilma-cli 2.1.1._
 
+**In short:** the update notice comes at most once a day and links to what's new.
+
+### Added
+
+- **What's new link.** The CLI's update notice and the MCP server's update note link to https://wilm.ai/changes (this repository's releases), so an assistant can tell the user what changed.
+
 ### Fixed
 
 - **The update notice appears at most once a day**, as the `wilma` skill says. 2.1.0 repeated it after every command until the update, so an agent's morning run of ten commands saw it ten times. A newly released version is still announced right away.
@@ -11,6 +17,8 @@ _Releases: wilma-cli 2.1.1._
 ## 2.1.0 (2026-10-06)
 
 _Releases: wilma-cli 2.1.0; the `wilma` skill and plugin 2.1.0._
+
+**In short:** assistants and agents now tell you when a newer WilmAI is out.
 
 ### Added
 
@@ -24,6 +32,8 @@ _Releases: wilma-cli 2.1.0; the `wilma` skill and plugin 2.1.0._
 
 _Releases: wilma-cli 2.0.1, wilma-client 1.6.1._
 
+**In short:** lesson subjects show course names again, and teachers' written notes are no longer missed.
+
 ### Fixed
 
 - **Lesson subjects are names again** ([#18](https://github.com/aikarjal/wilmai/issues/18), thanks @taimila). Since 2.0.0, `schedule` (and the summary's lessons) for a date read Wilma's timetable JSON and used the lesson's caption, which is the course code (`yRUB1.1`) in upper secondary schools. `subject` is now the course name (`Ruotsi`) as in 1.x, falling back to the caption for lessons without a course (lunch, a class teacher's hour); `subjectCode` is unchanged.
@@ -34,6 +44,8 @@ _Releases: wilma-cli 2.0.1, wilma-client 1.6.1._
 ## 2.0.0 (2026-10-05)
 
 _Releases: wilma-cli 2.0.0, wilma-client 1.6.0. One release for the browser login, the MCP server and Claude Desktop extension, the plugin marketplace, more Wilma data, and a CLI rebuilt for agents._
+
+**In short:** use WilmAI from Claude, ChatGPT and other assistants. You log in to Wilma once in your browser, and every question covers all your children.
 
 ### CLI 2.0: built for agents (changes for scripts)
 
