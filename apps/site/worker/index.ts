@@ -1,9 +1,11 @@
 /*
  * wilm.ai on Cloudflare. The site itself is static files (`next build` writes
  * them to out/) served straight from Cloudflare; this Worker only answers
- * "/", which sends the visitor to /en or /fi, and /api/stats, the live numbers
- * in the page: npm downloads and GitHub stars (see run_worker_first in
- * wrangler.jsonc). A daily cron job fetches those numbers and keeps them in KV.
+ * "/", which sends the visitor to /en or /fi, and /api/* (see run_worker_first
+ * in wrangler.jsonc): /api/stats, the live numbers in the page (npm downloads
+ * and GitHub stars), and /api/badge/downloads, the same download count as a
+ * shields.io badge for the GitHub README. A daily cron job fetches the numbers
+ * and keeps them in KV.
  */
 
 import { githubStars } from "../lib/github-stars";
@@ -86,8 +88,12 @@ async function refreshStats(env: Env): Promise<{ stats: Stats; failed: string[] 
 }
 
 /** The stored numbers; fetched right away only before the first cron run. */
+async function currentStats(env: Env): Promise<Stats | null> {
+  return (await readStats(env)) ?? (await refreshStats(env).then((r) => r.stats, () => null));
+}
+
 async function statsResponse(env: Env): Promise<Response> {
-  const stats = (await readStats(env)) ?? (await refreshStats(env).then((r) => r.stats, () => null));
+  const stats = await currentStats(env);
   if (!stats) {
     return Response.json({ error: "no numbers yet" }, { status: 502, headers: { "Cache-Control": "no-store" } });
   }
@@ -97,10 +103,26 @@ async function statsResponse(env: Env): Promise<Response> {
   );
 }
 
+/**
+ * The download count for a shields.io endpoint badge (the README's). shields'
+ * own npm badge counts only the last 18 months and rounds (5.8k); this is the
+ * site's all-time number.
+ */
+async function downloadsBadge(env: Env): Promise<Response> {
+  const downloads = (await currentStats(env))?.downloads ?? null;
+  return Response.json(
+    downloads === null
+      ? { schemaVersion: 1, label: "downloads", message: "unavailable", color: "lightgrey" }
+      : { schemaVersion: 1, label: "downloads", message: downloads.toLocaleString("en-US"), color: "2e9e93", cacheSeconds: 3600 },
+    { headers: { "Cache-Control": "public, max-age=3600" } }
+  );
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/api/stats") return statsResponse(env);
+    if (url.pathname === "/api/badge/downloads") return downloadsBadge(env);
     if (url.pathname !== "/") return env.ASSETS.fetch(request);
     url.pathname = `/${preferredLang(request)}`;
     return new Response(null, {

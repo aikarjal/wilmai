@@ -12,9 +12,10 @@
   "assets": {
     "directory": "./out",
     "binding": "ASSETS",
-    // Only "/" and /api/stats run the Worker; every other path is a
-    // static file (free and served from the nearest Cloudflare location).
-    "run_worker_first": ["/", "/api/stats"],
+    // Only "/" and /api/* (stats, the README badge) run the Worker; every
+    // other path is a static file (free and served from the nearest
+    // Cloudflare location).
+    "run_worker_first": ["/", "/api/*"],
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   },

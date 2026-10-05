@@ -1,34 +1,87 @@
 <p align="center">
-  <img src="assets/wilmai_mascot.png" alt="wilmai mascot" width="200">
+  <img src="assets/wilmai_mascot.png" alt="WilmAI mascot" width="160">
 </p>
 
-# wilmai
+<h1 align="center">WilmAI</h1>
 
-[![npm downloads](https://img.shields.io/npm/dt/%40wilm-ai%2Fwilma-cli?label=downloads&color=2e9e93)](https://www.npmjs.com/package/@wilm-ai/wilma-cli)
-[![npm version](https://img.shields.io/npm/v/%40wilm-ai%2Fwilma-cli?label=wilma-cli&color=1b2b34)](https://www.npmjs.com/package/@wilm-ai/wilma-cli)
-[![license](https://img.shields.io/badge/license-MIT-ffd84d)](LICENSE)
+<p align="center">
+  <strong>Wilma access for your AI assistant or agent.</strong><br>
+  Ask Claude, ChatGPT, OpenClaw, Grok Bot or Codex about school in plain words, or let your agent post one briefing for the whole family every morning.
+</p>
 
-**WilmAI** ([wilm.ai](https://wilm.ai)) connects Finland's Wilma school system to the AI assistant you already use — Claude, ChatGPT, Grok Bot, OpenClaw — so you can ask about schedules, homework, exams, grades, lesson notes, messages and news in plain words. It also works on its own as a command-line tool.
+<p align="center">
+  <a href="https://www.npmjs.com/package/@wilm-ai/wilma-cli"><img alt="npm downloads" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fwilm.ai%2Fapi%2Fbadge%2Fdownloads"></a>
+  <a href="https://github.com/aikarjal/wilmai/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/aikarjal/wilmai?label=stars&color=17545b&style=flat"></a>
+  <a href="https://www.npmjs.com/package/@wilm-ai/wilma-cli"><img alt="npm version" src="https://img.shields.io/npm/v/%40wilm-ai%2Fwilma-cli?label=wilma-cli&color=1b2b34"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-ffd84d"></a>
+</p>
+
+<p align="center">
+  <a href="https://wilm.ai/en">wilm.ai</a> · <a href="https://wilm.ai/fi">suomeksi</a> · <a href="#add-wilmai-to-your-assistant">Set up</a> · <a href="CHANGELOG.md">Changelog</a>
+</p>
+
+> **You:** What do the kids have at school tomorrow?
+>
+> **Your assistant:** Kiia has crafts 8:30–11:00, then geography and math; her English exam is on Thursday (units 7–9). Eino starts at 9:15 with swimming at the pool hall, so pack a swimsuit and towel. There's also a new message from the class teacher about Friday's trip: the permission form is due Wednesday.
+
+WilmAI connects Wilma, the system Finnish schools use for schedules, homework, exams, grades and messages, to the AI assistant or agent you already use. It's an MCP server, a command-line tool and two agent skills, free and open source.
 
 > **Disclaimer:** This is an independent open-source project by a parent, not affiliated with, endorsed by, or connected to Visma or the official Wilma service.
 
+## What you get
+
+- **18 read-only MCP tools.** Summary, schedule, homework, exams, grades and the gradebook, lesson notes and absences, messages with replies, news with attachments, printouts. One call covers every child, across every Wilma the family uses.
+- **A CLI for people and agents.** Text in a terminal, JSON when a program reads it: the same JSON as the MCP tools. `wilma summary --since yesterday` returns only what's new, for daily runs.
+- **It all runs on your computer.** No WilmAI server, no account, no telemetry. It logs in only to your school's Wilma and can't send messages or change anything there. The password goes into a local login page, never into a chat.
+- **Agent skills.** `wilma` teaches an agent the tools and commands; `wilma-triage` turns them into a morning briefing that flags what needs doing and puts exams in the family calendar.
+- **Any school on Wilma.** The login page finds your school's Wilma by city or school name. Two-step verification and families with several Wilmas work.
+
+## Try it in one line
+
+```bash
+# Claude Code
+claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp
+
+# Codex
+codex plugin marketplace add aikarjal/wilmai && codex plugin add wilma@wilmai
+
+# Any MCP client
+npx -y @wilm-ai/wilma-cli@2 mcp
+
+# Just the terminal (Node.js 20.18 or newer)
+npm i -g @wilm-ai/wilma-cli && wilma login && wilma summary
+```
+
+Then ask about school. The first time, a login page opens in your browser: pick your school's Wilma and log in. The login is saved on your computer.
+
 ## Add WilmAI to your assistant
 
-Step-by-step guides in English and Finnish: **[wilm.ai](https://wilm.ai/en#quickstart)**.
+Step-by-step guides for parents, in English and Finnish: **[wilm.ai](https://wilm.ai/en#quickstart)**.
 
 | Assistant | How | Guide |
 |---|---|---|
-| **Claude Desktop** (Mac, Windows) | Download [`wilmai.mcpb`](https://wilm.ai/get/claude) and open it | [wilm.ai#claude](https://wilm.ai/en#claude) |
-| **Claude Code** | `claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp` | [wilm.ai#claude-code](https://wilm.ai/en#claude-code) |
-| **ChatGPT desktop app** | In Work mode (not Chat), send ChatGPT one message and it installs the plugin; or add the MCP server `npx -y @wilm-ai/wilma-cli@2 mcp` yourself | [wilm.ai#chatgpt](https://wilm.ai/en#chatgpt) |
-| **Codex** | `codex plugin marketplace add aikarjal/wilmai` then `codex plugin add wilma@wilmai` | [wilm.ai#codex](https://wilm.ai/en#codex) |
+| **Claude Desktop** (Mac, Windows) | Download [`wilmai.mcpb`](https://wilm.ai/get/claude) and open it; Claude asks whether to install it | [wilm.ai#claude](https://wilm.ai/en#claude) |
+| **ChatGPT desktop app** (Mac, Windows) | In Work mode (not Chat), send ChatGPT one message and it installs the plugin itself; or add the MCP server `npx -y @wilm-ai/wilma-cli@2 mcp` yourself | [wilm.ai#chatgpt](https://wilm.ai/en#chatgpt) |
 | **Grok Bot** | Send one message; the bot installs the CLI and skill itself | [wilm.ai#grok](https://wilm.ai/en#grok) |
-| **OpenClaw** | `clawhub install wilma` ([ClawHub](https://clawhub.ai/aikarjal/wilma)) | [wilm.ai#openclaw](https://wilm.ai/en#openclaw) |
+| **OpenClaw** | Send one message and OpenClaw installs the CLI and the [`wilma`](https://clawhub.ai/aikarjal/skills/wilma) skill; a second one starts a daily briefing with [`wilma-triage`](https://clawhub.ai/aikarjal/skills/wilma-triage) | [wilm.ai#openclaw](https://wilm.ai/en#openclaw) |
+| **Claude Code** | `claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp` | [wilm.ai#claude-code](https://wilm.ai/en#claude-code) |
+| **Codex** | `codex plugin marketplace add aikarjal/wilmai`, then `codex plugin add wilma@wilmai` | [wilm.ai#codex](https://wilm.ai/en#codex) |
 | **Terminal** | `npm i -g @wilm-ai/wilma-cli`, then `wilma login` | [wilm.ai#cli](https://wilm.ai/en#cli) |
 
-The first time you ask about school, a login page opens in your browser: pick your school's Wilma and log in. The login is saved on your computer.
+Not supported: Claude and ChatGPT on the web and in the phone apps. Your login stays on your own devices and WilmAI runs no server in between; for updates on your phone, use an agent with its own computer, such as OpenClaw or Grok Bot. Not yet available in Finland: Meta Muse, Instinct, and OpenAI dots on consumer plans.
 
-Not supported: Claude and ChatGPT on the web and phone. Your login stays on your own devices and WilmAI runs no server in between; for updates on the phone, use an always-on assistant such as OpenClaw. Not yet available in Finland: Meta Muse, OpenAI dots on consumer plans, Instinct.
+## What you can ask
+
+In your own words; every question covers all your children.
+
+- "What do my kids have going on at school this week?"
+- "Is there any homework for tomorrow?"
+- "Are there any exams coming up? What should she study?"
+- "Has any teacher left a note about Eino this month?"
+- "Any new messages from school? Read the attached letter too."
+- "How did the last exams go? What was on the spring report card?"
+
+Or give an agent a routine: "Every weekday at 7, post a school briefing for both kids to the family channel, and put new exams in the family calendar." The `wilma-triage` skill does exactly that.
 
 ## What's inside
 
@@ -69,7 +122,7 @@ Or skip the saved login entirely by setting environment variables, e.g. in an ag
 | `WILMA_PASSWORD` | Wilma password |
 | `WILMA_TOTP_SECRET` | Authenticator setup key, if the account uses two-step verification |
 
-Running `wilma` without arguments still opens the interactive menu.
+Running `wilma` without arguments in a terminal opens an interactive menu.
 
 ## MCP server
 
@@ -161,4 +214,5 @@ The CLI, the MCP server and the Claude Desktop extension have no server behind t
 **Do not share your config file.** It accesses the same data as the official Wilma app or website; it is your responsibility to handle that data appropriately.
 
 ## License
-MIT
+
+MIT. Questions, bugs and ideas: [GitHub issues](https://github.com/aikarjal/wilmai/issues). If WilmAI is useful to you, a star helps other parents find it.
