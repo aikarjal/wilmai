@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+**In short:** the login page explains, before you type your password, that it runs on your own computer and where your password goes.
+
+### Changed
+
+- **A login page that puts people at ease.** Beside the form: the page runs on this computer (127.0.0.1) and WilmAI has no server; the password goes only to your school's Wilma, named once you pick it, and your assistant never sees it; WilmAI reads the same information you see in Wilma. The intro names the app that asked (Claude, Claude Code, Codex, ChatGPT…, from the name the app gives when it connects). Two columns on a computer, a Suomi/English switch, and links to how WilmAI handles your login and to the source code. Under the password field: "Sent only to <your Wilma>".
+
 ## 2.1.1 (2026-10-06)
 
 _Releases: wilma-cli 2.1.1._

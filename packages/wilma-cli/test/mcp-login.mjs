@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { appName } from "../dist/login-server.js";
 
 const execFileAsync = promisify(execFile);
 const tempDirectory = await mkdtemp(join(tmpdir(), "wilmai-mcp-login-"));
@@ -107,7 +108,8 @@ try {
     env: baseEnv(mcpConfig),
     stderr: "pipe",
   });
-  const client = new Client({ name: "wilmai-test", version: "0.0.0" });
+  // Named like Claude Desktop, so the login page says who opened it.
+  const client = new Client({ name: "claude-ai", version: "0.0.0" });
   await client.connect(transport);
 
   const { tools } = await client.listTools();
@@ -142,6 +144,13 @@ try {
   assert.match(page.headers.get("content-security-policy") ?? "", /default-src 'none'/);
   const pageHtml = await page.text();
   assert.match(pageHtml, /Log in to Wilma/);
+  // Who opened the page: the app's own name, mapped to a plain one; unknown apps get no line.
+  assert.match(pageHtml, /const OPENED_BY = \{"app":"Claude"\};/);
+  assert.match(pageHtml, /This page isn't a website/);
+  assert.equal(appName({ name: "claude-code" }), "Claude Code");
+  assert.equal(appName({ name: "codex-mcp-client" }), "Codex");
+  assert.equal(appName({ name: "some-mcp-client" }), undefined);
+  assert.equal(appName({ name: "x", title: "Goose" }), "Goose");
   // The page's script must at least parse (a template-literal escaping slip once broke it).
   const pageScript = /<script nonce="[^"]+">([\s\S]*?)<\/script>/.exec(pageHtml)[1];
   assert.doesNotThrow(() => new vm.Script(pageScript), "login page script has a syntax error");

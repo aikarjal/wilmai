@@ -11,7 +11,7 @@ import { createAccess } from "./access.js";
 import { loadConfig } from "./config.js";
 import { ENV_VARS, isMfaFailure, resolveAccounts } from "./credentials.js";
 import { createUniqueDownloadFile } from "./downloads.js";
-import { openBrowser, startLoginServer, type LoginServer } from "./login-server.js";
+import { appName, openBrowser, startLoginServer, type LoginServer } from "./login-server.js";
 import { z } from "zod";
 import { INSTRUCTIONS, READ_ONLY, json, registerWilmaTools, textResult } from "./mcp-tools.js";
 import { searchTenants } from "./tenant-search.js";
@@ -26,6 +26,8 @@ const SECRET_SETTINGS_HINT = [
 ].join("\n");
 
 let loginServerPromise: Promise<LoginServer> | null = null;
+/** The running server, so the login page can name the app that asked for it. */
+let mcpServer: McpServer | null = null;
 
 /** One login page at a time. Parallel tool calls share it; an explicit wilma_login starts a fresh one. */
 async function ensureLoginServer(fresh: boolean): Promise<{ server: LoginServer; created: boolean }> {
@@ -34,7 +36,8 @@ async function ensureLoginServer(fresh: boolean): Promise<{ server: LoginServer;
     loginServerPromise = null;
   }
   if (loginServerPromise) return { server: await loginServerPromise, created: false };
-  const pending = startLoginServer().then((server) => {
+  const app = appName(mcpServer?.server.getClientVersion());
+  const pending = startLoginServer(app ? { openedBy: { app } } : {}).then((server) => {
     server.result.finally(() => {
       if (loginServerPromise === pending) loginServerPromise = null;
     });
@@ -199,5 +202,6 @@ export async function runMcpServer(version: string): Promise<void> {
   // Checked once a day at most; npx already runs the newest version.
   if (updateChecksEnabled()) updateCheck = startUpdateCheck();
   const server = createWilmaMcpServer(version);
+  mcpServer = server;
   await server.connect(new StdioServerTransport());
 }
