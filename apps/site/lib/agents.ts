@@ -6,7 +6,7 @@ import type { Lang } from "./i18n";
  * `agents`.
  */
 
-export const agentIds = ["claude", "chatgpt", "grok", "openclaw", "cli"] as const;
+export const agentIds = ["claude", "chatgpt", "grok", "openclaw", "claude-code", "codex", "cli"] as const;
 export type AgentId = (typeof agentIds)[number];
 
 /**
@@ -42,7 +42,7 @@ export interface AgentGuide {
   summary: string;
   /** The main way to set it up. */
   steps: SetupStep[];
-  /** The same assistant's developer tools (e.g. Claude Code), folded away under the guide. */
+  /** Another way to set it up from a terminal, folded under the guide. */
   others?: SetupVariant[];
   notes?: string[];
 }
@@ -58,6 +58,8 @@ export interface Agent {
 }
 
 const MCPB_DOWNLOAD = "/get/claude";
+const CLAUDE_CODE_COMMAND = "claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp";
+const CODEX_COMMANDS = "codex plugin marketplace add aikarjal/wilmai\ncodex plugin add wilma@wilmai";
 const REPO = "https://github.com/aikarjal/wilmai";
 
 const firstAsk = {
@@ -134,19 +136,12 @@ export const agents: Agent[] = [
           { title: "Open the file", body: "Claude asks whether to install WilmAI. Click Install." },
           { title: "Ask Claude about school", body: firstAsk.en }
         ],
-        notes: [whereNote.claude.en],
-        others: [
-          {
-            title: "Using Claude Code?",
-            body: "Run this in a terminal instead:",
-            action: { kind: "command", text: "claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp" }
-          }
-        ]
+        notes: [whereNote.claude.en]
       },
       fi: {
         name: "Claude Desktop",
         tagline: "Macille ja Windowsille",
-        summary: "Lataa yksi tiedosto ja avaa se. Sitten voit kysyä Claudelta koulusta.",
+        summary: "Lataa yksi tiedosto ja avaa se. Sitten voit kysyä Claudelta koulupäivän kuulumiset.",
         steps: [
           {
             title: "Lataa WilmAI Claudelle",
@@ -155,14 +150,7 @@ export const agents: Agent[] = [
           { title: "Avaa tiedosto", body: "Claude kysyy, asennetaanko WilmAI. Valitse Install." },
           { title: "Kysy Claudelta koulusta", body: firstAsk.fi }
         ],
-        notes: [whereNote.claude.fi],
-        others: [
-          {
-            title: "Käytätkö Claude Codea?",
-            body: "Aja tämä terminaalissa:",
-            action: { kind: "command", text: "claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp" }
-          }
-        ]
+        notes: [whereNote.claude.fi]
       }
     }
   },
@@ -177,20 +165,13 @@ export const agents: Agent[] = [
         steps: [
           {
             title: "Send this message in Work mode",
-            body: "In the ChatGPT app on your computer, pick Work at the top left (not Chat), then send:",
+            body: "In the ChatGPT app on your computer, pick Work at the top of the window (not Chat), then send:",
             action: { kind: "message", text: chatgptMessage.en }
           },
           { title: "Allow the installation", body: "ChatGPT asks first. Allow it." },
           { title: "Ask about school in Work", body: firstAsk.en }
         ],
-        notes: [whereNote.chatgpt.en],
-        others: [
-          {
-            title: "Using Codex?",
-            body: "Run these in a terminal instead:",
-            action: { kind: "command", text: "codex plugin marketplace add aikarjal/wilmai\ncodex plugin add wilma@wilmai" }
-          }
-        ]
+        notes: [whereNote.chatgpt.en]
       },
       fi: {
         name: "ChatGPT Desktop",
@@ -199,20 +180,13 @@ export const agents: Agent[] = [
         steps: [
           {
             title: "Lähetä tämä viesti Work-tilassa",
-            body: "Valitse tietokoneesi ChatGPT-sovelluksessa vasemmasta yläkulmasta Work (ei Chat) ja lähetä:",
+            body: "Valitse tietokoneesi ChatGPT-sovelluksen yläreunasta Work (ei Chat) ja lähetä:",
             action: { kind: "message", text: chatgptMessage.fi }
           },
           { title: "Salli asennus", body: "ChatGPT kysyy ensin. Salli se." },
           { title: "Kysy koulusta Work-tilassa", body: firstAsk.fi }
         ],
-        notes: [whereNote.chatgpt.fi],
-        others: [
-          {
-            title: "Käytätkö Codexia?",
-            body: "Aja nämä terminaalissa:",
-            action: { kind: "command", text: "codex plugin marketplace add aikarjal/wilmai\ncodex plugin add wilma@wilmai" }
-          }
-        ]
+        notes: [whereNote.chatgpt.fi]
       }
     }
   },
@@ -298,6 +272,70 @@ export const agents: Agent[] = [
             body: "Aja nämä itse:",
             action: { kind: "command", text: "npm install -g @wilm-ai/wilma-cli\nwilma login\nclawhub install wilma" }
           }
+        ]
+      }
+    }
+  },
+  {
+    id: "claude-code",
+    logo: "/logos/claude-code.svg",
+    guide: {
+      en: {
+        name: "Claude Code",
+        tagline: "One command",
+        summary: "Add WilmAI to Claude Code with one command. It then works in every project.",
+        steps: [
+          {
+            title: "Run this in a terminal",
+            body: "Needs Node.js 20 or newer.",
+            action: { kind: "command", text: CLAUDE_CODE_COMMAND }
+          },
+          { title: "Ask Claude about school", body: firstAsk.en }
+        ]
+      },
+      fi: {
+        name: "Claude Code",
+        tagline: "Yksi komento",
+        summary: "Lisää WilmAI Claude Codeen yhdellä komennolla. Se toimii sen jälkeen kaikissa projekteissa.",
+        steps: [
+          {
+            title: "Aja tämä terminaalissa",
+            body: "Vaatii Node.js:n version 20 tai uudemman.",
+            action: { kind: "command", text: CLAUDE_CODE_COMMAND }
+          },
+          { title: "Kysy Claudelta koulusta", body: firstAsk.fi }
+        ]
+      }
+    }
+  },
+  {
+    id: "codex",
+    logo: "/logos/codex.svg",
+    guide: {
+      en: {
+        name: "Codex",
+        tagline: "Two commands",
+        summary: "Add the WilmAI plugin to Codex: the Wilma tools plus the wilma and wilma-triage skills.",
+        steps: [
+          {
+            title: "Run these in a terminal",
+            body: "Needs Node.js 20 or newer.",
+            action: { kind: "command", text: CODEX_COMMANDS }
+          },
+          { title: "Ask Codex about school", body: firstAsk.en }
+        ]
+      },
+      fi: {
+        name: "Codex",
+        tagline: "Kaksi komentoa",
+        summary: "Lisää WilmAI-lisäosa Codexiin: Wilma-työkalut sekä wilma- ja wilma-triage-taidot.",
+        steps: [
+          {
+            title: "Aja nämä terminaalissa",
+            body: "Vaatii Node.js:n version 20 tai uudemman.",
+            action: { kind: "command", text: CODEX_COMMANDS }
+          },
+          { title: "Kysy Codexilta koulusta", body: firstAsk.fi }
         ]
       }
     }

@@ -19,9 +19,9 @@ Step-by-step guides in English and Finnish: **[wilm.ai](https://wilm.ai/en#quick
 | Assistant | How | Guide |
 |---|---|---|
 | **Claude Desktop** (Mac, Windows) | Download [`wilmai.mcpb`](https://wilm.ai/get/claude) and open it | [wilm.ai#claude](https://wilm.ai/en#claude) |
-| **Claude Code** | `claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp` | [wilm.ai#claude](https://wilm.ai/en#claude) |
+| **Claude Code** | `claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp` | [wilm.ai#claude-code](https://wilm.ai/en#claude-code) |
 | **ChatGPT desktop app** | In Work mode (not Chat), send ChatGPT one message and it installs the plugin; or add the MCP server `npx -y @wilm-ai/wilma-cli@2 mcp` yourself | [wilm.ai#chatgpt](https://wilm.ai/en#chatgpt) |
-| **Codex** | `codex plugin marketplace add aikarjal/wilmai` then `codex plugin add wilma@wilmai` | [wilm.ai#chatgpt](https://wilm.ai/en#chatgpt) |
+| **Codex** | `codex plugin marketplace add aikarjal/wilmai` then `codex plugin add wilma@wilmai` | [wilm.ai#codex](https://wilm.ai/en#codex) |
 | **Grok Bot** | Send one message; the bot installs the CLI and skill itself | [wilm.ai#grok](https://wilm.ai/en#grok) |
 | **OpenClaw** | `clawhub install wilma` ([ClawHub](https://clawhub.ai/aikarjal/wilma)) | [wilm.ai#openclaw](https://wilm.ai/en#openclaw) |
 | **Terminal** | `npm i -g @wilm-ai/wilma-cli`, then `wilma login` | [wilm.ai#cli](https://wilm.ai/en#cli) |
