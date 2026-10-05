@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1.1 (unreleased)
+## 2.1.1 (2026-10-06)
 
 _Releases: wilma-cli 2.1.1._
 
