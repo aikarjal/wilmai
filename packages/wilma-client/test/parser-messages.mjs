@@ -1,12 +1,24 @@
 import assert from "node:assert/strict";
 import { parseMessageDetailHtml } from "../dist/parsers/messages.js";
 
+// Wilma's times are Finnish wall-clock times, so compare in Finnish time:
+// the test then passes in any time zone (CI runs in UTC).
+const finnishParts = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Helsinki",
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "numeric",
+  hourCycle: "h23",
+});
+
 function assertDateParts(date, expected) {
-  assert.equal(date.getFullYear(), expected.year);
-  assert.equal(date.getMonth(), expected.month - 1);
-  assert.equal(date.getDate(), expected.day);
-  assert.equal(date.getHours(), expected.hour);
-  assert.equal(date.getMinutes(), expected.minute);
+  const parts = Object.fromEntries(finnishParts.formatToParts(date).map((p) => [p.type, Number(p.value)]));
+  assert.deepEqual(
+    { year: parts.year, month: parts.month, day: parts.day, hour: parts.hour, minute: parts.minute },
+    expected
+  );
 }
 
 const threadedReplyWithPlainSender = parseMessageDetailHtml(
