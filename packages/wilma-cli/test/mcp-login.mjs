@@ -88,7 +88,7 @@ await new Promise((r) => wilma2.listen(0, "127.0.0.1", r));
 const wilma2Url = `http://127.0.0.1:${wilma2.address().port}`;
 
 const baseEnv = (configPath, extra = {}) => {
-  const env = { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_NO_BROWSER: "1", ...extra };
+  const env = { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_NO_BROWSER: "1", WILMAI_NO_UPDATE_CHECK: "1", ...extra };
   for (const key of ["WILMA_TENANT", "WILMA_USERNAME", "WILMA_PASSWORD", "WILMA_TOTP_SECRET"]) {
     if (!(key in extra)) delete env[key];
   }

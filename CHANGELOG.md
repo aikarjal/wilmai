@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Update notices reach agents and the Claude Desktop extension.** The once-a-day npm check used to run only in a terminal. Commands run by agents (OpenClaw and the like) now print `Update available: … Run "wilma update"` on stderr too, and the `wilma` skill tells the agent to update. The MCP server adds a one-time "Update note" to its first Wilma answer, which the assistant passes on: the Claude Desktop extension says to download the new extension from wilm.ai/get/claude, an npm install says to run `wilma update`. Nothing changes under `npx`, which already runs the newest version. `WILMAI_NO_UPDATE_CHECK=1` turns the check off.
+
+### Changed
+
+- Removed the hooks only the dropped hosted connection used (login page extras, `ToolHost.inlineAttachmentLimit`). No change for users.
+
 ## 2.0.1 (2026-10-05)
 
 _Releases: wilma-cli 2.0.1, wilma-client 1.6.1._

@@ -37,6 +37,7 @@ import { ENV_VARS, isMfaFailure, mfaCallbackFor, resolveAccounts, saveLogin, ver
 import { createUniqueDownloadFile } from "./downloads.js";
 import { openBrowser, startLoginServer } from "./login-server.js";
 import { runMcpServer } from "./mcp.js";
+import { cliUpdateNotice, isNewerVersion, latestWithin, startUpdateCheck, updateChecksEnabled, type UpdateCheck } from "./update-check.js";
 import { toAgentJson } from "./output-json.js";
 import { clearSessions, fileSessionStore } from "./session-store.js";
 import { normalizeTenantUrl, resolveTenant, searchTenants } from "./tenant-search.js";
@@ -107,8 +108,9 @@ async function main() {
   // Commands continue the last Wilma session instead of logging in each time.
   useSessionStore(fileSessionStore);
 
-  // Update notices are for people; agents and scripts skip the check.
-  const updateCheck = process.stderr.isTTY ? startUpdateCheck() : null;
+  // Update notices go to stderr, where both people and agents (OpenClaw and
+  // the like) see them. Not under npx, which already runs the newest version.
+  const updateCheck = updateChecksEnabled() ? startUpdateCheck() : null;
   try {
     await runCommand(argv);
     if (updateCheck) await showUpdateNotice(updateCheck);
@@ -806,111 +808,16 @@ async function handleUpdate(): Promise<void> {
   console.log("\nUpdate complete.");
 }
 
-// --- Version check / update notification ---
-
-const VERSION_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-function getVersionCachePath(): string {
-  return resolve(dirname(getConfigPath()), "version-check.json");
-}
-
-interface VersionCache {
-  latestVersion: string | null;
-  checkedAt: number;
-}
-
-async function readVersionCache(): Promise<VersionCache | null> {
-  try {
-    const raw = await readFile(getVersionCachePath(), "utf-8");
-    return JSON.parse(raw) as VersionCache;
-  } catch {
-    return null;
-  }
-}
-
-async function writeVersionCache(cache: VersionCache): Promise<void> {
-  const cachePath = getVersionCachePath();
-  await mkdir(dirname(cachePath), { recursive: true, mode: 0o700 });
-  await writeFile(cachePath, JSON.stringify(cache), { encoding: "utf-8", mode: 0o600 });
-}
-
-interface UpdateCheck {
-  result: Promise<string | null>;
-  /** Stop a check still in flight, so it never keeps the command running. */
-  cancel(): void;
-}
-
-/**
- * Ask npm for the latest version at most once a day. A failed check counts as
- * a check too: agents in sandboxes without internet access shouldn't pay for
- * a timeout on every command.
- */
-function startUpdateCheck(): UpdateCheck {
-  const controller = new AbortController();
-  let cancelled = false;
-  const result = (async (): Promise<string | null> => {
-    const cache = await readVersionCache();
-    if (cache && Date.now() - cache.checkedAt < VERSION_CHECK_INTERVAL_MS) {
-      return cache.latestVersion;
-    }
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    try {
-      const response = await fetch("https://registry.npmjs.org/@wilm-ai/wilma-cli/latest", { signal: controller.signal });
-      const data = response.ok ? ((await response.json()) as { version?: string }) : {};
-      const latestVersion = data.version ?? cache?.latestVersion ?? null;
-      await writeVersionCache({ latestVersion, checkedAt: Date.now() });
-      return latestVersion;
-    } catch {
-      // Cancelled because the command finished: try again next time.
-      if (!cancelled) await writeVersionCache({ latestVersion: cache?.latestVersion ?? null, checkedAt: Date.now() }).catch(() => {});
-      return cache?.latestVersion ?? null;
-    } finally {
-      clearTimeout(timeout);
-    }
-  })().catch(() => null);
-  return {
-    result,
-    cancel() {
-      cancelled = true;
-      controller.abort();
-    },
-  };
-}
-
-function isNewerVersion(latest: string, current: string): boolean {
-  const latestParts = latest.split(".").map(Number);
-  const currentParts = current.split(".").map(Number);
-  for (let i = 0; i < 3; i++) {
-    const l = latestParts[i] ?? 0;
-    const c = currentParts[i] ?? 0;
-    if (l > c) return true;
-    if (l < c) return false;
-  }
-  return false;
-}
-
 async function showUpdateNotice(check: UpdateCheck): Promise<void> {
-  let timer: NodeJS.Timeout | undefined;
   try {
-    const latestVersion = await Promise.race([
-      check.result,
-      new Promise<null>((resolve) => {
-        timer = setTimeout(() => resolve(null), 1000);
-      }),
-    ]);
+    const latestVersion = await latestWithin(check, 1000);
     if (!latestVersion) return;
-
     const currentVersion = await readPackageVersion();
     if (isNewerVersion(latestVersion, currentVersion)) {
-      process.stderr.write(
-        `\nUpdate available: ${currentVersion} → ${latestVersion}\n` +
-        `Run "wilma update" to update.\n`
-      );
+      process.stderr.write(`\n${cliUpdateNotice(currentVersion, latestVersion)}\n`);
     }
   } catch {
     // Silently ignore any errors
-  } finally {
-    clearTimeout(timer);
   }
 }
 

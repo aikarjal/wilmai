@@ -21,7 +21,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm --filter @wilm-ai/wilma-client build && pnpm run build && node test/news-resources.mjs && node test/mcp-login.mjs && node test/mfa.mjs && node test/audit.mjs",
+    "test": "pnpm --filter @wilm-ai/wilma-client build && pnpm run build && node test/news-resources.mjs && node test/mcp-login.mjs && node test/mfa.mjs && node test/audit.mjs && node test/update-notice.mjs",
     "start": "node dist/index.js",
     "prepack": "pnpm --filter @wilm-ai/wilma-client build && pnpm --filter @wilm-ai/wilma-cli build",
     "test:live": "tsc -p tsconfig.json && node test/live.spec.mjs",

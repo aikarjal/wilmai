@@ -91,7 +91,7 @@ await new Promise((r) => wilma.listen(0, "127.0.0.1", r));
 const wilmaUrl = `http://127.0.0.1:${wilma.address().port}`;
 
 const configPath = join(tempDirectory, "config.json");
-const env = { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_NO_BROWSER: "1" };
+const env = { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_NO_BROWSER: "1", WILMAI_NO_UPDATE_CHECK: "1" };
 for (const key of ["WILMA_TENANT", "WILMA_USERNAME", "WILMA_PASSWORD", "WILMA_TOTP_SECRET"]) delete env[key];
 
 try {

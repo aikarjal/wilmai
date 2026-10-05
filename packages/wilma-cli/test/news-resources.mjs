@@ -148,7 +148,7 @@ try {
         cwd: options.cwd ?? tempDirectory,
         encoding: "utf8",
         // "External" files are served from 127.0.0.1 in this test.
-        env: { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_ALLOW_PRIVATE_NETWORK: "1" },
+        env: { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_ALLOW_PRIVATE_NETWORK: "1", WILMAI_NO_UPDATE_CHECK: "1" },
       });
       return { exitCode: 0, output: JSON.parse(stdout) };
     } catch (error) {

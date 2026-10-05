@@ -45,7 +45,7 @@ await copyFile(join(root, "mcpb", "icon.png"), join(out, "icon.png"));
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [join(out, "server", "index.js"), "mcp"],
-  env: { ...process.env, WILMAI_CONFIG_PATH: join(out, ".no-config.json"), WILMAI_NO_BROWSER: "1" },
+  env: { ...process.env, WILMAI_CONFIG_PATH: join(out, ".no-config.json"), WILMAI_NO_BROWSER: "1", WILMAI_NO_UPDATE_CHECK: "1" },
 });
 const client = new Client({ name: "wilmai-build", version: pkg.version });
 await client.connect(transport);

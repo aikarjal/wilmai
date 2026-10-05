@@ -23,7 +23,8 @@
     "entry_point": "server/index.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/server/index.js", "mcp"]
+      "args": ["${__dirname}/server/index.js", "mcp"],
+      "env": { "WILMAI_INSTALL": "claude-desktop" }
     }
   },
   "compatibility": {

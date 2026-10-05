@@ -92,7 +92,7 @@ await writeFile(configPath, JSON.stringify(config));
 // A fresh update check result, so the tests never contact npm.
 await writeFile(join(tempDirectory, "version-check.json"), JSON.stringify({ latestVersion: "0.0.1", checkedAt: Date.now() }));
 
-const env = { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_NO_BROWSER: "1" };
+const env = { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_NO_BROWSER: "1", WILMAI_NO_UPDATE_CHECK: "1" };
 for (const key of ["WILMA_TENANT", "WILMA_USERNAME", "WILMA_PASSWORD", "WILMA_TOTP_SECRET"]) delete env[key];
 const run = (args, opts = {}) =>
   new Promise((resolve) =>

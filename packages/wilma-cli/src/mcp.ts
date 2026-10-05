@@ -15,6 +15,7 @@ import { openBrowser, startLoginServer, type LoginServer } from "./login-server.
 import { z } from "zod";
 import { INSTRUCTIONS, READ_ONLY, json, registerWilmaTools, textResult } from "./mcp-tools.js";
 import { searchTenants } from "./tenant-search.js";
+import { installKind, isNewerVersion, latestWithin, mcpUpdateNote, startUpdateCheck, updateChecksEnabled, type UpdateCheck } from "./update-check.js";
 
 const SECRET_SETTINGS_HINT = [
   "If the user is not at this computer (for example, this agent runs on a cloud computer), the link won't work for them. Instead:",
@@ -67,6 +68,22 @@ async function startBrowserLogin(requested = false): Promise<CallToolResult> {
   );
 }
 
+let updateCheck: UpdateCheck | null = null;
+let updateNoted = false;
+
+/**
+ * Once per server process, add a note when a newer WilmAI is out, so the
+ * assistant can tell the user how to update (see INSTRUCTIONS).
+ */
+async function withUpdateNote(result: CallToolResult, version: string): Promise<CallToolResult> {
+  if (!updateCheck || updateNoted) return result;
+  const latest = await latestWithin(updateCheck, 300).catch(() => null);
+  if (!latest) return result;
+  updateNoted = true;
+  if (!isNewerVersion(latest, version)) return result;
+  return { ...result, content: [...result.content, { type: "text", text: mcpUpdateNote(installKind(), version, latest) }] };
+}
+
 async function withAccess(run: (access: WilmaAccess) => Promise<CallToolResult>): Promise<CallToolResult> {
   const config = await loadConfig();
   let accounts: Awaited<ReturnType<typeof resolveAccounts>>;
@@ -100,7 +117,7 @@ function createWilmaMcpServer(version: string): McpServer {
   const server = new McpServer({ name: "wilma", title: "WilmAI", version }, { instructions: INSTRUCTIONS });
 
   registerWilmaTools(server, {
-    withAccess,
+    withAccess: async (run) => withUpdateNote(await withAccess(run), version),
     saveAttachment: async (fetched) => {
       const directory = resolve(homedir(), "Downloads", "WilmAI");
       await mkdir(directory, { recursive: true });
@@ -179,6 +196,8 @@ export async function runMcpServer(version: string): Promise<void> {
   console.info = (...args: unknown[]) => console.error(...args);
   // Share saved sessions with the CLI: no login per process, no extra codes.
   useSessionStore(fileSessionStore);
+  // Checked once a day at most; npx already runs the newest version.
+  if (updateChecksEnabled()) updateCheck = startUpdateCheck();
   const server = createWilmaMcpServer(version);
   await server.connect(new StdioServerTransport());
 }
