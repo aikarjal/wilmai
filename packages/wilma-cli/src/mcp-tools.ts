@@ -37,16 +37,13 @@ export function textResult(text: string, isError = false): CallToolResult {
 export interface ToolHost {
   /** Run a tool with Wilma access, or return a result explaining why there is none (e.g. not logged in). */
   withAccess(run: (access: WilmaAccess) => Promise<CallToolResult>): Promise<CallToolResult>;
-  /** Largest attachment to return inline (hosts with a response size cap set less). */
-  inlineAttachmentLimit?: number;
   /** Local hosts can save attachments to disk; returns the saved path. */
   saveAttachment?: (fetched: Extract<FetchedAttachment, { status: "fetched" }>) => Promise<string>;
 }
 
 function attachmentResult(
   fetched: FetchedAttachment & { student: unknown },
-  savedPath?: string,
-  inlineLimit = INLINE_ATTACHMENT_LIMIT
+  savedPath?: string
 ): CallToolResult {
   if (fetched.status === "not_a_file") {
     return json({
@@ -68,7 +65,7 @@ function attachmentResult(
   };
   const content: CallToolResult["content"] = [{ type: "text", text: toAgentJson(meta) }];
   const type = fetched.contentType ?? "application/octet-stream";
-  if (fetched.data.byteLength > inlineLimit) {
+  if (fetched.data.byteLength > INLINE_ATTACHMENT_LIMIT) {
     content.push({
       type: "text",
       text: `The file is too large to include here (${(fetched.data.byteLength / 1048576).toFixed(1)} MB). ${
@@ -247,7 +244,7 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
         const fetched = await a.printout({ id: args.id, student: args.student });
         const savedPath =
           args.save && ctx.saveAttachment && fetched.status === "fetched" ? await ctx.saveAttachment(fetched) : undefined;
-        return attachmentResult(fetched, savedPath, ctx.inlineAttachmentLimit);
+        return attachmentResult(fetched, savedPath);
       })
   );
 
@@ -342,7 +339,7 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
         });
         const savedPath =
           args.save && ctx.saveAttachment && fetched.status === "fetched" ? await ctx.saveAttachment(fetched) : undefined;
-        return attachmentResult(fetched, savedPath, ctx.inlineAttachmentLimit);
+        return attachmentResult(fetched, savedPath);
       })
   );
 }

@@ -257,21 +257,11 @@ function escapeHtml(value: string): string {
 export interface LoginPageOptions {
   nonce: string;
   apiBase: string;
-  /** Shown under the form; "{path}" is replaced with the config path. */
-  privacy?: { en: string; fi: string };
+  /** Shown in the privacy note under the form. */
   configPath?: string;
-  /** Extra fields posted with the login (e.g. a sealed OAuth request). */
-  extra?: Record<string, string>;
-  /** Label for the finishing button, for hosts that continue elsewhere after the login. */
-  finishLabel?: { en: string; fi: string };
-  /** Shown above the form, e.g. which app is connecting. */
-  notice?: { en: string; fi: string };
 }
 
-/**
- * The login page. The login API answers {status: "ok", students, redirect?};
- * with a redirect the page navigates there (e.g. an OAuth callback).
- */
+/** The login page. The login API answers {status: "ok", students, accounts}. */
 export function renderLoginPage(opts: LoginPageOptions): string {
   const strings = {
     en: {
@@ -303,7 +293,6 @@ export function renderLoginPage(opts: LoginPageOptions): string {
       badTotp: "Wilma didn't accept the two-step verification. Paste the authenticator setup key (a long base32 key or an otpauth:// link), not a 6-digit code.",
       tooMany: "Too many attempts. Close this tab and start again from your assistant.",
       missing: "Pick your school's Wilma and fill in both fields.",
-      notAllowed: "This Wilma account isn't on the test list for the hosted connection yet.",
       expired: "This login page is no longer active. Start the login again from your assistant, or run wilma login.",
       privacy: "Your login is saved only on this computer, in {path}. WilmAI has no server; it talks only to your school's Wilma.",
       disclaimer: "WilmAI is an independent open-source project, not affiliated with Visma or the Wilma service.",
@@ -337,20 +326,11 @@ export function renderLoginPage(opts: LoginPageOptions): string {
       badTotp: "Wilma ei hyväksynyt kaksivaiheista tunnistautumista. Liitä todennussovelluksen asetusavain (pitkä base32-avain tai otpauth://-linkki), ei 6-numeroista koodia.",
       tooMany: "Liian monta yritystä. Sulje välilehti ja aloita uudelleen avustajasi kautta.",
       missing: "Valitse koulusi Wilma ja täytä molemmat kentät.",
-      notAllowed: "Tämä Wilma-tunnus ei ole vielä verkkoyhteyden testilistalla.",
       expired: "Tämä kirjautumissivu ei ole enää käytössä. Aloita kirjautuminen uudelleen avustajasi kautta tai komennolla wilma login.",
       privacy: "Kirjautumistietosi tallennetaan vain tälle tietokoneelle, tiedostoon {path}. WilmAI:lla ei ole palvelinta; se on yhteydessä vain koulusi Wilmaan.",
       disclaimer: "WilmAI on itsenäinen avoimen lähdekoodin projekti, eikä se liity Vismaan tai Wilma-palveluun.",
     },
   };
-  if (opts.finishLabel) {
-    strings.en.finish = opts.finishLabel.en;
-    strings.fi.finish = opts.finishLabel.fi;
-  }
-  if (opts.privacy) {
-    strings.en.privacy = opts.privacy.en;
-    strings.fi.privacy = opts.privacy.fi;
-  }
   const nonce = escapeHtml(opts.nonce);
   return `<!doctype html>
 <html lang="en">
@@ -395,7 +375,6 @@ export function renderLoginPage(opts: LoginPageOptions): string {
   ul.children { margin:6px 0 0; padding-left:22px; }
   ul.children li { padding:3px 0; }
   .add-hint { margin-top:8px; }
-  .notice { margin:0 0 16px; padding:10px 12px; border-radius:8px; background:var(--paper); border:1px solid var(--line); font-size:14px; }
   .error { color:var(--err); margin-top:12px; }
   .done h2 { margin:0 0 8px; }
   [hidden] { display:none !important; }
@@ -406,7 +385,6 @@ export function renderLoginPage(opts: LoginPageOptions): string {
   <h1 id="heading"></h1>
   <p id="intro"></p>
   <section class="card" id="form-card">
-    <p class="notice" id="notice" hidden></p>
     <div id="school-pick">
       <label for="school" id="school-label"></label>
       <input id="school" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="results" aria-expanded="false">
@@ -452,8 +430,6 @@ export function renderLoginPage(opts: LoginPageOptions): string {
   const STRINGS = ${jsonForScript(strings)};
   const API = ${jsonForScript(opts.apiBase)};
   const CONFIG_PATH = ${jsonForScript(opts.configPath ?? "")};
-  const EXTRA = ${jsonForScript(opts.extra ?? {})};
-  const NOTICE = ${jsonForScript(opts.notice ?? null)};
   const lang = (navigator.language || "en").toLowerCase().startsWith("fi") ? "fi" : "en";
   const t = STRINGS[lang];
   document.documentElement.lang = lang;
@@ -475,8 +451,6 @@ export function renderLoginPage(opts: LoginPageOptions): string {
   text("submit", t.submit); text("done-title", t.doneTitle);
   text("finish", t.finish); text("add-another", t.addAnother); text("add-hint", t.addAnotherHint);
   text("finished-title", t.finishedTitle); text("finished-body", t.finishedBody);
-  if (NOTICE) { text("notice", NOTICE[lang]); $("notice").hidden = false; }
-  let pending = null;
 
   function renderAccounts(accounts) {
     const box = $("accounts"); box.replaceChildren();
@@ -508,10 +482,9 @@ export function renderLoginPage(opts: LoginPageOptions): string {
       const res = await fetch(API + "/done", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...EXTRA, pending: pending || undefined }),
+        body: "{}",
       });
       const data = await res.json();
-      if (data.redirect) { window.location.assign(data.redirect); return; }
       if (data.status !== "ok") { showError(data.message || t.expired); btn.disabled = false; return; }
     } catch (err) {
       // The page may already have closed; the login is saved either way.
@@ -604,11 +577,10 @@ export function renderLoginPage(opts: LoginPageOptions): string {
       const res = await fetch(API + "/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...EXTRA, pending: pending || undefined, tenantUrl: tenant.url, tenantName: tenant.name, username, password, totpSecret: $("totp").value.trim() || undefined }),
+        body: JSON.stringify({ tenantUrl: tenant.url, tenantName: tenant.name, username, password, totpSecret: $("totp").value.trim() || undefined }),
       });
       const data = await res.json();
       if (data.status === "ok") {
-        if (data.pending) pending = data.pending;
         renderAccounts(data.accounts || [{ wilma: tenant.name || tenant.url, students: data.students || [] }]);
         $("form-card").hidden = true; $("done").hidden = false;
         $("finish").focus();
@@ -618,7 +590,6 @@ export function renderLoginPage(opts: LoginPageOptions): string {
       if (data.code === "bad_credentials") showError(t.badCredentials);
       else if (data.code === "too_many_attempts") showError(t.tooMany);
       else if (data.code === "missing_fields") showError(t.missing);
-      else if (data.code === "not_allowed") showError(t.notAllowed);
       else if (data.code === "bad_totp") { $("mfa").hidden = false; showError(lang === "fi" ? t.badTotp : (data.message || t.badTotp)); }
       else showError(data.message || "Error");
     } catch (err) {
