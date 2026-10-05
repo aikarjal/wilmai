@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 (unreleased)
+## 2.0.0 (2026-10-05)
 
 _Releases: wilma-cli 2.0.0, wilma-client 1.6.0. One release for the browser login, the MCP server and Claude Desktop extension, the plugin marketplace, more Wilma data, and a CLI rebuilt for agents._
 
