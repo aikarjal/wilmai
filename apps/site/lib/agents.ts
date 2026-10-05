@@ -67,12 +67,13 @@ const firstAsk = {
   fi: "Esimerkiksi: ”Mitä lapsilla on huomenna koulussa?” Ensimmäisellä kerralla selaimeen avautuu kirjautumissivu. Valitse koulusi Wilma ja kirjaudu — kirjautumistiedot tallentuvat omalle koneellesi."
 };
 
+// A message the parent pastes into ChatGPT; ChatGPT does the installing.
 const chatgptMessage = {
-  en: `Please set up WilmAI so you can read my kids' school information from Wilma.
-Add the plugin marketplace aikarjal/wilmai and install the wilma plugin from it. The plugin runs with Node.js, so if Node.js isn't installed on this computer, install the LTS version first.
+  en: `Please install WilmAI so you can read my kids' school information from Wilma.
+Add the plugin marketplace aikarjal/wilmai and install the wilma plugin from it, together with anything it needs to run on this computer.
 Tell me when it's ready.`,
-  fi: `Ota WilmAI käyttöön, jotta voit lukea lasteni koulutiedot Wilmasta.
-Lisää plugin marketplace aikarjal/wilmai ja asenna sieltä wilma-plugin. Plugin toimii Node.js:n avulla, joten jos koneella ei ole Node.js:ää, asenna ensin sen LTS-versio.
+  fi: `Asenna WilmAI, jotta voit lukea lasteni koulutiedot Wilmasta.
+Lisää plugin marketplace aikarjal/wilmai ja asenna sieltä wilma-plugin sekä kaikki, mitä se tarvitsee toimiakseen tällä koneella.
 Kerro, kun se on valmis.`
 };
 
@@ -123,8 +124,8 @@ export const agents: Agent[] = [
     id: "claude",
     guide: {
       en: {
-        name: "Claude",
-        tagline: "Claude Desktop for Mac and Windows",
+        name: "Claude Desktop",
+        tagline: "For Mac and Windows",
         summary: "The simplest setup: download one file and open it. Claude can then answer questions about your kids' school day.",
         steps: [
           {
@@ -153,8 +154,8 @@ export const agents: Agent[] = [
         notes: [phoneNote.claude.en]
       },
       fi: {
-        name: "Claude",
-        tagline: "Claude Desktop Macille ja Windowsille",
+        name: "Claude Desktop",
+        tagline: "Macille ja Windowsille",
         summary: "Helpoin tapa: lataa yksi tiedosto ja avaa se. Sen jälkeen Claude vastaa kysymyksiin lastesi koulupäivästä.",
         steps: [
           {
@@ -188,22 +189,17 @@ export const agents: Agent[] = [
     id: "chatgpt",
     guide: {
       en: {
-        name: "ChatGPT",
-        tagline: "ChatGPT desktop app",
-        summary: "ChatGPT's desktop app can set WilmAI up for you. Send it one message and approve what it asks.",
+        name: "ChatGPT Desktop",
+        tagline: "For Mac and Windows",
+        summary: "ChatGPT Desktop can install WilmAI itself. Copy one message into it and allow what it asks.",
         steps: [
           {
-            title: "Send this to ChatGPT",
-            body: "In the ChatGPT desktop app on your computer.",
-            action: { kind: "message", text: chatgptMessage.en },
-            alternative: {
-              title: "Prefer to add it yourself?",
-              body: "Open Settings, find MCP servers and add a STDIO server named Wilma with this command. It needs Node.js (nodejs.org).",
-              action: { kind: "command", text: "npx -y @wilm-ai/wilma-cli@2 mcp" }
-            }
+            title: "Copy this message into ChatGPT Desktop",
+            body: "Paste it into a new chat in the ChatGPT app on your computer (not in the browser) and send it.",
+            action: { kind: "message", text: chatgptMessage.en }
           },
           {
-            title: "Approve the setup",
+            title: "Allow the installation",
             body: "ChatGPT asks before it installs anything. Allow it, and restart the app if it asks you to."
           },
           { title: "Ask ChatGPT about school", body: firstAsk.en }
@@ -223,22 +219,17 @@ export const agents: Agent[] = [
         notes: [phoneNote.chatgpt.en]
       },
       fi: {
-        name: "ChatGPT",
-        tagline: "ChatGPT-työpöytäsovellus",
-        summary: "ChatGPT:n työpöytäsovellus osaa ottaa WilmAI:n käyttöön puolestasi. Lähetä sille yksi viesti ja hyväksy, mitä se kysyy.",
+        name: "ChatGPT Desktop",
+        tagline: "Macille ja Windowsille",
+        summary: "ChatGPT Desktop osaa asentaa WilmAI:n itse. Kopioi sille yksi viesti ja salli, mitä se kysyy.",
         steps: [
           {
-            title: "Lähetä tämä ChatGPT:lle",
-            body: "Tietokoneesi ChatGPT-työpöytäsovelluksessa.",
-            action: { kind: "message", text: chatgptMessage.fi },
-            alternative: {
-              title: "Haluatko lisätä sen itse?",
-              body: "Avaa asetukset, etsi MCP servers ja lisää STDIO-palvelin nimeltä Wilma tällä komennolla. Se vaatii Node.js:n (nodejs.org).",
-              action: { kind: "command", text: "npx -y @wilm-ai/wilma-cli@2 mcp" }
-            }
+            title: "Kopioi tämä viesti ChatGPT Desktopiin",
+            body: "Liitä se uuteen keskusteluun tietokoneesi ChatGPT-sovelluksessa (ei selaimessa) ja lähetä.",
+            action: { kind: "message", text: chatgptMessage.fi }
           },
           {
-            title: "Hyväksy asennus",
+            title: "Salli asennus",
             body: "ChatGPT kysyy ennen kuin asentaa mitään. Salli se, ja käynnistä sovellus uudelleen, jos se pyytää."
           },
           { title: "Kysy ChatGPT:ltä koulusta", body: firstAsk.fi }
