@@ -1,7 +1,7 @@
 {
   "name": "wilma",
   "description": "Ask about your kids' school: schedules, homework, exams, grades, lesson notes, messages and news from Finland's Wilma. Read-only; your login stays on your computer.",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": {
     "name": "Antti Karjalainen",
     "url": "https://wilm.ai"
