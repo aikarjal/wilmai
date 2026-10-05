@@ -459,10 +459,25 @@ main {
   box-shadow: var(--hard-shadow);
 }
 
+/* Name on the left, the assistant's logo in the tile's top-right corner. */
 .picker-name {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
   font-size: 17px;
+}
+
+/* Assistants' logos next to their names. */
+.logo {
+  flex: none;
+  object-fit: contain;
+}
+
+.picker-name .logo {
+  margin-top: 1px;
 }
 
 .picker-tagline {
@@ -492,6 +507,9 @@ main {
 }
 
 .picker-panel-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--font-display), sans-serif;
   font-size: 24px;
   letter-spacing: -0.01em;
@@ -708,8 +726,19 @@ main {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   color: var(--ink-soft);
+}
+
+.coming-later li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.coming-later li .logo {
+  margin-top: 3px;
+  border-radius: 4px;
 }
 
 .coming-later strong {
@@ -868,6 +897,14 @@ main {
 }
 
 /* ---------- Recipe ---------- */
+
+/* OpenClaw's lobster, after the last word of the recipe heading. */
+.recipe-lobster {
+  display: inline-block;
+  margin-left: 12px;
+  vertical-align: middle;
+  transform: rotate(-12deg);
+}
 
 .recipe-card {
   position: relative;

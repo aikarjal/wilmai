@@ -92,7 +92,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
         </div>
         <p className="lead">{t.quickstart.lead}</p>
         <AgentPicker
-          items={agents.map((agent) => ({ id: agent.id, guide: agent.guide[lang] }))}
+          items={agents.map((agent) => ({ id: agent.id, logo: agent.logo, guide: agent.guide[lang] }))}
           comingLater={comingLater[lang]}
           labels={{
             copy: t.quickstart.copy,
@@ -142,7 +142,10 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
       <section className="section">
         <div className="section-head">
           <p className="eyebrow">{t.recipe.eyebrow}</p>
-          <h2>{t.recipe.title}</h2>
+          <h2>
+            {t.recipe.title}
+            <Image className="recipe-lobster" src="/logos/openclaw.svg" alt="" width={44} height={44} />
+          </h2>
         </div>
         <p className="lead">{t.recipe.lead}</p>
         <div className="recipe-card">

@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import type { AgentGuide, AgentId } from "../lib/agents";
+import type { AgentGuide, AgentId, ComingLater } from "../lib/agents";
 import AgentSetup, { type SetupLabels } from "./AgentSetup";
 
 export interface PickerLabels extends SetupLabels {
@@ -21,8 +22,8 @@ export default function AgentPicker({
   comingLater,
   labels
 }: {
-  items: { id: AgentId; guide: AgentGuide }[];
-  comingLater: { name: string; note: string }[];
+  items: { id: AgentId; logo: string; guide: AgentGuide }[];
+  comingLater: ComingLater[];
   labels: PickerLabels;
 }) {
   const [activeId, setActiveId] = useState<AgentId>(items[0].id);
@@ -82,14 +83,20 @@ export default function AgentPicker({
             className={`picker-tile ${item.id === active.id ? "active" : ""}`}
             onClick={() => choose(item.id)}
           >
-            <span className="picker-name">{item.guide.name}</span>
+            <span className="picker-name">
+              {item.guide.name}
+              <Image className="logo" src={item.logo} alt="" width={20} height={20} />
+            </span>
             <span className="picker-tagline">{item.guide.tagline}</span>
           </button>
         ))}
       </div>
       <div className="picker-panel" id="picker-panel" role="tabpanel" aria-labelledby={`tab-${active.id}`}>
         <div className="picker-panel-head">
-          <h3>{active.guide.name}</h3>
+          <h3>
+            {active.guide.name}
+            <Image className="logo" src={active.logo} alt="" width={24} height={24} />
+          </h3>
           {active.guide.status ? <span className="status-chip">{active.guide.status}</span> : null}
         </div>
         <AgentSetup guide={active.guide} labels={labels} />
@@ -105,7 +112,10 @@ export default function AgentPicker({
         <ul>
           {comingLater.map((item) => (
             <li key={item.name}>
-              <strong>{item.name}</strong> — {item.note}
+              <Image className="logo" src={item.logo} alt="" width={18} height={18} />
+              <span>
+                <strong>{item.name}</strong> — {item.note}
+              </span>
             </li>
           ))}
         </ul>

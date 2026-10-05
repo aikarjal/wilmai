@@ -56,6 +56,11 @@ export interface AgentGuide {
 
 export interface Agent {
   id: AgentId;
+  /**
+   * Small logo next to the name, from public/logos: the assistants' own logos
+   * (SVGs via Lobe Icons, Instinct's favicon); terminal.svg is ours.
+   */
+  logo: string;
   guide: Record<Lang, AgentGuide>;
 }
 
@@ -122,6 +127,7 @@ const phoneNote = {
 export const agents: Agent[] = [
   {
     id: "claude",
+    logo: "/logos/claude.svg",
     guide: {
       en: {
         name: "Claude Desktop",
@@ -187,6 +193,7 @@ export const agents: Agent[] = [
   },
   {
     id: "chatgpt",
+    logo: "/logos/openai.svg",
     guide: {
       en: {
         name: "ChatGPT Desktop",
@@ -252,6 +259,7 @@ export const agents: Agent[] = [
   },
   {
     id: "grok",
+    logo: "/logos/grok.svg",
     guide: {
       en: {
         name: "Grok Bot",
@@ -289,6 +297,7 @@ export const agents: Agent[] = [
   },
   {
     id: "openclaw",
+    logo: "/logos/openclaw.svg",
     guide: {
       en: {
         name: "OpenClaw",
@@ -338,6 +347,7 @@ export const agents: Agent[] = [
   },
   {
     id: "cli",
+    logo: "/logos/terminal.svg",
     guide: {
       en: {
         name: "Terminal",
@@ -388,15 +398,21 @@ export const agents: Agent[] = [
 ];
 
 /** Assistants not yet usable from Finland. */
-export const comingLater: Record<Lang, { name: string; note: string }[]> = {
+export interface ComingLater {
+  name: string;
+  logo: string;
+  note: string;
+}
+
+export const comingLater: Record<Lang, ComingLater[]> = {
   en: [
-    { name: "Meta Muse", note: "Not available in Finland yet." },
-    { name: "OpenAI dots", note: "Only on business plans in Finland so far." },
-    { name: "Instinct", note: "Not available in Finland yet." }
+    { name: "Meta Muse", logo: "/logos/meta.svg", note: "Not available in Finland yet." },
+    { name: "OpenAI dots", logo: "/logos/openai.svg", note: "Only on business plans in Finland so far." },
+    { name: "Instinct", logo: "/logos/instinct.png", note: "Not available in Finland yet." }
   ],
   fi: [
-    { name: "Meta Muse", note: "Ei vielä saatavilla Suomessa." },
-    { name: "OpenAI dots", note: "Suomessa toistaiseksi vain yritystileillä." },
-    { name: "Instinct", note: "Ei vielä saatavilla Suomessa." }
+    { name: "Meta Muse", logo: "/logos/meta.svg", note: "Ei vielä saatavilla Suomessa." },
+    { name: "OpenAI dots", logo: "/logos/openai.svg", note: "Suomessa toistaiseksi vain yritystileillä." },
+    { name: "Instinct", logo: "/logos/instinct.png", note: "Ei vielä saatavilla Suomessa." }
   ]
 };
