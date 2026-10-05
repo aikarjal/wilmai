@@ -63,6 +63,7 @@ export function Footer({ t }: { t: Dictionary }) {
           {t.footer.issues}
         </a>
       </div>
+      <p className="footer-disclaimer">{t.hero.disclaimer}</p>
       <span>{t.footer.licensed}</span>
     </footer>
   );

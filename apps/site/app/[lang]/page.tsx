@@ -23,7 +23,10 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
           {t.hero.h1Pre}
           <span className="marker">{t.hero.h1Marker}</span>.
         </h1>
-        <p className="disclaimer">{t.hero.disclaimer}</p>
+        <details className="disclaimer">
+          <summary>{t.hero.disclaimerShort}</summary>
+          <p>{t.hero.disclaimer}</p>
+        </details>
         <DownloadCount
           initial={downloads}
           locale={lang === "fi" ? "fi-FI" : "en-US"}

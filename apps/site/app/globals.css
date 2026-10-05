@@ -207,6 +207,7 @@ main {
   }
 }
 
+/* Not affiliated with Visma: one short line that opens to the full sentence. */
 .disclaimer {
   font-size: 13px;
   color: var(--ink-soft);
@@ -214,6 +215,39 @@ main {
   max-width: 520px;
   margin: 18px auto 0;
   line-height: 1.5;
+}
+
+.disclaimer summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.disclaimer summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclaimer summary::after {
+  content: "›";
+  font-style: normal;
+  font-size: 15px;
+  line-height: 1;
+  transform: rotate(90deg);
+  transition: transform 0.15s ease;
+}
+
+.disclaimer[open] summary::after {
+  transform: rotate(-90deg);
+}
+
+.disclaimer summary:hover {
+  color: var(--ink);
+}
+
+.disclaimer p {
+  margin-top: 6px;
 }
 
 .hero-sub {
@@ -1114,6 +1148,12 @@ main {
   color: var(--ink);
 }
 
+.footer-disclaimer {
+  max-width: 520px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .footer-logo {
   height: 60px;
   width: auto;
@@ -1184,7 +1224,8 @@ main {
   .chip,
   .chip:hover,
   .hero-stat-count,
-  .setup-other summary::before {
+  .setup-other summary::before,
+  .disclaimer summary::after {
     transition: none;
   }
 }

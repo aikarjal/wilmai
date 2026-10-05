@@ -34,6 +34,9 @@ export interface Dictionary {
     tapedNote: string;
     h1Pre: string;
     h1Marker: string;
+    /** Always visible under the headline; opens to `disclaimer`. */
+    disclaimerShort: string;
+    /** Also in the footer. */
     disclaimer: string;
     sub: string;
     ctaPrimary: string;
@@ -85,6 +88,7 @@ const en: Dictionary = {
     tapedNote: "New school year? A few minutes to set up.",
     h1Pre: "Wilma access for ",
     h1Marker: "your AI assistant",
+    disclaimerShort: "Independent project, not affiliated with Visma",
     disclaimer:
       "This is an independent open-source project by a parent, not affiliated with, endorsed by, or connected to Visma or the official Wilma service.",
     sub: "Keeping up with school is work — schedules, homework, exams, messages, and news, times every kid, sometimes across different schools. WilmAI connects Wilma to Claude, ChatGPT and other assistants, so you can ask in plain words and get one briefing for the whole family.",
@@ -309,6 +313,7 @@ const fi: Dictionary = {
     tapedNote: "Uusi lukuvuosi? Käyttöön muutamassa minuutissa.",
     h1Pre: "Wilma suoraan ",
     h1Marker: "tekoälyavustajaasi",
+    disclaimerShort: "Itsenäinen projekti, ei liity Vismaan",
     disclaimer:
       "Tämä on vanhemman tekemä itsenäinen avoimen lähdekoodin projekti. Kyseessä ei ole Visman tai virallisen Wilma-palvelun tekemä, tukema tai hyväksymä ratkaisu.",
     sub: "Koulun kuulumisten mukana pysyminen on työtä — lukujärjestykset, läksyt, kokeet, viestit ja tiedotteet, jokaisen lapsen osalta, joskus eri kouluissa. WilmAI yhdistää Wilman Claudeen, ChatGPT:hen ja muihin avustajiin, joten voit kysyä omin sanoin ja saada koko perheen kuulumiset yhteen koosteeseen.",
