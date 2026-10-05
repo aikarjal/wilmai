@@ -28,7 +28,7 @@ Step-by-step guides in English and Finnish: **[wilm.ai](https://wilm.ai/en#quick
 
 The first time you ask about school, a login page opens in your browser: pick your school's Wilma and log in. The login is saved on your computer.
 
-Not yet: Claude and ChatGPT on the web and phone (they need a hosted connection, which is being tested), and assistants not yet available in Finland (Meta Muse, OpenAI dots on consumer plans, Instinct).
+Not supported: Claude and ChatGPT on the web and phone. Your login stays on your own devices and WilmAI runs no server in between; for updates on the phone, use an always-on assistant such as OpenClaw. Not yet available in Finland: Meta Muse, OpenAI dots on consumer plans, Instinct.
 
 ## What's inside
 

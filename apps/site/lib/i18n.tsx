@@ -229,8 +229,9 @@ const en: Dictionary = {
         a: (
           <p>
             Partly. Agents that run on their own computer, like Grok Bot and OpenClaw, can be
-            used from your phone once they are set up. The Claude and ChatGPT phone apps need
-            a hosted connection, which we&apos;re testing.
+            used from your phone once they are set up, and they can send you the daily updates
+            in chat. The Claude and ChatGPT phone apps can&apos;t reach WilmAI: your login stays
+            on your own devices, and WilmAI has no server in between.
           </p>
         )
       },
@@ -454,9 +455,10 @@ const fi: Dictionary = {
         a: (
           <p>
             Osittain. Agentteja, jotka toimivat omalla koneellaan, kuten Grok Botia ja
-            OpenClaw&apos;ta, voi käyttää puhelimesta, kun ne on otettu käyttöön. Clauden ja
-            ChatGPT:n puhelinsovellukset tarvitsevat verkossa toimivan yhteyden, jota
-            testaamme.
+            OpenClaw&apos;ta, voi käyttää puhelimesta, kun ne on otettu käyttöön, ja ne voivat
+            lähettää päivän kuulumiset sinulle viestinä. Clauden ja ChatGPT:n
+            puhelinsovellukset eivät pääse WilmAI:hin: kirjautumistietosi pysyvät omilla
+            laitteillasi, eikä välissä ole WilmAI:n palvelinta.
           </p>
         )
       },

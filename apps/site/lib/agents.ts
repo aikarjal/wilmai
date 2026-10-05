@@ -106,14 +106,15 @@ Never ask me to type my Wilma password into this chat.`,
 Älä koskaan pyydä minua kirjoittamaan Wilma-salasanaani tähän keskusteluun.`
 };
 
-const hostedLater = {
+// Why the web and phone apps can't use WilmAI, and what to use instead.
+const phoneNote = {
   claude: {
-    en: "Claude on the web and the Claude phone app need a hosted connection, which we're testing.",
-    fi: "Selaimessa ja puhelinsovelluksessa toimiva Claude tarvitsee verkossa toimivan yhteyden, jota testaamme."
+    en: "Claude on the web and in the phone app can't reach WilmAI: your login stays on your own computer, and WilmAI has no server in between. For updates on your phone, an always-on assistant such as OpenClaw can send them to you in chat.",
+    fi: "Selaimessa ja puhelinsovelluksessa toimiva Claude ei pääse WilmAI:hin: kirjautumistietosi pysyvät omalla koneellasi, eikä välissä ole WilmAI:n palvelinta. Jos haluat kuulumiset puhelimeesi, jatkuvasti toimiva avustaja, kuten OpenClaw, voi lähettää ne sinulle viestinä."
   },
   chatgpt: {
-    en: "ChatGPT on the web and the ChatGPT phone app need a hosted connection, which we're testing.",
-    fi: "Selaimessa ja puhelinsovelluksessa toimiva ChatGPT tarvitsee verkossa toimivan yhteyden, jota testaamme."
+    en: "ChatGPT on the web and in the phone app can't reach WilmAI: your login stays on your own computer, and WilmAI has no server in between. For updates on your phone, an always-on assistant such as OpenClaw can send them to you in chat.",
+    fi: "Selaimessa ja puhelinsovelluksessa toimiva ChatGPT ei pääse WilmAI:hin: kirjautumistietosi pysyvät omalla koneellasi, eikä välissä ole WilmAI:n palvelinta. Jos haluat kuulumiset puhelimeesi, jatkuvasti toimiva avustaja, kuten OpenClaw, voi lähettää ne sinulle viestinä."
   }
 };
 
@@ -149,7 +150,7 @@ export const agents: Agent[] = [
             ]
           }
         ],
-        notes: [hostedLater.claude.en]
+        notes: [phoneNote.claude.en]
       },
       fi: {
         name: "Claude",
@@ -179,7 +180,7 @@ export const agents: Agent[] = [
             ]
           }
         ],
-        notes: [hostedLater.claude.fi]
+        notes: [phoneNote.claude.fi]
       }
     }
   },
@@ -219,7 +220,7 @@ export const agents: Agent[] = [
             ]
           }
         ],
-        notes: [hostedLater.chatgpt.en]
+        notes: [phoneNote.chatgpt.en]
       },
       fi: {
         name: "ChatGPT",
@@ -254,7 +255,7 @@ export const agents: Agent[] = [
             ]
           }
         ],
-        notes: [hostedLater.chatgpt.fi]
+        notes: [phoneNote.chatgpt.fi]
       }
     }
   },
