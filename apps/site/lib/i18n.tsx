@@ -13,11 +13,6 @@ interface Card {
   color: "yellow" | "teal" | "blue" | "pink";
 }
 
-interface Step {
-  title: string;
-  body: string;
-}
-
 interface FaqItem {
   q: string;
   a: ReactNode;
@@ -41,6 +36,8 @@ export interface Dictionary {
     sub: string;
     ctaPrimary: string;
     ctaSecondary: string;
+    /** Before the row of assistant logos under the buttons. */
+    worksWith: string;
     /** Next to the CLI's npm download count, above `proof`. */
     downloads: string;
     /** Instead of the count when the number isn't available. */
@@ -56,14 +53,23 @@ export interface Dictionary {
     title: string;
     lead: string;
     copy: string;
+    copyMessage: string;
     copied: string;
+    showMessage: string;
+    hideMessage: string;
     picker: string;
+    /** Above the second row of tiles: Claude Code, Codex, Terminal. */
+    terminalRow: string;
+    /** Phones only: setup needs a computer. */
+    phoneNote: string;
+    phoneShare: string;
+    phoneCopied: string;
+    /** Phones only, instead of a download button. */
+    downloadOnComputer: string;
     help: string;
     helpLink: string;
-    comingLaterTitle: string;
-    comingLaterNote: string;
+    comingLater: string;
   };
-  how: { eyebrow: string; title: string; steps: Step[] };
   ask: { eyebrow: string; title: string; lead: string; cards: Card[] };
   recipe: {
     eyebrow: string;
@@ -74,7 +80,7 @@ export interface Dictionary {
     linkLabel: string;
   };
   faq: { eyebrow: string; title: string; items: FaqItem[] };
-  closing: { eyebrow: string; text: string };
+  closing: { eyebrow: string; text: string; signature: string };
   footer: { docs: string; issues: string; licensed: string };
 }
 
@@ -85,19 +91,20 @@ const en: Dictionary = {
       "WilmAI connects Wilma to Claude, ChatGPT and other AI assistants — schedules, homework, exams, messages, and news as one daily briefing for the whole family."
   },
   hero: {
-    tapedNote: "New school year? A few minutes to set up.",
+    tapedNote: "Free, and set up in a few minutes.",
     h1Pre: "Wilma access for ",
     h1Marker: "your AI assistant",
     disclaimerShort: "Independent project, not affiliated with Visma",
     disclaimer:
       "This is an independent open-source project by a parent, not affiliated with, endorsed by, or connected to Visma or the official Wilma service.",
-    sub: "Keeping up with school is work — schedules, homework, exams, messages, and news, times every kid, sometimes across different schools. WilmAI connects Wilma to Claude, ChatGPT and other assistants, so you can ask in plain words and get one briefing for the whole family.",
+    sub: "Keeping up with school is work, especially with more than one kid. WilmAI lets Claude, ChatGPT and other assistants read Wilma, so you can ask in plain words and get one briefing for the whole family.",
     ctaPrimary: "Choose your assistant",
     ctaSecondary: "What can I ask?",
+    worksWith: "Works with",
     downloads: "downloads",
     downloadsFallback: "Downloaded thousands of times",
-    proof: "in daily use by parents across Finland",
-    handNote: "one question → the whole week",
+    proof: "by parents across Finland",
+    handNote: "one question → every kid's day",
     chatTitle: "Your assistant",
     chatQuestion: "What do the kids have at school tomorrow?",
     chatAnswer: [
@@ -107,34 +114,24 @@ const en: Dictionary = {
     ]
   },
   quickstart: {
-    eyebrow: "a few minutes, once",
+    eyebrow: "pick the one you use",
     title: "Choose your assistant",
     lead: "Use the assistant you already have. Your Wilma login stays on your computer.",
     copy: "Copy",
+    copyMessage: "Copy message",
     copied: "Copied",
+    showMessage: "Show the whole message",
+    hideMessage: "Show less",
     picker: "Assistant",
+    terminalRow: "If you use a terminal",
+    phoneNote: "Setup happens on your computer. Send yourself this link and open it there.",
+    phoneShare: "Send yourself the link",
+    phoneCopied: "Link copied",
+    downloadOnComputer: "Open this page on your computer to download it.",
     help: "Stuck? Tell us what happened:",
     helpLink: "open an issue on GitHub",
-    comingLaterTitle: "Coming later",
-    comingLaterNote: "We'll add setup steps when these work in Finland."
-  },
-  how: {
-    eyebrow: "three steps, a few minutes",
-    title: "How It Works",
-    steps: [
-      {
-        title: "Pick your assistant",
-        body: "Claude, ChatGPT, Grok Bot or OpenClaw — or the terminal on its own."
-      },
-      {
-        title: "Log in to Wilma once",
-        body: "A login page opens in your browser. Find your school's Wilma and log in. The login is saved on your computer, not on a server."
-      },
-      {
-        title: "Ask about your kids",
-        body: "Plain language in, one briefing out — in English or Finnish."
-      }
-    ]
+    comingLater:
+      "Coming later: Meta Muse and Instinct (not in Finland yet), and OpenAI dots (only on business plans in Finland so far). We'll add setup steps when they work here."
   },
   ask: {
     eyebrow: "you ask, your assistant answers",
@@ -142,18 +139,13 @@ const en: Dictionary = {
     lead: "Ask in your own words. Every question works across all your children.",
     cards: [
       {
-        title: "Daily briefing",
+        title: "The week ahead",
         prompt: "“What do my kids have going on at school this week?”",
         color: "yellow"
       },
       {
-        title: "Tomorrow's schedule",
-        prompt: "“What classes does Kiia have tomorrow?”",
-        color: "teal"
-      },
-      {
-        title: "Homework check",
-        prompt: "“Is there any homework due this week?”",
+        title: "Homework",
+        prompt: "“Is there any homework for tomorrow?”",
         color: "blue"
       },
       {
@@ -162,29 +154,19 @@ const en: Dictionary = {
         color: "pink"
       },
       {
-        title: "Grades",
-        prompt: "“How did the last exams go? What was on the spring report card?”",
-        color: "blue"
-      },
-      {
         title: "Lesson notes",
-        prompt: "“Any feedback from teachers or absences this week?”",
-        color: "yellow"
-      },
-      {
-        title: "Messages",
-        prompt: "“Any new messages from school?”",
-        color: "blue"
-      },
-      {
-        title: "School news",
-        prompt: "“What's happening at school this week? Read the attached letter too.”",
+        prompt: "“Has any teacher left a note about Eino this month?”",
         color: "teal"
       },
       {
-        title: "Multi-kid families",
-        prompt: "“Give me a summary for all my children.”",
+        title: "Messages and news",
+        prompt: "“Any new messages from school? Read the attached letter too.”",
         color: "yellow"
+      },
+      {
+        title: "Grades",
+        prompt: "“How did the last exams go? What was on the spring report card?”",
+        color: "blue"
       }
     ]
   },
@@ -212,14 +194,34 @@ const en: Dictionary = {
         )
       },
       {
+        q: "What does it cost?",
+        a: (
+          <p>
+            Nothing. WilmAI is free and open source. Your assistant costs what it already
+            does.
+          </p>
+        )
+      },
+      {
+        q: "Does it work with my school?",
+        a: (
+          <p>
+            If your child&apos;s school uses Wilma, yes. When you log in, type your city or
+            school name and pick your Wilma from the list. You don&apos;t need to know its
+            address.
+          </p>
+        )
+      },
+      {
         q: "Where does my Wilma login live?",
         a: (
           <p>
             In one folder on your computer, <code>~/.config/wilmai</code>: the login, and
             the current Wilma session so your assistant doesn&apos;t have to log in again
-            every time. Only your user account can read them. Remove both any time with{" "}
-            <code>wilma config clear</code>. If your assistant runs on its own cloud
-            computer, the login lives in that assistant&apos;s secret settings instead.
+            every time. Only your user account can read them. To remove both, delete that
+            folder, or run <code>wilma config clear</code> in a terminal. If your assistant
+            runs on its own cloud computer, the login lives in that assistant&apos;s secret
+            settings instead.
           </p>
         )
       },
@@ -297,8 +299,9 @@ const en: Dictionary = {
     ]
   },
   closing: {
-    eyebrow: "why this exists",
-    text: "Parents keep telling me the same thing: they've never been this up to date with what's happening at school. It brings more joy than you'd expect. I hope it does the same for your family."
+    eyebrow: "why does this exist?",
+    text: "Parents keep telling me the same thing: they've never been this up to date with what's happening at school. It brings more joy than you'd expect. I hope it does the same for your family.",
+    signature: "— Antti"
   },
   footer: { docs: "Docs", issues: "Issues", licensed: "MIT Licensed" }
 };
@@ -310,19 +313,20 @@ const fi: Dictionary = {
       "WilmAI yhdistää Wilman Claudeen, ChatGPT:hen ja muihin tekoälyavustajiin — lukujärjestykset, läksyt, kokeet, viestit ja tiedotteet yhtenä päivittäisenä koosteena koko perheelle."
   },
   hero: {
-    tapedNote: "Uusi lukuvuosi? Käyttöön muutamassa minuutissa.",
+    tapedNote: "Ilmainen, ja käytössä muutamassa minuutissa.",
     h1Pre: "Wilma suoraan ",
     h1Marker: "tekoälyavustajaasi",
     disclaimerShort: "Itsenäinen projekti, ei liity Vismaan",
     disclaimer:
       "Tämä on vanhemman tekemä itsenäinen avoimen lähdekoodin projekti. Kyseessä ei ole Visman tai virallisen Wilma-palvelun tekemä, tukema tai hyväksymä ratkaisu.",
-    sub: "Koulun kuulumisten mukana pysyminen on työtä — lukujärjestykset, läksyt, kokeet, viestit ja tiedotteet, jokaisen lapsen osalta, joskus eri kouluissa. WilmAI yhdistää Wilman Claudeen, ChatGPT:hen ja muihin avustajiin, joten voit kysyä omin sanoin ja saada koko perheen kuulumiset yhteen koosteeseen.",
+    sub: "Koulun kuulumisten mukana pysyminen on työtä, varsinkin kun lapsia on useampi. WilmAI antaa Clauden, ChatGPT:n ja muiden avustajien lukea Wilmaa, joten voit kysyä omin sanoin ja saada koko perheen kuulumiset yhteen koosteeseen.",
     ctaPrimary: "Valitse avustajasi",
     ctaSecondary: "Mitä voin kysyä?",
+    worksWith: "Toimii näiden kanssa",
     downloads: "latausta",
     downloadsFallback: "Ladattu tuhansia kertoja",
-    proof: "päivittäisessä käytössä suomalaisperheissä",
-    handNote: "yksi kysymys → koko viikko",
+    proof: "perheissä ympäri Suomen",
+    handNote: "yksi kysymys → jokaisen lapsen päivä",
     chatTitle: "Avustajasi",
     chatQuestion: "Mitä lapsilla on huomenna koulussa?",
     chatAnswer: [
@@ -332,34 +336,24 @@ const fi: Dictionary = {
     ]
   },
   quickstart: {
-    eyebrow: "muutama minuutti, kerran",
+    eyebrow: "valitse se, jota käytät",
     title: "Valitse avustajasi",
     lead: "Käytä avustajaa, joka sinulla jo on. Wilma-tunnuksesi pysyvät omalla koneellasi.",
     copy: "Kopioi",
+    copyMessage: "Kopioi viesti",
     copied: "Kopioitu",
+    showMessage: "Näytä koko viesti",
+    hideMessage: "Näytä vähemmän",
     picker: "Avustaja",
+    terminalRow: "Jos käytät terminaalia",
+    phoneNote: "Käyttöönotto tehdään tietokoneella. Lähetä tämä linkki itsellesi ja avaa se koneella.",
+    phoneShare: "Lähetä linkki itsellesi",
+    phoneCopied: "Linkki kopioitu",
+    downloadOnComputer: "Avaa tämä sivu tietokoneella, niin voit ladata tiedoston.",
     help: "Jäitkö jumiin? Kerro mitä tapahtui:",
     helpLink: "avaa issue GitHubissa",
-    comingLaterTitle: "Tulossa myöhemmin",
-    comingLaterNote: "Lisäämme ohjeet, kun nämä toimivat Suomessa."
-  },
-  how: {
-    eyebrow: "kolme vaihetta, muutama minuutti",
-    title: "Näin se toimii",
-    steps: [
-      {
-        title: "Valitse avustajasi",
-        body: "Claude, ChatGPT, Grok Bot tai OpenClaw — tai pelkkä terminaali."
-      },
-      {
-        title: "Kirjaudu Wilmaan kerran",
-        body: "Selaimeen avautuu kirjautumissivu. Etsi koulusi Wilma ja kirjaudu. Tunnukset tallentuvat omalle koneellesi, eivät palvelimelle."
-      },
-      {
-        title: "Kysy lasten kuulumisia",
-        body: "Kysymys sisään, kooste ulos — suomeksi tai englanniksi."
-      }
-    ]
+    comingLater:
+      "Tulossa myöhemmin: Meta Muse ja Instinct (eivät vielä Suomessa) sekä OpenAI dots (Suomessa toistaiseksi vain yritystileillä). Lisäämme ohjeet, kun ne toimivat täällä."
   },
   ask: {
     eyebrow: "sinä kysyt, avustajasi vastaa",
@@ -367,18 +361,13 @@ const fi: Dictionary = {
     lead: "Kysy omin sanoin. Jokainen kysymys toimii kaikkien lastesi osalta.",
     cards: [
       {
-        title: "Päivän kooste",
+        title: "Tuleva viikko",
         prompt: "”Mitä lapsilla on koulussa tällä viikolla?”",
         color: "yellow"
       },
       {
-        title: "Huomisen lukujärjestys",
-        prompt: "”Mitä tunteja Kiialla on huomenna?”",
-        color: "teal"
-      },
-      {
         title: "Läksyt",
-        prompt: "”Onko tällä viikolla läksyjä?”",
+        prompt: "”Onko huomiseksi läksyjä?”",
         color: "blue"
       },
       {
@@ -387,29 +376,19 @@ const fi: Dictionary = {
         color: "pink"
       },
       {
-        title: "Arvosanat",
-        prompt: "”Miten viime kokeet menivät? Mitä kevään todistukseen tuli?”",
-        color: "blue"
-      },
-      {
         title: "Tuntimerkinnät",
-        prompt: "”Onko tällä viikolla tullut opettajilta merkintöjä tai poissaoloja?”",
-        color: "yellow"
-      },
-      {
-        title: "Viestit",
-        prompt: "”Onko koululta uusia viestejä?”",
-        color: "blue"
-      },
-      {
-        title: "Tiedotteet",
-        prompt: "”Mitä koululla tapahtuu tällä viikolla? Lue liitekirjekin.”",
+        prompt: "”Onko Einosta tullut opettajilta merkintöjä tässä kuussa?”",
         color: "teal"
       },
       {
-        title: "Usean lapsen perheet",
-        prompt: "”Kokoa kooste kaikista lapsistani.”",
+        title: "Viestit ja tiedotteet",
+        prompt: "”Onko koululta uusia viestejä? Lue liitekirjekin.”",
         color: "yellow"
+      },
+      {
+        title: "Arvosanat",
+        prompt: "”Miten viime kokeet menivät? Mitä kevään todistukseen tuli?”",
+        color: "blue"
       }
     ]
   },
@@ -438,14 +417,32 @@ const fi: Dictionary = {
         )
       },
       {
+        q: "Mitä se maksaa?",
+        a: (
+          <p>
+            Ei mitään. WilmAI on ilmainen ja avointa lähdekoodia. Avustajasi maksaa saman
+            kuin ennenkin.
+          </p>
+        )
+      },
+      {
+        q: "Toimiiko se lapseni koulussa?",
+        a: (
+          <p>
+            Kyllä, jos lapsesi koulu käyttää Wilmaa. Kirjautuessa kirjoitat kaupungin tai
+            koulun nimen ja valitset Wilmasi listalta. Osoitetta ei tarvitse tietää.
+          </p>
+        )
+      },
+      {
         q: "Missä Wilma-tunnukseni säilyvät?",
         a: (
           <p>
             Yhdessä kansiossa omalla koneellasi, <code>~/.config/wilmai</code>: tunnukset
             ja voimassa oleva Wilma-istunto, jotta avustajan ei tarvitse kirjautua joka
-            kerta uudelleen. Vain oma käyttäjätilisi voi lukea niitä. Voit poistaa
-            molemmat milloin tahansa komennolla <code>wilma config clear</code>. Jos
-            avustajasi toimii omalla pilvikoneellaan, tunnukset ovat sen sijaan avustajan
+            kerta uudelleen. Vain oma käyttäjätilisi voi lukea niitä. Voit poistaa molemmat
+            poistamalla kansion tai ajamalla terminaalissa <code>wilma config clear</code>.
+            Jos avustajasi toimii omalla pilvikoneellaan, tunnukset ovat sen sijaan avustajan
             salaisuusasetuksissa.
           </p>
         )
@@ -526,8 +523,9 @@ const fi: Dictionary = {
     ]
   },
   closing: {
-    eyebrow: "miksi tämä on olemassa",
-    text: "Vanhemmat kertovat minulle samaa: he eivät ole koskaan olleet näin hyvin perillä siitä, mitä koulussa tapahtuu. Se tuo yllättävän paljon iloa. Toivottavasti se tuo sitä myös teidän perheellenne."
+    eyebrow: "miksi tämä on olemassa?",
+    text: "Vanhemmat kertovat minulle samaa: he eivät ole koskaan olleet näin hyvin perillä siitä, mitä koulussa tapahtuu. Se tuo yllättävän paljon iloa. Toivottavasti se tuo sitä myös teidän perheellenne.",
+    signature: "— Antti"
   },
   footer: { docs: "Ohjeet", issues: "Issues", licensed: "MIT-lisensoitu" }
 };

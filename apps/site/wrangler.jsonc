@@ -1,6 +1,6 @@
 // wilm.ai on Cloudflare Workers: the static site (out/, from `next build`)
-// plus a small Worker for the language redirect on "/" and the live download
-// count.
+// plus a small Worker for the language redirect on "/" and the live numbers in
+// the page (npm downloads, GitHub stars).
 // Deploys: Cloudflare builds main from GitHub (Workers Builds, see README.md);
 // by hand: pnpm --filter @wilm-ai/site run deploy.
 {
@@ -12,9 +12,9 @@
   "assets": {
     "directory": "./out",
     "binding": "ASSETS",
-    // Only "/" and /api/downloads run the Worker; every other path is a
+    // Only "/" and /api/stats run the Worker; every other path is a
     // static file (free and served from the nearest Cloudflare location).
-    "run_worker_first": ["/", "/api/downloads"],
+    "run_worker_first": ["/", "/api/stats"],
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   },
@@ -22,6 +22,17 @@
   // redirect rule on the zone (see README.md). workers.dev stays on because
   // branch previews are served there.
   "routes": [{ "pattern": "wilm.ai", "custom_domain": true }],
+  // The npm downloads and GitHub stars, fetched once a day (04:00 UTC) and kept
+  // in KV (namespace "wilmai-site-stats") for /api/stats.
+  "kv_namespaces": [{ "binding": "STATS", "id": "cded682f7d324aa8b3b4a85a3c9580d6" }],
+  "triggers": { "crons": ["0 4 * * *"] },
   "workers_dev": true,
-  "observability": { "enabled": false }
+  // Workers Logs (kept 3 days) and Workers Issues, which groups failures,
+  // e.g. the daily stats job's, and can alert through an automation (dashboard:
+  // Workers & Pages → Observability → Issues → Automations).
+  "observability": {
+    "enabled": true,
+    "logs": { "invocation_logs": true },
+    "issues": { "enabled": true }
+  }
 }

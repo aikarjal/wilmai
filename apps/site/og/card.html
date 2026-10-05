@@ -1,0 +1,253 @@
+<!doctype html>
+<!--
+  The share images (public/og-en.png, public/og-fi.png): what a link to wilm.ai
+  shows in WhatsApp, Facebook, Slack and the like. Open this file in a browser
+  with ?lang=en or ?lang=fi, set the window to 1200×630, and screenshot it.
+  The copy matches the hero in lib/i18n.tsx; update both together.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>WilmAI share image</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Caveat:wght@500&display=block"
+    />
+    <style>
+      :root {
+        --paper: #fbfaf5;
+        --grid: rgba(46, 130, 158, 0.09);
+        --ink: #1b2b34;
+        --ink-soft: #52616c;
+        --teal-deep: #17545b;
+        --marker: #ffd84d;
+        --note-yellow: #fff3b8;
+        --note-teal: #d9f0ec;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        position: relative;
+        font-family: "Atkinson Hyperlegible", sans-serif;
+        color: var(--ink);
+        background-color: var(--paper);
+        background-image: linear-gradient(var(--grid) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+        background-size: 26px 26px;
+      }
+
+      .taped-note {
+        position: absolute;
+        left: 70px;
+        top: 62px;
+        font-family: "Caveat", cursive;
+        font-weight: 500;
+        font-size: 31px;
+        line-height: 1;
+        color: var(--teal-deep);
+        background: var(--note-yellow);
+        padding: 14px 24px 12px;
+        transform: rotate(-2deg);
+        box-shadow: 0 3px 10px rgba(27, 43, 52, 0.14);
+      }
+
+      .taped-note::before,
+      .chat::before {
+        content: "";
+        position: absolute;
+        top: -11px;
+        left: 50%;
+        width: 88px;
+        height: 24px;
+        transform: translateX(-50%) rotate(3deg);
+        background: rgba(233, 242, 244, 0.7);
+        border-left: 1px dashed rgba(27, 43, 52, 0.12);
+        border-right: 1px dashed rgba(27, 43, 52, 0.12);
+        box-shadow: 0 1px 3px rgba(27, 43, 52, 0.1);
+      }
+
+      h1 {
+        position: absolute;
+        left: 64px;
+        top: 136px;
+        font-family: "Bricolage Grotesque", sans-serif;
+        font-weight: 800;
+        font-size: 82px;
+        line-height: 1.04;
+        letter-spacing: -0.03em;
+      }
+
+      .marker {
+        position: relative;
+        z-index: 0;
+        white-space: nowrap;
+      }
+
+      .marker::before {
+        content: "";
+        position: absolute;
+        inset: 6% -2.5% 2% -1.5%;
+        background: var(--marker);
+        z-index: -1;
+        transform: skew(-8deg) rotate(-1deg);
+        border-radius: 8px 18px 10px 20px;
+      }
+
+      .sub {
+        position: absolute;
+        left: 66px;
+        top: 352px;
+        width: 520px;
+        font-size: 27px;
+        line-height: 1.4;
+        color: var(--ink-soft);
+      }
+
+      .site {
+        position: absolute;
+        left: 66px;
+        bottom: 58px;
+        font-family: "Bricolage Grotesque", sans-serif;
+        font-weight: 700;
+        font-size: 30px;
+        padding: 10px 24px;
+        border: 2.5px solid var(--ink);
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 4px 5px 0 var(--ink);
+      }
+
+      .chat {
+        position: absolute;
+        left: 618px;
+        top: 318px;
+        width: 520px;
+        background: #fff;
+        border: 2.5px solid var(--ink);
+        border-radius: 16px;
+        box-shadow: 9px 11px 0 rgba(27, 43, 52, 0.15);
+        font-family: "Bricolage Grotesque", sans-serif;
+        transform: rotate(1.5deg);
+      }
+
+      .chat::before {
+        z-index: 1;
+      }
+
+      .chat-chrome {
+        display: flex;
+        gap: 8px;
+        padding: 13px 18px;
+        background: #efece2;
+        border-bottom: 1.5px solid rgba(27, 43, 52, 0.12);
+        border-radius: 14px 14px 0 0;
+      }
+
+      .dot {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+      }
+
+      .chat-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 18px 20px 22px;
+        font-size: 19px;
+        line-height: 1.4;
+      }
+
+      .bubble {
+        max-width: 92%;
+        border-radius: 16px;
+        padding: 10px 15px;
+      }
+
+      .user {
+        align-self: flex-end;
+        background: var(--note-yellow);
+        border: 1.5px solid rgba(27, 43, 52, 0.18);
+        border-bottom-right-radius: 4px;
+        font-weight: 700;
+      }
+
+      .assistant {
+        align-self: flex-start;
+        background: var(--note-teal);
+        border: 1.5px solid rgba(27, 43, 52, 0.12);
+        border-bottom-left-radius: 4px;
+      }
+
+      .assistant p + p {
+        margin-top: 6px;
+      }
+
+      .mascot {
+        position: absolute;
+        right: 70px;
+        top: 108px;
+        width: 190px;
+        transform: rotate(8deg);
+        filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff)
+          drop-shadow(0 -3px 0 #fff) drop-shadow(4px 9px 10px rgba(27, 43, 52, 0.28));
+      }
+    </style>
+  </head>
+  <body>
+    <p class="taped-note" data-t="note"></p>
+    <h1><span data-t="pre"></span><br /><span class="marker" data-t="marker"></span></h1>
+    <p class="sub" data-t="sub"></p>
+    <p class="site">wilm.ai</p>
+    <img class="mascot" src="../public/wilmai-mascot.png" alt="" />
+    <div class="chat">
+      <div class="chat-chrome">
+        <span class="dot" style="background: #ff5f57"></span>
+        <span class="dot" style="background: #febc2e"></span>
+        <span class="dot" style="background: #28c840"></span>
+      </div>
+      <div class="chat-body">
+        <p class="bubble user" data-t="question"></p>
+        <div class="bubble assistant">
+          <p><strong>Kiia:</strong> <span data-t="kiia"></span></p>
+          <p><strong>Eino:</strong> <span data-t="eino"></span></p>
+        </div>
+      </div>
+    </div>
+    <script>
+      const copy = {
+        en: {
+          note: "Free, and set up in a few minutes.",
+          pre: "Wilma access for",
+          marker: "your AI assistant.",
+          sub: "Ask Claude, ChatGPT and other assistants about school. One briefing for the whole family.",
+          question: "What do the kids have at school tomorrow?",
+          kiia: "English exam on Thursday, units 7–9.",
+          eino: "Swimming — pack a towel."
+        },
+        fi: {
+          note: "Ilmainen, ja käytössä muutamassa minuutissa.",
+          pre: "Wilma suoraan",
+          marker: "tekoälyavustajaasi.",
+          sub: "Kysy koulusta Claudelta, ChatGPT:ltä ja muilta avustajilta. Koko perheen kuulumiset yhteen koosteeseen.",
+          question: "Mitä lapsilla on huomenna koulussa?",
+          kiia: "Englannin koe torstaina, kappaleet 7–9.",
+          eino: "Uintia — mukaan pyyhe."
+        }
+      };
+      const lang = new URLSearchParams(location.search).get("lang") === "fi" ? "fi" : "en";
+      document.documentElement.lang = lang;
+      for (const element of document.querySelectorAll("[data-t]")) {
+        element.textContent = copy[lang][element.dataset.t];
+      }
+    </script>
+  </body>
+</html>

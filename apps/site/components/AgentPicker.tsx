@@ -2,30 +2,60 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import type { AgentGuide, AgentId, ComingLater } from "../lib/agents";
+import type { AgentGuide, AgentId } from "../lib/agents";
 import AgentSetup, { type SetupLabels } from "./AgentSetup";
 
 export interface PickerLabels extends SetupLabels {
   picker: string;
+  terminalRow: string;
+  phoneNote: string;
+  phoneShare: string;
+  phoneCopied: string;
   help: string;
   helpLink: string;
-  comingLaterTitle: string;
-  comingLaterNote: string;
+  comingLater: string;
+}
+
+type Item = { id: AgentId; logo: string; terminal?: boolean; guide: AgentGuide };
+
+/**
+ * Setup happens on a computer, so phones get a note with a way to send the
+ * link (to the open guide) over: the share sheet, or the clipboard without one.
+ */
+function PhoneNote({ labels }: { labels: PickerLabels }) {
+  const [copied, setCopied] = useState(false);
+
+  const share = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      // Rejects when the parent closes the share sheet; nothing to do then.
+      await navigator.share({ title: document.title, url }).catch(() => {});
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div className="phone-note">
+      <p>{labels.phoneNote}</p>
+      <button className="button secondary small" type="button" onClick={share} aria-live="polite">
+        {copied ? labels.phoneCopied : labels.phoneShare}
+      </button>
+    </div>
+  );
 }
 
 /**
  * Assistant picker with every setup guide on the page. The URL hash names the
  * open guide (/fi#chatgpt), so links to one assistant's steps can be shared.
  */
-export default function AgentPicker({
-  items,
-  comingLater,
-  labels
-}: {
-  items: { id: AgentId; logo: string; guide: AgentGuide }[];
-  comingLater: ComingLater[];
-  labels: PickerLabels;
-}) {
+export default function AgentPicker({ items, labels }: { items: Item[]; labels: PickerLabels }) {
   const [activeId, setActiveId] = useState<AgentId>(items[0].id);
   const rootRef = useRef<HTMLDivElement>(null);
   const active = items.find((item) => item.id === activeId) ?? items[0];
@@ -82,28 +112,36 @@ export default function AgentPicker({
     document.getElementById(`tab-${items[next].id}`)?.focus();
   };
 
+  const tile = (item: Item) => (
+    <button
+      key={item.id}
+      type="button"
+      role="tab"
+      id={`tab-${item.id}`}
+      aria-selected={item.id === active.id}
+      aria-controls="picker-panel"
+      tabIndex={item.id === active.id ? 0 : -1}
+      className={`picker-tile ${item.id === active.id ? "active" : ""}`}
+      onClick={() => choose(item.id)}
+    >
+      <span className="picker-name">
+        {item.guide.name}
+        <Image className="logo" src={item.logo} alt="" width={20} height={20} />
+      </span>
+      <span className="picker-tagline">{item.guide.tagline}</span>
+    </button>
+  );
+
   return (
     <div className="picker" ref={rootRef}>
+      <PhoneNote labels={labels} />
+      {/* The assistants first; Claude Code, Codex and the terminal get their own labelled row. */}
       <div className="picker-tiles" role="tablist" aria-label={labels.picker} onKeyDown={onKeyDown}>
-        {items.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            id={`tab-${item.id}`}
-            aria-selected={item.id === active.id}
-            aria-controls="picker-panel"
-            tabIndex={item.id === active.id ? 0 : -1}
-            className={`picker-tile ${item.id === active.id ? "active" : ""}`}
-            onClick={() => choose(item.id)}
-          >
-            <span className="picker-name">
-              {item.guide.name}
-              <Image className="logo" src={item.logo} alt="" width={20} height={20} />
-            </span>
-            <span className="picker-tagline">{item.guide.tagline}</span>
-          </button>
-        ))}
+        {items.filter((item) => !item.terminal).map(tile)}
+        <span className="picker-row-label" aria-hidden="true">
+          {labels.terminalRow}
+        </span>
+        {items.filter((item) => item.terminal).map(tile)}
       </div>
       <div className="picker-panel" id="picker-panel" role="tabpanel" aria-labelledby={`tab-${active.id}`}>
         <div className="picker-panel-head">
@@ -121,20 +159,7 @@ export default function AgentPicker({
           </a>
         </p>
       </div>
-      <div className="coming-later">
-        <p className="coming-later-title">{labels.comingLaterTitle}</p>
-        <ul>
-          {comingLater.map((item) => (
-            <li key={item.name}>
-              <Image className="logo" src={item.logo} alt="" width={18} height={18} />
-              <span>
-                <strong>{item.name}</strong> — {item.note}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <p className="coming-later-note">{labels.comingLaterNote}</p>
-      </div>
+      <p className="coming-later">{labels.comingLater}</p>
     </div>
   );
 }

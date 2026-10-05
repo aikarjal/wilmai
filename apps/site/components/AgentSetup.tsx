@@ -3,7 +3,12 @@ import CopyBlock from "./CopyBlock";
 
 export interface SetupLabels {
   copy: string;
+  copyMessage: string;
   copied: string;
+  showMessage: string;
+  hideMessage: string;
+  /** Phones only, instead of a download button. */
+  downloadOnComputer: string;
 }
 
 function linkify(text: string) {
@@ -20,13 +25,26 @@ function linkify(text: string) {
 
 function ActionView({ action, labels }: { action: Action; labels: SetupLabels }) {
   if (action.kind === "message" || action.kind === "command") {
-    return <CopyBlock text={action.text} variant={action.kind} copyLabel={labels.copy} copiedLabel={labels.copied} />;
+    return (
+      <CopyBlock
+        key={action.text}
+        text={action.text}
+        variant={action.kind}
+        copyLabel={labels.copy}
+        copiedLabel={labels.copied}
+        messageLabels={{ copy: labels.copyMessage, show: labels.showMessage, hide: labels.hideMessage }}
+      />
+    );
   }
   if (action.kind === "download") {
+    // A phone can't install it: the button shows on computers, the note on phones.
     return (
-      <a className="button primary setup-download" href={action.href}>
-        {action.label}
-      </a>
+      <>
+        <a className="button primary setup-download" href={action.href}>
+          {action.label}
+        </a>
+        <p className="download-on-computer">{labels.downloadOnComputer}</p>
+      </>
     );
   }
   return (

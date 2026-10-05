@@ -1,7 +1,7 @@
 /*
  * All-time npm downloads of the CLI, for the counter in the hero. Used at build
- * time (the number in the static page) and by the Worker's /api/downloads
- * (the live number), so it must not depend on Next.
+ * time (the number in the static page) and by the Worker's daily job (the live
+ * number), so it must not depend on Next.
  */
 
 export const NPM_PACKAGE = "@wilm-ai/wilma-cli";

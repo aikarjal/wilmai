@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { liveStats } from "../lib/live-stats";
 import { NPM_PACKAGE, NPM_PAGE } from "../lib/npm-downloads";
 
 /**
  * The CLI's npm download count, big, under the headline. The page is built
- * with the number from build time; the Worker's /api/downloads then brings it
- * up to date.
+ * with the number from build time; the Worker's daily number then replaces it.
  */
 export default function DownloadCount({
   initial,
@@ -24,14 +24,13 @@ export default function DownloadCount({
   const [total, setTotal] = useState(initial);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/downloads", { signal: controller.signal })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((body: { total?: unknown } | null) => {
-        if (typeof body?.total === "number") setTotal(body.total);
-      })
-      .catch(() => {});
-    return () => controller.abort();
+    let current = true;
+    liveStats().then((stats) => {
+      if (current && stats?.downloads != null) setTotal(stats.downloads);
+    });
+    return () => {
+      current = false;
+    };
   }, []);
 
   if (total === null) {

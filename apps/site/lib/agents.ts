@@ -2,8 +2,8 @@ import type { Lang } from "./i18n";
 
 /*
  * Setup guides per assistant, shown in the home-page picker. When an
- * assistant becomes available in Finland, move it from `comingLater` into
- * `agents`.
+ * assistant becomes available in Finland, take it out of the "Coming later"
+ * line (quickstart.comingLater in i18n.tsx) and add its guide here.
  */
 
 export const agentIds = ["claude", "chatgpt", "grok", "openclaw", "claude-code", "codex", "cli"] as const;
@@ -51,9 +51,13 @@ export interface Agent {
   id: AgentId;
   /**
    * Small logo next to the name, from public/logos: the assistants' own logos
-   * (SVGs via Lobe Icons, Instinct's favicon); terminal.svg is ours.
+   * (SVGs via Lobe Icons; OpenClaw's flattened to one red); terminal.svg is ours.
    */
   logo: string;
+  /** Short name in the hero's "Works with" row; the row shows the agents that have one. */
+  brand?: string;
+  /** Second row of the picker, under "If you use a terminal". */
+  terminal?: boolean;
   guide: Record<Lang, AgentGuide>;
 }
 
@@ -133,6 +137,7 @@ export const agents: Agent[] = [
   {
     id: "claude",
     logo: "/logos/claude.svg",
+    brand: "Claude",
     guide: {
       en: {
         name: "Claude Desktop",
@@ -167,6 +172,7 @@ export const agents: Agent[] = [
   {
     id: "chatgpt",
     logo: "/logos/openai.svg",
+    brand: "ChatGPT",
     guide: {
       en: {
         name: "ChatGPT Desktop",
@@ -203,6 +209,7 @@ export const agents: Agent[] = [
   {
     id: "grok",
     logo: "/logos/grok.svg",
+    brand: "Grok",
     guide: {
       en: {
         name: "Grok Bot",
@@ -241,6 +248,7 @@ export const agents: Agent[] = [
   {
     id: "openclaw",
     logo: "/logos/openclaw.svg",
+    brand: "OpenClaw",
     guide: {
       en: {
         name: "OpenClaw",
@@ -297,6 +305,7 @@ export const agents: Agent[] = [
   {
     id: "claude-code",
     logo: "/logos/claude-code.svg",
+    terminal: true,
     guide: {
       en: {
         name: "Claude Code",
@@ -329,6 +338,7 @@ export const agents: Agent[] = [
   {
     id: "codex",
     logo: "/logos/codex.svg",
+    terminal: true,
     guide: {
       en: {
         name: "Codex",
@@ -361,6 +371,7 @@ export const agents: Agent[] = [
   {
     id: "cli",
     logo: "/logos/terminal.svg",
+    terminal: true,
     guide: {
       en: {
         name: "Terminal",
@@ -409,23 +420,3 @@ export const agents: Agent[] = [
     }
   }
 ];
-
-/** Assistants not yet usable from Finland. */
-export interface ComingLater {
-  name: string;
-  logo: string;
-  note: string;
-}
-
-export const comingLater: Record<Lang, ComingLater[]> = {
-  en: [
-    { name: "Meta Muse", logo: "/logos/meta.svg", note: "Not available in Finland yet." },
-    { name: "OpenAI dots", logo: "/logos/openai.svg", note: "Only on business plans in Finland so far." },
-    { name: "Instinct", logo: "/logos/instinct.png", note: "Not available in Finland yet." }
-  ],
-  fi: [
-    { name: "Meta Muse", logo: "/logos/meta.svg", note: "Ei vielä saatavilla Suomessa." },
-    { name: "OpenAI dots", logo: "/logos/openai.svg", note: "Suomessa toistaiseksi vain yritystileillä." },
-    { name: "Instinct", logo: "/logos/instinct.png", note: "Ei vielä saatavilla Suomessa." }
-  ]
-};

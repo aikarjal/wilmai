@@ -2,7 +2,8 @@ import Image from "next/image";
 import AgentPicker from "../../components/AgentPicker";
 import DownloadCount from "../../components/DownloadCount";
 import { Footer, TopBar } from "../../components/SiteChrome";
-import { agents, comingLater } from "../../lib/agents";
+import { agents } from "../../lib/agents";
+import { githubStars } from "../../lib/github-stars";
 import { dictionaries, isLang, type Lang } from "../../lib/i18n";
 import { totalDownloads } from "../../lib/npm-downloads";
 
@@ -10,12 +11,17 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
   const { lang: requested } = await params;
   const lang: Lang = isLang(requested) ? requested : "en";
   const t = dictionaries[lang];
-  // The count at build time; the counter updates itself in the browser.
-  const downloads = await totalDownloads({ signal: AbortSignal.timeout(5000) }).catch(() => null);
+  // The counts at build time; the download counter updates itself in the browser.
+  const [downloads, stars] = await Promise.all([
+    totalDownloads({ signal: AbortSignal.timeout(5000) }).catch(() => null),
+    githubStars({ signal: AbortSignal.timeout(5000) }).catch(() => null)
+  ]);
+  // The recipe heading ends with OpenClaw's lobster; it stays on the line of the last word.
+  const recipeSplit = t.recipe.title.lastIndexOf(" ");
 
   return (
     <main>
-      <TopBar lang={lang} />
+      <TopBar lang={lang} stars={stars} />
 
       <section className="hero">
         <p className="taped-note">{t.hero.tapedNote}</p>
@@ -43,6 +49,17 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
             {t.hero.ctaSecondary}
           </a>
         </div>
+        <p className="works-with">
+          <span className="works-with-label">{t.hero.worksWith}</span>
+          {agents
+            .filter((agent) => agent.brand)
+            .map((agent) => (
+              <a key={agent.id} href={`#${agent.id}`}>
+                <Image className="logo" src={agent.logo} alt="" width={18} height={18} />
+                {agent.brand}
+              </a>
+            ))}
+        </p>
 
         <div className="terminal-stage">
           <p className="hand-note" aria-hidden="true">
@@ -98,43 +115,6 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
         </div>
       </section>
 
-      <section className="section" id="quickstart">
-        <div className="section-head">
-          <p className="eyebrow">{t.quickstart.eyebrow}</p>
-          <h2>{t.quickstart.title}</h2>
-        </div>
-        <p className="lead">{t.quickstart.lead}</p>
-        <AgentPicker
-          items={agents.map((agent) => ({ id: agent.id, logo: agent.logo, guide: agent.guide[lang] }))}
-          comingLater={comingLater[lang]}
-          labels={{
-            copy: t.quickstart.copy,
-            copied: t.quickstart.copied,
-            picker: t.quickstart.picker,
-            help: t.quickstart.help,
-            helpLink: t.quickstart.helpLink,
-            comingLaterTitle: t.quickstart.comingLaterTitle,
-            comingLaterNote: t.quickstart.comingLaterNote
-          }}
-        />
-      </section>
-
-      <section className="section">
-        <div className="section-head">
-          <p className="eyebrow">{t.how.eyebrow}</p>
-          <h2>{t.how.title}</h2>
-        </div>
-        <div className="step-list">
-          {t.how.steps.map((step, i) => (
-            <div className="step" key={step.title}>
-              <span className="step-num">{i + 1}</span>
-              <strong>{step.title}</strong>
-              <span>{step.body}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <section className="section" id="ask">
         <div className="section-head">
           <p className="eyebrow">{t.ask.eyebrow}</p>
@@ -151,12 +131,47 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
         </div>
       </section>
 
+      <section className="section" id="quickstart">
+        <div className="section-head">
+          <p className="eyebrow">{t.quickstart.eyebrow}</p>
+          <h2>{t.quickstart.title}</h2>
+        </div>
+        <p className="lead">{t.quickstart.lead}</p>
+        <AgentPicker
+          items={agents.map((agent) => ({
+            id: agent.id,
+            logo: agent.logo,
+            terminal: agent.terminal,
+            guide: agent.guide[lang]
+          }))}
+          labels={{
+            copy: t.quickstart.copy,
+            copyMessage: t.quickstart.copyMessage,
+            copied: t.quickstart.copied,
+            showMessage: t.quickstart.showMessage,
+            hideMessage: t.quickstart.hideMessage,
+            downloadOnComputer: t.quickstart.downloadOnComputer,
+            picker: t.quickstart.picker,
+            terminalRow: t.quickstart.terminalRow,
+            phoneNote: t.quickstart.phoneNote,
+            phoneShare: t.quickstart.phoneShare,
+            phoneCopied: t.quickstart.phoneCopied,
+            help: t.quickstart.help,
+            helpLink: t.quickstart.helpLink,
+            comingLater: t.quickstart.comingLater
+          }}
+        />
+      </section>
+
       <section className="section">
         <div className="section-head">
           <p className="eyebrow">{t.recipe.eyebrow}</p>
           <h2>
-            {t.recipe.title}
-            <Image className="recipe-lobster" src="/logos/openclaw.svg" alt="" width={44} height={44} />
+            {t.recipe.title.slice(0, recipeSplit + 1)}
+            <span className="nowrap">
+              {t.recipe.title.slice(recipeSplit + 1)}
+              <Image className="recipe-lobster" src="/logos/openclaw.svg" alt="" width={40} height={40} />
+            </span>
           </h2>
         </div>
         <p className="lead">{t.recipe.lead}</p>
@@ -187,6 +202,10 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
       <section className="closing">
         <p className="eyebrow">{t.closing.eyebrow}</p>
         <p className="closing-text">{t.closing.text}</p>
+        <p className="closing-signature">{t.closing.signature}</p>
+        <a className="button primary" href="#claude">
+          {t.hero.ctaPrimary}
+        </a>
       </section>
 
       <Footer t={t} />

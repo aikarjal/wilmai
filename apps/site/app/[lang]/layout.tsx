@@ -44,6 +44,9 @@ export async function generateMetadata({
   const { lang: requested } = await params;
   const lang: Lang = isLang(requested) ? requested : "en";
   const dict = dictionaries[lang];
+  // One share image per language (public/og-en.png, og-fi.png; made from og/card.html).
+  const image = `/og-${lang}.png`;
+  const imageAlt = `WilmAI — ${dict.hero.h1Pre}${dict.hero.h1Marker}`;
   return {
     metadataBase: new URL("https://wilm.ai"),
     title: dict.meta.title,
@@ -64,20 +67,13 @@ export async function generateMetadata({
       title: dict.meta.title,
       description: dict.meta.description,
       locale: lang === "fi" ? "fi_FI" : "en_US",
-      images: [
-        {
-          url: "/og.png",
-          width: 1200,
-          height: 630,
-          alt: "WilmAI — Wilma access for your AI assistant"
-        }
-      ]
+      images: [{ url: image, width: 1200, height: 630, alt: imageAlt }]
     },
     twitter: {
       card: "summary_large_image",
       title: dict.meta.title,
       description: dict.meta.description,
-      images: ["/og.png"]
+      images: [{ url: image, alt: imageAlt }]
     }
   };
 }

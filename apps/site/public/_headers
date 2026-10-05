@@ -1,9 +1,8 @@
 # Response headers for every static file on wilm.ai (Cloudflare Workers
 # static assets). The site is static: Next's inline bootstrap scripts need
 # 'unsafe-inline' (nonces would need a server); everything else is locked down.
-# frame-src: the GitHub stars button.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src https://ghbtns.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'
   Strict-Transport-Security: max-age=63072000
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
