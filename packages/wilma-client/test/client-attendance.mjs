@@ -10,15 +10,13 @@ import { WilmaClient } from "../dist/index.js";
 // exact path and 404s everything else, so a wrong request surfaces as an
 // empty result rather than a silently-filtered four-week page.
 
-function pad(n) {
-  return String(n).padStart(2, "0");
-}
-
-const now = new Date();
-const todayIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-const todayFi = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`;
+// "Today" is the date in Finland, as in the client, whatever the machine's
+// time zone (CI runs in UTC).
+const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Helsinki" }).format(new Date());
+const [year, month, day] = todayIso.split("-");
+const todayFi = `${day}.${month}.${year}`;
 // The page prints row dates without leading zeros.
-const todayRow = `${now.getDate()}.${now.getMonth() + 1}.${now.getFullYear()}`;
+const todayRow = `${Number(day)}.${Number(month)}.${year}`;
 
 function attendancePage(rowDate) {
   return `
