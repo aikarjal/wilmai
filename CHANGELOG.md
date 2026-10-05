@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 2.1.2 (unreleased)
+
+_Releases: wilma-cli 2.1.2._
 
 **In short:** the login page explains, before you type your password, that it runs on your own computer and where your password goes.
 
