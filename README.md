@@ -115,6 +115,8 @@ pnpm --filter @wilm-ai/wilma-cli build
 node packages/wilma-cli/dist/index.js
 ```
 
+Working on WilmAI or releasing it: [DEVELOPING.md](DEVELOPING.md). Tests: [TESTING.md](TESTING.md).
+
 ## Troubleshooting
 
 ### `fetch failed` on a managed or corporate laptop

@@ -6,6 +6,8 @@ wilmai uses two tiers of tests.
 
 Safe for CI (`.github/workflows/ci.yml` runs them on Node 20 and 22). They use fixtures and mock Wilma servers on 127.0.0.1.
 
+CI runs in UTC, so run them the same way before pushing (`TZ=UTC pnpm -r test`): "today" is Finland's date, and a test that reads the machine's date fails every evening after 21:00 UTC. Tests never go online: CLIs they start get a temporary `WILMAI_CONFIG_PATH`, `WILMAI_NO_BROWSER=1` and `WILMAI_NO_UPDATE_CHECK=1`.
+
 ```bash
 pnpm install
 pnpm --filter @wilm-ai/wilma-client test   # parsers, login, sessions, downloads, audit regressions
