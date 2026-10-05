@@ -118,8 +118,18 @@ const finnishDay = (date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europ
   assert.ok(lessons.every((l) => /^\d{2}:\d{2}$/.test(l.start) && /^\d{2}:\d{2}$/.test(l.end) && l.dayOfWeek >= 1 && l.dayOfWeek <= 5));
   const first = data.payload[0].modules[0];
   const lesson = lessons.find((l) => l.groupId === first.id);
-  assert.equal(lesson.subject, first.caption);
+  // Issue #18: the subject is the course name; the caption starts with the code.
+  assert.equal(lesson.subject, first.courseName);
   assert.equal(lesson.subjectCode, first.caption.split(" ")[0]);
+  // A lesson without a course name keeps its caption (e.g. lunch).
+  const noCourse = data.payload.flatMap((l) => l.modules).find((m) => !m.courseName);
+  assert.equal(lessons.find((l) => l.groupId === noCourse.id).subject, noCourse.caption);
+  // Upper secondary style (issue #18): the caption is only the course code.
+  const [code] = parseTimetableJson([
+    { startAt: "08:15", endsAt: "09:30", dates: ["2026-10-06"], modules: [{ id: 1, caption: "yRUB1.1", abbreviation: "yRUB1.1", courseName: "Ruotsi", teachers: [] }] },
+  ]);
+  assert.equal(code.subject, "Ruotsi");
+  assert.equal(code.subjectCode, "yRUB1.1");
   assert.ok(lesson.teacher.startsWith(`${first.teachers[0].lastname} ${first.teachers[0].firstname}`), "Lastname Firstname, like the schedule page");
 }
 

@@ -120,6 +120,7 @@ interface TimetableLesson {
   modules?: {
     id?: number;
     caption?: string;
+    courseName?: string;
     teachers?: { firstname?: string; lastname?: string; abbreviation?: string }[];
     rooms?: { abbreviation?: string; caption?: string }[];
   }[];
@@ -140,7 +141,12 @@ export function parseTimetableJson(payload: unknown): ScheduleLesson[] {
       const date = rawDate.slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
       for (const module of lesson.modules ?? []) {
-        const subject = (module.caption ?? "").trim();
+        // The caption is the course code, sometimes followed by the name
+        // ("BI_ Biologia", or just "yRUB1.1" in upper secondary schools); the
+        // name alone is in courseName. Lessons without a course (lunch, a
+        // class teacher's hour) have only a caption.
+        const caption = (module.caption ?? "").trim();
+        const subject = (module.courseName ?? "").trim() || caption;
         const teachers = module.teachers ?? [];
         const rooms = (module.rooms ?? []).map((room) => (room.abbreviation ?? room.caption ?? "").trim()).filter(Boolean);
         lessons.push({
@@ -149,7 +155,7 @@ export function parseTimetableJson(payload: unknown): ScheduleLesson[] {
           start,
           end,
           subject,
-          subjectCode: firstSubjectToken(subject),
+          subjectCode: firstSubjectToken(caption),
           teacher: teachers.map((t) => [t.lastname, t.firstname].filter(Boolean).join(" ")).join(", "),
           teacherCode: teachers.map((t) => t.abbreviation ?? "").filter(Boolean).join(", "),
           groupId: Number(module.id) || 0,
