@@ -107,7 +107,6 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
           labels={{
             copy: t.quickstart.copy,
             copied: t.quickstart.copied,
-            alternative: t.quickstart.alternative,
             picker: t.quickstart.picker,
             help: t.quickstart.help,
             helpLink: t.quickstart.helpLink,

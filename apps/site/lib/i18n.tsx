@@ -54,7 +54,6 @@ export interface Dictionary {
     lead: string;
     copy: string;
     copied: string;
-    alternative: string;
     picker: string;
     help: string;
     helpLink: string;
@@ -109,7 +108,6 @@ const en: Dictionary = {
     lead: "Use the assistant you already have. Your Wilma login stays on your computer.",
     copy: "Copy",
     copied: "Copied",
-    alternative: "Alternative",
     picker: "Assistant",
     help: "Stuck? Tell us what happened:",
     helpLink: "open an issue on GitHub",
@@ -334,7 +332,6 @@ const fi: Dictionary = {
     lead: "Käytä avustajaa, joka sinulla jo on. Wilma-tunnuksesi pysyvät omalla koneellasi.",
     copy: "Kopioi",
     copied: "Kopioitu",
-    alternative: "Vaihtoehto",
     picker: "Avustaja",
     help: "Jäitkö jumiin? Kerro mitä tapahtui:",
     helpLink: "avaa issue GitHubissa",

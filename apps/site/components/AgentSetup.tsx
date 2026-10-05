@@ -4,7 +4,6 @@ import CopyBlock from "./CopyBlock";
 export interface SetupLabels {
   copy: string;
   copied: string;
-  alternative: string;
 }
 
 function linkify(text: string) {
@@ -51,34 +50,21 @@ function Steps({ steps, labels }: { steps: SetupStep[]; labels: SetupLabels }) {
           <strong>{step.title}</strong>
           {step.body ? <p>{step.body}</p> : null}
           {step.action ? <ActionView action={step.action} labels={labels} /> : null}
-          {step.alternative ? (
-            <div className="setup-alt">
-              <span className="setup-alt-label">{labels.alternative}</span>
-              <strong>{step.alternative.title}</strong>
-              {step.alternative.body ? <p>{step.alternative.body}</p> : null}
-              {step.alternative.action ? <ActionView action={step.alternative.action} labels={labels} /> : null}
-            </div>
-          ) : null}
         </li>
       ))}
     </ol>
   );
 }
 
-/** Renders an assistant's setup guide: the main steps, then other apps as alternatives. */
+/**
+ * Renders an assistant's setup guide: the steps, a short note, then the
+ * terminal ways to set it up, folded so they don't crowd the simple path.
+ */
 export default function AgentSetup({ guide, labels }: { guide: AgentGuide; labels: SetupLabels }) {
   return (
     <div className="setup">
       <p className="setup-summary">{guide.summary}</p>
       <Steps steps={guide.steps} labels={labels} />
-      {guide.others?.map((other) => (
-        <section className="setup-alt setup-other" key={other.title}>
-          <span className="setup-alt-label">{labels.alternative}</span>
-          <strong>{other.title}</strong>
-          {other.intro ? <p>{other.intro}</p> : null}
-          <Steps steps={other.steps} labels={labels} />
-        </section>
-      ))}
       {guide.notes?.length ? (
         <ul className="setup-notes">
           {guide.notes.map((note) => (
@@ -86,6 +72,13 @@ export default function AgentSetup({ guide, labels }: { guide: AgentGuide; label
           ))}
         </ul>
       ) : null}
+      {guide.others?.map((other) => (
+        <details className="setup-other" key={other.title}>
+          <summary>{other.title}</summary>
+          {other.body ? <p>{other.body}</p> : null}
+          <ActionView action={other.action} labels={labels} />
+        </details>
+      ))}
     </div>
   );
 }

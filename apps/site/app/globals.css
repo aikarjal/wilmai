@@ -612,50 +612,58 @@ main {
   flex-shrink: 0;
 }
 
-/* Another way to do a step, or another app: clearly set apart. */
-.setup-alt {
-  position: relative;
-  margin-top: 16px;
-  padding: 16px 16px 14px;
-  border: 1.5px dashed rgba(27, 43, 52, 0.35);
-  border-radius: 12px;
-  background: #f6f4ec;
-}
-
+/* Terminal ways to set it up, folded under the guide. */
 .setup-other {
-  margin-top: 26px;
-}
-
-.setup-alt-label {
-  display: inline-block;
-  margin-bottom: 6px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: #fff;
-  border: 1.5px solid rgba(27, 43, 52, 0.25);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.setup-alt > strong {
-  display: block;
-  font-family: var(--font-display), sans-serif;
-  font-weight: 600;
-  font-size: 16px;
-  margin-bottom: 4px;
-}
-
-.setup-alt > p {
-  color: var(--ink-soft);
+  margin-top: 14px;
   font-size: 15px;
-  line-height: 1.5;
-  margin-bottom: 10px;
+  color: var(--ink-soft);
 }
 
-.setup-other .setup-steps {
+.setup-other summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.setup-other summary::-webkit-details-marker {
+  display: none;
+}
+
+.setup-other summary::before {
+  content: "›";
+  display: inline-block;
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.setup-other[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.setup-other summary:hover {
+  color: var(--ink);
+}
+
+.setup-other > p {
+  margin: 10px 0 0;
+}
+
+.setup-other .code-block {
+  margin-top: 8px;
+}
+
+.setup-other .code-block pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding-right: 120px;
+}
+
+.setup-steps {
   margin-top: 6px;
 }
 
@@ -715,11 +723,13 @@ main {
   }
 
   /* Narrow screens: move the copy button above the text instead of beside it. */
-  .setup-step .code-block {
+  .setup-step .code-block,
+  .setup-other .code-block {
     padding-top: 48px;
   }
 
-  .setup-step .code-block pre {
+  .setup-step .code-block pre,
+  .setup-other .code-block pre {
     padding-right: 0;
   }
 }
@@ -748,7 +758,7 @@ main {
 
 .setup-notes {
   margin-top: 22px;
-  padding-left: 18px;
+  list-style: none;
   color: var(--ink-soft);
   font-size: 15px;
   line-height: 1.5;
@@ -1168,7 +1178,8 @@ main {
   .button:hover,
   .chip,
   .chip:hover,
-  .hero-stat-count {
+  .hero-stat-count,
+  .setup-other summary::before {
     transition: none;
   }
 }

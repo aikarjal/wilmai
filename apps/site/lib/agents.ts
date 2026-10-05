@@ -19,24 +19,17 @@ export type Action =
   | { kind: "command"; text: string }
   | { kind: "link"; href: string; label: string };
 
-export interface Alternative {
-  title: string;
-  body?: string;
-  action?: Action;
-}
-
 export interface SetupStep {
   title: string;
   body?: string;
   action?: Action;
-  /** Another way to do this step, shown in a separate "Alternative" box. */
-  alternative?: Alternative;
 }
 
+/** Another way to set it up, for people at home in a terminal (shown folded). */
 export interface SetupVariant {
   title: string;
-  intro?: string;
-  steps: SetupStep[];
+  body?: string;
+  action: Action;
 }
 
 export interface AgentGuide {
@@ -49,7 +42,7 @@ export interface AgentGuide {
   summary: string;
   /** The main way to set it up. */
   steps: SetupStep[];
-  /** The same assistant's other apps (e.g. Claude Code), shown as alternatives. */
+  /** The same assistant's developer tools (e.g. Claude Code), folded away under the guide. */
   others?: SetupVariant[];
   notes?: string[];
 }
@@ -68,8 +61,8 @@ const MCPB_DOWNLOAD = "/get/claude";
 const REPO = "https://github.com/aikarjal/wilmai";
 
 const firstAsk = {
-  en: "For example: “What do the kids have at school tomorrow?” The first time, a login page opens in your browser. Pick your school's Wilma and log in — your login is saved on your computer.",
-  fi: "Esimerkiksi: ”Mitä lapsilla on huomenna koulussa?” Ensimmäisellä kerralla selaimeen avautuu kirjautumissivu. Valitse koulusi Wilma ja kirjaudu — kirjautumistiedot tallentuvat omalle koneellesi."
+  en: "For example: “What do the kids have at school tomorrow?” The first time, you log in to Wilma in your browser.",
+  fi: "Esimerkiksi: ”Mitä lapsilla on huomenna koulussa?” Ensimmäisellä kerralla kirjaudut Wilmaan selaimessa."
 };
 
 // A message the parent pastes into ChatGPT; ChatGPT does the installing.
@@ -112,15 +105,15 @@ Never ask me to type my Wilma password into this chat.`,
 Älä koskaan pyydä minua kirjoittamaan Wilma-salasanaani tähän keskusteluun.`
 };
 
-// Why the web and phone apps can't use WilmAI, and what to use instead.
-const phoneNote = {
+// Where it works. The FAQ explains why not on the web or phone.
+const whereNote = {
   claude: {
-    en: "Claude on the web and in the phone app can't reach WilmAI: your login stays on your own computer, and WilmAI has no server in between. For updates on your phone, an always-on assistant such as OpenClaw can send them to you in chat.",
-    fi: "Selaimessa ja puhelinsovelluksessa toimiva Claude ei pääse WilmAI:hin: kirjautumistietosi pysyvät omalla koneellasi, eikä välissä ole WilmAI:n palvelinta. Jos haluat kuulumiset puhelimeesi, jatkuvasti toimiva avustaja, kuten OpenClaw, voi lähettää ne sinulle viestinä."
+    en: "Works in the Claude app on your computer, not on the web or in the phone app.",
+    fi: "Toimii tietokoneesi Claude-sovelluksessa, ei selaimessa eikä puhelinsovelluksessa."
   },
   chatgpt: {
-    en: "ChatGPT on the web and in the phone app can't reach WilmAI: your login stays on your own computer, and WilmAI has no server in between. For updates on your phone, an always-on assistant such as OpenClaw can send them to you in chat.",
-    fi: "Selaimessa ja puhelinsovelluksessa toimiva ChatGPT ei pääse WilmAI:hin: kirjautumistietosi pysyvät omalla koneellasi, eikä välissä ole WilmAI:n palvelinta. Jos haluat kuulumiset puhelimeesi, jatkuvasti toimiva avustaja, kuten OpenClaw, voi lähettää ne sinulle viestinä."
+    en: "Works in Work mode of the ChatGPT app on your computer: not in Chat, on the web or in the phone app.",
+    fi: "Toimii tietokoneesi ChatGPT-sovelluksen Work-tilassa: ei Chat-tilassa, selaimessa eikä puhelinsovelluksessa."
   }
 };
 
@@ -132,62 +125,44 @@ export const agents: Agent[] = [
       en: {
         name: "Claude Desktop",
         tagline: "For Mac and Windows",
-        summary: "The simplest setup: download one file and open it. Claude can then answer questions about your kids' school day.",
+        summary: "Download one file and open it. Then ask Claude about school.",
         steps: [
           {
             title: "Download WilmAI for Claude",
-            body: "A small extension file, wilmai.mcpb.",
             action: { kind: "download", href: MCPB_DOWNLOAD, label: "Download for Claude Desktop" }
           },
-          {
-            title: "Open the file",
-            body: "Double-click it. Claude Desktop opens and asks whether to install WilmAI. Click Install."
-          },
+          { title: "Open the file", body: "Claude asks whether to install WilmAI. Click Install." },
           { title: "Ask Claude about school", body: firstAsk.en }
         ],
+        notes: [whereNote.claude.en],
         others: [
           {
             title: "Using Claude Code?",
-            intro: "Add the Wilma tools with one command.",
-            steps: [
-              {
-                title: "Run this in your terminal",
-                action: { kind: "command", text: "claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp" }
-              }
-            ]
+            body: "Run this in a terminal instead:",
+            action: { kind: "command", text: "claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp" }
           }
-        ],
-        notes: [phoneNote.claude.en]
+        ]
       },
       fi: {
         name: "Claude Desktop",
         tagline: "Macille ja Windowsille",
-        summary: "Helpoin tapa: lataa yksi tiedosto ja avaa se. Sen jälkeen Claude vastaa kysymyksiin lastesi koulupäivästä.",
+        summary: "Lataa yksi tiedosto ja avaa se. Sitten voit kysyä Claudelta koulusta.",
         steps: [
           {
             title: "Lataa WilmAI Claudelle",
-            body: "Pieni laajennustiedosto, wilmai.mcpb.",
             action: { kind: "download", href: MCPB_DOWNLOAD, label: "Lataa Claude Desktopille" }
           },
-          {
-            title: "Avaa tiedosto",
-            body: "Kaksoisnapsauta sitä. Claude Desktop aukeaa ja kysyy, asennetaanko WilmAI. Valitse Install."
-          },
+          { title: "Avaa tiedosto", body: "Claude kysyy, asennetaanko WilmAI. Valitse Install." },
           { title: "Kysy Claudelta koulusta", body: firstAsk.fi }
         ],
+        notes: [whereNote.claude.fi],
         others: [
           {
             title: "Käytätkö Claude Codea?",
-            intro: "Lisää Wilma-työkalut yhdellä komennolla.",
-            steps: [
-              {
-                title: "Aja tämä terminaalissa",
-                action: { kind: "command", text: "claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp" }
-              }
-            ]
+            body: "Aja tämä terminaalissa:",
+            action: { kind: "command", text: "claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp" }
           }
-        ],
-        notes: [phoneNote.claude.fi]
+        ]
       }
     }
   },
@@ -198,67 +173,45 @@ export const agents: Agent[] = [
       en: {
         name: "ChatGPT Desktop",
         tagline: "For Mac and Windows",
-        summary: "ChatGPT Desktop can install WilmAI itself. Switch to Work, copy one message into it and allow what it asks.",
+        summary: "ChatGPT installs WilmAI itself. Send it one message in Work mode.",
         steps: [
           {
-            title: "Switch to Work and copy this message",
-            body: "In the ChatGPT app on your computer (not in the browser), pick Work instead of Chat at the top left. Paste the message and send it.",
+            title: "Send this message in Work mode",
+            body: "In the ChatGPT app on your computer, pick Work at the top left (not Chat), then send:",
             action: { kind: "message", text: chatgptMessage.en }
           },
-          {
-            title: "Allow the installation",
-            body: "ChatGPT asks before it installs anything. Allow it, and restart the app if it asks you to."
-          },
+          { title: "Allow the installation", body: "ChatGPT asks first. Allow it." },
           { title: "Ask about school in Work", body: firstAsk.en }
         ],
+        notes: [whereNote.chatgpt.en],
         others: [
           {
             title: "Using Codex?",
-            intro: "Add the WilmAI plugin: the Wilma tools plus the wilma and wilma-triage skills.",
-            steps: [
-              {
-                title: "Run these in a terminal",
-                action: { kind: "command", text: "codex plugin marketplace add aikarjal/wilmai\ncodex plugin add wilma@wilmai" }
-              }
-            ]
+            body: "Run these in a terminal instead:",
+            action: { kind: "command", text: "codex plugin marketplace add aikarjal/wilmai\ncodex plugin add wilma@wilmai" }
           }
-        ],
-        notes: [
-          "WilmAI works in ChatGPT's Work mode. In Chat, ChatGPT doesn't use it, so ask about school in Work.",
-          phoneNote.chatgpt.en
         ]
       },
       fi: {
         name: "ChatGPT Desktop",
         tagline: "Macille ja Windowsille",
-        summary: "ChatGPT Desktop osaa asentaa WilmAI:n itse. Vaihda Work-tilaan, kopioi sille yksi viesti ja salli, mitä se kysyy.",
+        summary: "ChatGPT asentaa WilmAI:n itse. Lähetä sille yksi viesti Work-tilassa.",
         steps: [
           {
-            title: "Vaihda Work-tilaan ja kopioi tämä viesti",
-            body: "Valitse tietokoneesi ChatGPT-sovelluksessa (ei selaimessa) vasemmasta yläkulmasta Work eikä Chat. Liitä viesti ja lähetä.",
+            title: "Lähetä tämä viesti Work-tilassa",
+            body: "Valitse tietokoneesi ChatGPT-sovelluksessa vasemmasta yläkulmasta Work (ei Chat) ja lähetä:",
             action: { kind: "message", text: chatgptMessage.fi }
           },
-          {
-            title: "Salli asennus",
-            body: "ChatGPT kysyy ennen kuin asentaa mitään. Salli se, ja käynnistä sovellus uudelleen, jos se pyytää."
-          },
+          { title: "Salli asennus", body: "ChatGPT kysyy ensin. Salli se." },
           { title: "Kysy koulusta Work-tilassa", body: firstAsk.fi }
         ],
+        notes: [whereNote.chatgpt.fi],
         others: [
           {
             title: "Käytätkö Codexia?",
-            intro: "Lisää WilmAI-lisäosa: Wilma-työkalut sekä wilma- ja wilma-triage-taidot.",
-            steps: [
-              {
-                title: "Aja nämä terminaalissa",
-                action: { kind: "command", text: "codex plugin marketplace add aikarjal/wilmai\ncodex plugin add wilma@wilmai" }
-              }
-            ]
+            body: "Aja nämä terminaalissa:",
+            action: { kind: "command", text: "codex plugin marketplace add aikarjal/wilmai\ncodex plugin add wilma@wilmai" }
           }
-        ],
-        notes: [
-          "WilmAI toimii ChatGPT:n Work-tilassa. Chat-tilassa ChatGPT ei käytä sitä, joten kysy koulusta Work-tilassa.",
-          phoneNote.chatgpt.fi
         ]
       }
     }
@@ -270,12 +223,12 @@ export const agents: Agent[] = [
       en: {
         name: "Grok Bot",
         tagline: "Send one message",
-        summary: "Grok Bot has its own computer, so it can install WilmAI itself. You send one message and log in when it asks.",
+        summary: "Grok Bot installs WilmAI itself. Send it one message and log in when it asks.",
         steps: [
           { title: "Send this to your bot", action: { kind: "message", text: grokMessage.en } },
           {
             title: "Log in to Wilma",
-            body: "If the bot runs on your computer, a login page opens in your browser. If it runs on its own cloud computer, it asks you to add your Wilma login to its secret settings. Don't type your Wilma password into the chat."
+            body: "The bot shows you how. Never type your Wilma password into the chat."
           },
           {
             title: "Ask about school",
@@ -286,12 +239,12 @@ export const agents: Agent[] = [
       fi: {
         name: "Grok Bot",
         tagline: "Lähetä yksi viesti",
-        summary: "Grok Botilla on oma tietokone, joten se osaa asentaa WilmAI:n itse. Lähetät yhden viestin ja kirjaudut, kun se pyytää.",
+        summary: "Grok Bot asentaa WilmAI:n itse. Lähetä sille yksi viesti ja kirjaudu, kun se pyytää.",
         steps: [
           { title: "Lähetä tämä botillesi", action: { kind: "message", text: grokMessage.fi } },
           {
             title: "Kirjaudu Wilmaan",
-            body: "Jos botti toimii omalla koneellasi, kirjautumissivu avautuu selaimeesi. Jos se toimii omalla pilvikoneellaan, se pyytää sinua lisäämään Wilma-tunnuksesi sen salaisuusasetuksiin. Älä kirjoita Wilma-salasanaasi keskusteluun."
+            body: "Botti neuvoo, miten. Älä koskaan kirjoita Wilma-salasanaasi keskusteluun."
           },
           {
             title: "Kysy koulusta",
@@ -308,46 +261,44 @@ export const agents: Agent[] = [
       en: {
         name: "OpenClaw",
         tagline: "Skill from ClawHub",
-        summary: "Install the wilma skill from ClawHub, then tell your agent what mornings should look like.",
+        summary: "OpenClaw installs WilmAI itself. Send it one message.",
         steps: [
-          {
-            title: "Send this to OpenClaw",
-            action: { kind: "message", text: openclawMessage.en },
-            alternative: {
-              title: "Prefer the terminal?",
-              body: "Run these yourself instead:",
-              action: { kind: "command", text: "npm install -g @wilm-ai/wilma-cli\nwilma login\nclawhub install wilma" }
-            }
-          },
+          { title: "Send this to OpenClaw", action: { kind: "message", text: openclawMessage.en } },
           {
             title: "Make it a routine",
-            body: "For a daily briefing that also puts new exams in your calendar, add the ready-made wilma-triage skill.",
+            body: "For a morning briefing that also puts new exams in your calendar, add the wilma-triage skill.",
             action: { kind: "link", href: `${REPO}/tree/main/skills/wilma-triage`, label: "wilma-triage skill" }
           }
         ],
-        notes: ["The wilma skill on ClawHub: https://clawhub.ai/aikarjal/wilma"]
+        notes: ["The wilma skill on ClawHub: https://clawhub.ai/aikarjal/wilma"],
+        others: [
+          {
+            title: "Prefer the terminal?",
+            body: "Run these yourself:",
+            action: { kind: "command", text: "npm install -g @wilm-ai/wilma-cli\nwilma login\nclawhub install wilma" }
+          }
+        ]
       },
       fi: {
         name: "OpenClaw",
         tagline: "Taito ClawHubista",
-        summary: "Asenna wilma-taito ClawHubista ja kerro agentillesi, miltä aamujen pitäisi näyttää.",
+        summary: "OpenClaw asentaa WilmAI:n itse. Lähetä sille yksi viesti.",
         steps: [
-          {
-            title: "Lähetä tämä OpenClaw'lle",
-            action: { kind: "message", text: openclawMessage.fi },
-            alternative: {
-              title: "Terminaali tuntuu omimmalta?",
-              body: "Aja nämä itse:",
-              action: { kind: "command", text: "npm install -g @wilm-ai/wilma-cli\nwilma login\nclawhub install wilma" }
-            }
-          },
+          { title: "Lähetä tämä OpenClaw'lle", action: { kind: "message", text: openclawMessage.fi } },
           {
             title: "Tee siitä rutiini",
-            body: "Päivittäistä koostetta varten, joka lisää myös uudet kokeet kalenteriin, lisää valmis wilma-triage-taito.",
+            body: "Aamukoostetta varten, joka lisää myös uudet kokeet kalenteriin, lisää wilma-triage-taito.",
             action: { kind: "link", href: `${REPO}/tree/main/skills/wilma-triage`, label: "wilma-triage-taito" }
           }
         ],
-        notes: ["wilma-taito ClawHubissa: https://clawhub.ai/aikarjal/wilma"]
+        notes: ["wilma-taito ClawHubissa: https://clawhub.ai/aikarjal/wilma"],
+        others: [
+          {
+            title: "Terminaali tuntuu omimmalta?",
+            body: "Aja nämä itse:",
+            action: { kind: "command", text: "npm install -g @wilm-ai/wilma-cli\nwilma login\nclawhub install wilma" }
+          }
+        ]
       }
     }
   },
