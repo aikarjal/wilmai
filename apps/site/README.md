@@ -6,7 +6,7 @@ static files and served by Cloudflare Workers.
 - `app/`, `components/`, `lib/` — the page; all copy is in `lib/i18n.tsx` and `lib/agents.ts`
 - `public/_headers` — security and cache headers
 - `public/_redirects` — `/get/claude` (the Claude Desktop extension)
-- `worker/index.ts` — sends `/` to `/en` or `/fi` (the EN/FI choice, else the browser's language)
+- `worker/index.ts` — sends `/` to `/en` or `/fi` (the EN/FI choice, else the browser's language), and answers `/api/downloads`, the CLI's npm downloads for the counter in the hero (`lib/npm-downloads.ts`)
 - `wrangler.jsonc` — the Cloudflare Worker (account Wilm.ai)
 
 ## Run locally
@@ -16,7 +16,7 @@ pnpm --filter @wilm-ai/site dev        # Next.js dev server; open /en or /fi
 pnpm --filter @wilm-ai/site preview    # the real build on Cloudflare's runtime (wrangler dev)
 ```
 
-`dev` doesn't apply `_headers`, `_redirects` or the `/` redirect; `preview` does.
+`dev` doesn't apply `_headers`, `_redirects`, the `/` redirect or `/api/downloads` (the counter keeps the number from the build); `preview` does.
 
 ## Deploy
 

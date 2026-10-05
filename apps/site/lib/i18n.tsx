@@ -38,6 +38,10 @@ export interface Dictionary {
     sub: string;
     ctaPrimary: string;
     ctaSecondary: string;
+    /** Next to the CLI's npm download count, above `proof`. */
+    downloads: string;
+    /** Instead of the count when the number isn't available. */
+    downloadsFallback: string;
     proof: string;
     handNote: string;
     chatTitle: string;
@@ -87,7 +91,9 @@ const en: Dictionary = {
     sub: "Keeping up with school is work — schedules, homework, exams, messages, and news, times every kid, sometimes across different schools. WilmAI connects Wilma to Claude, ChatGPT and other assistants, so you can ask in plain words and get one briefing for the whole family.",
     ctaPrimary: "Choose your assistant",
     ctaSecondary: "Use the terminal",
-    proof: "Downloaded thousands of times · in daily use by parents across Finland",
+    downloads: "downloads",
+    downloadsFallback: "Downloaded thousands of times",
+    proof: "in daily use by parents across Finland",
     handNote: "one question → the whole week",
     chatTitle: "Your assistant",
     chatQuestion: "What do the kids have at school tomorrow?",
@@ -311,7 +317,9 @@ const fi: Dictionary = {
     sub: "Koulun kuulumisten mukana pysyminen on työtä — lukujärjestykset, läksyt, kokeet, viestit ja tiedotteet, jokaisen lapsen osalta, joskus eri kouluissa. WilmAI yhdistää Wilman Claudeen, ChatGPT:hen ja muihin avustajiin, joten voit kysyä omin sanoin ja saada koko perheen kuulumiset yhteen koosteeseen.",
     ctaPrimary: "Valitse avustajasi",
     ctaSecondary: "Käytä terminaalissa",
-    proof: "Ladattu tuhansia kertoja · päivittäisessä käytössä suomalaisperheissä",
+    downloads: "latausta",
+    downloadsFallback: "Ladattu tuhansia kertoja",
+    proof: "päivittäisessä käytössä suomalaisperheissä",
     handNote: "yksi kysymys → koko viikko",
     chatTitle: "Avustajasi",
     chatQuestion: "Mitä lapsilla on huomenna koulussa?",

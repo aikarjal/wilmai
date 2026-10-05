@@ -1,5 +1,6 @@
 // wilm.ai on Cloudflare Workers: the static site (out/, from `next build`)
-// plus a small Worker for the language redirect on "/".
+// plus a small Worker for the language redirect on "/" and the live download
+// count.
 // Deploys: Cloudflare builds main from GitHub (Workers Builds, see README.md);
 // by hand: pnpm --filter @wilm-ai/site run deploy.
 {
@@ -11,9 +12,9 @@
   "assets": {
     "directory": "./out",
     "binding": "ASSETS",
-    // Only "/" runs the Worker; every other path is a static file (free and
-    // served from the nearest Cloudflare location).
-    "run_worker_first": ["/"],
+    // Only "/" and /api/downloads run the Worker; every other path is a
+    // static file (free and served from the nearest Cloudflare location).
+    "run_worker_first": ["/", "/api/downloads"],
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   },

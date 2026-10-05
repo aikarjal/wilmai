@@ -1,13 +1,17 @@
 import Image from "next/image";
 import AgentPicker from "../../components/AgentPicker";
+import DownloadCount from "../../components/DownloadCount";
 import { Footer, TopBar } from "../../components/SiteChrome";
 import { agents, comingLater } from "../../lib/agents";
 import { dictionaries, isLang, type Lang } from "../../lib/i18n";
+import { totalDownloads } from "../../lib/npm-downloads";
 
 export default async function HomePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang: requested } = await params;
   const lang: Lang = isLang(requested) ? requested : "en";
   const t = dictionaries[lang];
+  // The count at build time; the counter updates itself in the browser.
+  const downloads = await totalDownloads({ signal: AbortSignal.timeout(5000) }).catch(() => null);
 
   return (
     <main>
@@ -20,6 +24,13 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
           <span className="marker">{t.hero.h1Marker}</span>.
         </h1>
         <p className="disclaimer">{t.hero.disclaimer}</p>
+        <DownloadCount
+          initial={downloads}
+          locale={lang === "fi" ? "fi-FI" : "en-US"}
+          label={t.hero.downloads}
+          proof={t.hero.proof}
+          fallback={t.hero.downloadsFallback}
+        />
         <p className="hero-sub">{t.hero.sub}</p>
         <div className="hero-actions">
           <a className="button primary" href="#quickstart">
@@ -29,7 +40,6 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
             {t.hero.ctaSecondary}
           </a>
         </div>
-        <p className="hero-proof">{t.hero.proof}</p>
 
         <div className="terminal-stage">
           <p className="hand-note" aria-hidden="true">

@@ -259,7 +259,55 @@ main {
   box-shadow: 1px 2px 0 var(--ink);
 }
 
-.hero-proof {
+/* The CLI's npm download count, a sticker under the headline. */
+.hero-stat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 26px auto 0;
+}
+
+.hero-stat-count {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 800;
+  font-size: clamp(34px, 5vw, 46px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 10px 18px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--marker);
+  box-shadow: var(--hard-shadow);
+  transform: rotate(-2deg);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hero-stat-count:hover {
+  transform: rotate(-2deg) translate(1px, 1px);
+  box-shadow: 2px 3px 0 var(--ink);
+}
+
+.hero-stat-label {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--ink-soft);
+  max-width: 280px;
+}
+
+.hero-stat-label strong {
+  font-family: var(--font-display), sans-serif;
+  font-size: 20px;
+  color: var(--ink);
+}
+
+.hero-stat-fallback {
   margin-top: 20px;
   font-size: 14px;
   color: var(--ink-soft);
@@ -1119,7 +1167,8 @@ main {
   .button,
   .button:hover,
   .chip,
-  .chip:hover {
+  .chip:hover,
+  .hero-stat-count {
     transition: none;
   }
 }
