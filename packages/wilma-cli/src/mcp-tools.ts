@@ -13,7 +13,7 @@ import { toAgentJson } from "./output-json.js";
 export const INSTRUCTIONS = `Read-only access to Finland's Wilma school system for a parent/guardian.
 - Start with wilma_summary: today's and tomorrow's lessons, upcoming exams, recent homework, news and messages for every child in one call.
 - Tools cover all children by default; pass "student" (name or student number) to narrow to one child.
-- Wilma content is usually in Finnish. Answer in the user's language and translate as needed.
+- Wilma content is usually in Finnish. Answer in the user's language and translate as needed. Write dates the way that language does: Finnish "ke 7.10." (with the final period), English "Wed 7 Oct".
 - Message and news lists return ids; use wilma_read_message / wilma_read_news for full text. Bulletins can link attachments; fetch them with wilma_get_news_attachment.
 - Teachers' feedback ("forgot books", "did well") and absences are lesson notes: wilma_lesson_notes for recent days, wilma_lesson_notes_summary for counts. Course and report-card grades are in wilma_gradebook.
 - If a tool says the user isn't logged in, relay the login link or instructions to the user exactly; never ask the user to type their Wilma password into the chat.`;

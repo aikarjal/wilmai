@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.1 (unreleased)
+
+_Releases: wilma-cli 2.0.1, wilma-client 1.6.1._
+
+### Fixed
+
+- **Lesson subjects are names again** ([#18](https://github.com/aikarjal/wilmai/issues/18), thanks @taimila). Since 2.0.0, `schedule` (and the summary's lessons) for a date read Wilma's timetable JSON and used the lesson's caption, which is the course code (`yRUB1.1`) in upper secondary schools. `subject` is now the course name (`Ruotsi`) as in 1.x, falling back to the caption for lessons without a course (lunch, a class teacher's hour); `subjectCode` is unchanged.
+- **Free-text lesson notes are no longer dropped** ([#16](https://github.com/aikarjal/wilmai/pull/16), by Timo Taskinen). Remarks such as praise or behaviour notes are `at-tp-other` cells on the attendance page; they are now parsed with their label, subject, teacher and the teacher's words in `note`, and the footnote marker never leaks into a field. Ported to the 2.0 parser, with Timo's test.
+- The attendance request test from [#17](https://github.com/aikarjal/wilmai/pull/17) (Timo Taskinen) joins the suite; 2.0 already asks Wilma for the exact day.
+- MCP tools tell the assistant to write dates in the reader's language style (Finnish `ke 7.10.`, English `Wed 7 Oct`), as the skills already do.
+
 ## 2.0.0 (2026-10-05)
 
 _Releases: wilma-cli 2.0.0, wilma-client 1.6.0. One release for the browser login, the MCP server and Claude Desktop extension, the plugin marketplace, more Wilma data, and a CLI rebuilt for agents._
