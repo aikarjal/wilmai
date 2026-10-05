@@ -37,7 +37,7 @@ import { ENV_VARS, isMfaFailure, mfaCallbackFor, resolveAccounts, saveLogin, ver
 import { createUniqueDownloadFile } from "./downloads.js";
 import { openBrowser, startLoginServer } from "./login-server.js";
 import { runMcpServer } from "./mcp.js";
-import { cliUpdateNotice, isNewerVersion, latestWithin, startUpdateCheck, updateChecksEnabled, type UpdateCheck } from "./update-check.js";
+import { claimNotice, cliUpdateNotice, isNewerVersion, latestWithin, startUpdateCheck, updateChecksEnabled, type UpdateCheck } from "./update-check.js";
 import { toAgentJson } from "./output-json.js";
 import { clearSessions, fileSessionStore } from "./session-store.js";
 import { normalizeTenantUrl, resolveTenant, searchTenants } from "./tenant-search.js";
@@ -813,7 +813,7 @@ async function showUpdateNotice(check: UpdateCheck): Promise<void> {
     const latestVersion = await latestWithin(check, 1000);
     if (!latestVersion) return;
     const currentVersion = await readPackageVersion();
-    if (isNewerVersion(latestVersion, currentVersion)) {
+    if (isNewerVersion(latestVersion, currentVersion) && (await claimNotice(latestVersion))) {
       process.stderr.write(`\n${cliUpdateNotice(currentVersion, latestVersion)}\n`);
     }
   } catch {

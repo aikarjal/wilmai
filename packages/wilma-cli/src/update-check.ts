@@ -4,10 +4,10 @@ import { fileURLToPath } from "node:url";
 import { getConfigPath } from "./config.js";
 
 /*
- * "A newer WilmAI is available." The CLI prints it on stderr (people in a
- * terminal and agents like OpenClaw both read it there); the MCP server adds it
- * once to a tool result so the assistant can tell the user. How to update
- * depends on how WilmAI was installed.
+ * "A newer WilmAI is available." The CLI prints it on stderr at most once a day
+ * (people in a terminal and agents like OpenClaw both read it there); the MCP
+ * server adds it once to a tool result so the assistant can tell the user. How
+ * to update depends on how WilmAI was installed.
  */
 
 const VERSION_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -62,6 +62,9 @@ export function mcpUpdateNote(kind: InstallKind, current: string, latest: string
 interface VersionCache {
   latestVersion: string | null;
   checkedAt: number;
+  /** The version the CLI last told the user about, and when. */
+  notifiedVersion?: string;
+  notifiedAt?: number;
 }
 
 function versionCachePath(): string {
@@ -107,11 +110,11 @@ export function startUpdateCheck(): UpdateCheck {
       const response = await fetch("https://registry.npmjs.org/@wilm-ai/wilma-cli/latest", { signal: controller.signal });
       const data = response.ok ? ((await response.json()) as { version?: string }) : {};
       const latestVersion = data.version ?? cache?.latestVersion ?? null;
-      await writeVersionCache({ latestVersion, checkedAt: Date.now() });
+      await writeVersionCache({ ...cache, latestVersion, checkedAt: Date.now() });
       return latestVersion;
     } catch {
       // Cancelled because the command finished: try again next time.
-      if (!cancelled) await writeVersionCache({ latestVersion: cache?.latestVersion ?? null, checkedAt: Date.now() }).catch(() => {});
+      if (!cancelled) await writeVersionCache({ ...cache, latestVersion: cache?.latestVersion ?? null, checkedAt: Date.now() }).catch(() => {});
       return cache?.latestVersion ?? null;
     } finally {
       clearTimeout(timeout);
@@ -124,6 +127,23 @@ export function startUpdateCheck(): UpdateCheck {
       controller.abort();
     },
   };
+}
+
+/**
+ * Whether to show the CLI's notice for `latest` now, and if so, record it: at
+ * most once a day, and right away for a version not announced before. An
+ * agent's morning run of ten commands should see it once, not ten times.
+ */
+export async function claimNotice(latest: string, now = Date.now()): Promise<boolean> {
+  const cache = await readVersionCache();
+  if (cache?.notifiedVersion === latest && now - (cache.notifiedAt ?? 0) < VERSION_CHECK_INTERVAL_MS) return false;
+  await writeVersionCache({
+    latestVersion: cache?.latestVersion ?? latest,
+    checkedAt: cache?.checkedAt ?? now,
+    notifiedVersion: latest,
+    notifiedAt: now,
+  });
+  return true;
 }
 
 /** The latest version if the check has an answer within `waitMs`, else null. */

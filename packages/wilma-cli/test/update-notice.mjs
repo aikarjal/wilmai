@@ -44,10 +44,26 @@ try {
   assert.match(found.stderr, new RegExp(`Update available: ${version.replace(/\./g, "\\.")} → 99\\.0\\.0`));
   assert.match(found.stderr, /wilma update/);
 
+  // At most once a day: the next commands stay quiet...
+  const run = async (extraEnv = {}) => (await execFileAsync(process.execPath, [cliPath, "find-school", "Tampere"], { env: { ...env, ...extraEnv } })).stderr;
+  assert.doesNotMatch(await run(), /Update available/);
+  assert.doesNotMatch(await run(), /Update available/);
+  const cachePath = join(tempDirectory, "cli", "version-check.json");
+  const cache = JSON.parse(await readFile(cachePath, "utf8"));
+  assert.equal(cache.latestVersion, "99.0.0", "recording the notice keeps the check's result");
+  // ...until a day has passed,
+  await writeFile(cachePath, JSON.stringify({ ...cache, notifiedAt: Date.now() - 25 * 60 * 60 * 1000 }));
+  assert.match(await run(), /Update available: .* → 99\.0\.0/);
+  assert.doesNotMatch(await run(), /Update available/);
+  // ...or an even newer version is out.
+  await writeFile(cachePath, JSON.stringify({ ...JSON.parse(await readFile(cachePath, "utf8")), latestVersion: "99.1.0" }));
+  assert.match(await run(), /Update available: .* → 99\.1\.0/);
+
   // Up to date, or turned off: no notice.
   const current = await configWithLatest("current", version);
-  assert.doesNotMatch((await execFileAsync(process.execPath, [cliPath, "find-school", "Tampere"], { env: { ...env, WILMAI_CONFIG_PATH: current } })).stderr, /Update available/);
-  assert.doesNotMatch((await execFileAsync(process.execPath, [cliPath, "find-school", "Tampere"], { env: { ...env, WILMAI_NO_UPDATE_CHECK: "1" } })).stderr, /Update available/);
+  assert.doesNotMatch(await run({ WILMAI_CONFIG_PATH: current }), /Update available/);
+  const off = await configWithLatest("off", "99.0.0");
+  assert.doesNotMatch(await run({ WILMAI_CONFIG_PATH: off, WILMAI_NO_UPDATE_CHECK: "1" }), /Update available/);
 
   // MCP server inside the Claude Desktop extension: the first Wilma tool result
   // carries the note with the extension's way to update; later ones don't.

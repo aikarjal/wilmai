@@ -43,7 +43,7 @@ Node 20.18.1 or newer. `.npmrc` sets `link-workspace-packages=true` so the CLI u
 | Setup | How it updates |
 |---|---|
 | Claude Code, the ChatGPT/Codex plugin (`npx @wilm-ai/wilma-cli@2`) | By itself: npx fetches the newest 2.x when the app starts WilmAI. If WilmAI is also installed globally, npx runs that copy instead, and it shows the notice below. |
-| CLI installed with npm (terminal, OpenClaw and other agents) | While a newer version is out, commands print `Update available … Run "wilma update"` on stderr (npm is asked at most once a day); the `wilma` skill tells agents to run it. |
+| CLI installed with npm (terminal, OpenClaw and other agents) | At most once a day (and right away for a newly released version), a command prints `Update available … Run "wilma update"` on stderr; the `wilma` skill tells agents to run it. |
 | Claude Desktop extension | The first answer after Claude Desktop starts WilmAI carries an "Update note", and Claude tells the parent to download https://wilm.ai/get/claude again. Manually installed extensions don't update themselves. |
 | Skills on ClawHub | `clawhub update` |
 

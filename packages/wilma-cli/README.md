@@ -72,7 +72,7 @@ wilma find-school <city or school>
 
 ## Other
 ```bash
-wilma update                       # commands say on stderr when a newer version is out (checked once a day; WILMAI_NO_UPDATE_CHECK=1 turns it off)
+wilma update                       # when a newer version is out, a command says so on stderr, at most once a day (WILMAI_NO_UPDATE_CHECK=1 turns it off)
 wilma config clear                 # deletes every saved login and session
 wilma --version
 ```
