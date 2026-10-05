@@ -198,18 +198,18 @@ export const agents: Agent[] = [
       en: {
         name: "ChatGPT Desktop",
         tagline: "For Mac and Windows",
-        summary: "ChatGPT Desktop can install WilmAI itself. Copy one message into it and allow what it asks.",
+        summary: "ChatGPT Desktop can install WilmAI itself. Switch to Work, copy one message into it and allow what it asks.",
         steps: [
           {
-            title: "Copy this message into ChatGPT Desktop",
-            body: "Paste it into a new chat in the ChatGPT app on your computer (not in the browser) and send it.",
+            title: "Switch to Work and copy this message",
+            body: "In the ChatGPT app on your computer (not in the browser), pick Work instead of Chat at the top left. Paste the message and send it.",
             action: { kind: "message", text: chatgptMessage.en }
           },
           {
             title: "Allow the installation",
             body: "ChatGPT asks before it installs anything. Allow it, and restart the app if it asks you to."
           },
-          { title: "Ask ChatGPT about school", body: firstAsk.en }
+          { title: "Ask about school in Work", body: firstAsk.en }
         ],
         others: [
           {
@@ -223,23 +223,26 @@ export const agents: Agent[] = [
             ]
           }
         ],
-        notes: [phoneNote.chatgpt.en]
+        notes: [
+          "WilmAI works in ChatGPT's Work mode. In Chat, ChatGPT doesn't use it, so ask about school in Work.",
+          phoneNote.chatgpt.en
+        ]
       },
       fi: {
         name: "ChatGPT Desktop",
         tagline: "Macille ja Windowsille",
-        summary: "ChatGPT Desktop osaa asentaa WilmAI:n itse. Kopioi sille yksi viesti ja salli, mitä se kysyy.",
+        summary: "ChatGPT Desktop osaa asentaa WilmAI:n itse. Vaihda Work-tilaan, kopioi sille yksi viesti ja salli, mitä se kysyy.",
         steps: [
           {
-            title: "Kopioi tämä viesti ChatGPT Desktopiin",
-            body: "Liitä se uuteen keskusteluun tietokoneesi ChatGPT-sovelluksessa (ei selaimessa) ja lähetä.",
+            title: "Vaihda Work-tilaan ja kopioi tämä viesti",
+            body: "Valitse tietokoneesi ChatGPT-sovelluksessa (ei selaimessa) vasemmasta yläkulmasta Work eikä Chat. Liitä viesti ja lähetä.",
             action: { kind: "message", text: chatgptMessage.fi }
           },
           {
             title: "Salli asennus",
             body: "ChatGPT kysyy ennen kuin asentaa mitään. Salli se, ja käynnistä sovellus uudelleen, jos se pyytää."
           },
-          { title: "Kysy ChatGPT:ltä koulusta", body: firstAsk.fi }
+          { title: "Kysy koulusta Work-tilassa", body: firstAsk.fi }
         ],
         others: [
           {
@@ -253,7 +256,10 @@ export const agents: Agent[] = [
             ]
           }
         ],
-        notes: [phoneNote.chatgpt.fi]
+        notes: [
+          "WilmAI toimii ChatGPT:n Work-tilassa. Chat-tilassa ChatGPT ei käytä sitä, joten kysy koulusta Work-tilassa.",
+          phoneNote.chatgpt.fi
+        ]
       }
     }
   },

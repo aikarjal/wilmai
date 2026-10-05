@@ -204,7 +204,7 @@ const en: Dictionary = {
         a: (
           <p>
             The one you already use. Claude Desktop has the simplest setup: download one
-            file and open it. ChatGPT works through its desktop app. Agents with their own
+            file and open it. ChatGPT works through its desktop app, in Work mode. Agents with their own
             computer, like Grok Bot and OpenClaw, can install WilmAI themselves.
           </p>
         )
@@ -430,7 +430,7 @@ const fi: Dictionary = {
         a: (
           <p>
             Sitä, jota jo käytät. Claude Desktopissa käyttöönotto on helpoin: lataa yksi
-            tiedosto ja avaa se. ChatGPT toimii työpöytäsovelluksensa kautta. Agentit,
+            tiedosto ja avaa se. ChatGPT toimii työpöytäsovelluksensa Work-tilassa. Agentit,
             joilla on oma tietokone, kuten Grok Bot ja OpenClaw, osaavat asentaa WilmAI:n
             itse.
           </p>
