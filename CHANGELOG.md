@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.1 (unreleased)
+
+_Releases: wilma-cli 2.1.1._
+
+### Fixed
+
+- **The update notice appears at most once a day**, as the `wilma` skill says. 2.1.0 repeated it after every command until the update, so an agent's morning run of ten commands saw it ten times. A newly released version is still announced right away.
+
 ## 2.1.0 (2026-10-06)
 
 _Releases: wilma-cli 2.1.0; the `wilma` skill and plugin 2.1.0._
