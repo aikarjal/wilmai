@@ -1,10 +1,10 @@
-<img src="assets/wilmai_mascot.png" alt="WilmAI mascot" width="150" align="right">
-
 # WilmAI
+
+<img src="assets/wilmai_mascot.png" alt="WilmAI mascot" width="150" align="right">
 
 **Wilma access for your AI assistant or agent.** Ask Claude, ChatGPT, OpenClaw, Grok Bot or Codex about school in plain words, or let your agent post one briefing for the whole family every morning.
 
-[![npm downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fwilm.ai%2Fapi%2Fbadge%2Fdownloads)](https://www.npmjs.com/package/@wilm-ai/wilma-cli)
+[![npm downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fwilm.ai%2Fapi%2Fbadge%2Fdownloads&label=downloads)](https://www.npmjs.com/package/@wilm-ai/wilma-cli)
 [![GitHub stars](https://img.shields.io/github/stars/aikarjal/wilmai?label=stars&color=17545b&style=flat)](https://github.com/aikarjal/wilmai/stargazers)
 [![npm version](https://img.shields.io/npm/v/%40wilm-ai%2Fwilma-cli?label=wilma-cli&color=1b2b34)](https://www.npmjs.com/package/@wilm-ai/wilma-cli)
 [![MIT license](https://img.shields.io/badge/license-MIT-ffd84d)](LICENSE)
