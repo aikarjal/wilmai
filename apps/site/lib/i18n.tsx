@@ -109,7 +109,7 @@ const en: Dictionary = {
     chatQuestion: "What do the kids have at school tomorrow?",
     chatAnswer: [
       { name: "Kiia", text: "8:30–11:00 crafts, then geography and math. English exam on Thursday: units 7–9." },
-      { name: "Eino", text: "Starts at 9:15. Swimming at the pool hall — pack a swimsuit and towel." },
+      { name: "Eino", text: "Starts at 9:15 with swimming — pack a swimsuit and towel." },
       { text: "One new message from the class teacher about Friday's trip: the permission form is due Wednesday." }
     ]
   },

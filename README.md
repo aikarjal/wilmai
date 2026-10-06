@@ -13,7 +13,7 @@
 
 > **You:** What do the kids have at school tomorrow?
 >
-> **Your assistant:** Kiia has crafts 8:30–11:00, then geography and math; her English exam is on Thursday (units 7–9). Eino starts at 9:15 with swimming at the pool hall, so pack a swimsuit and towel. There's also a new message from the class teacher about Friday's trip: the permission form is due Wednesday.
+> **Your assistant:** Kiia has crafts 8:30–11:00, then geography and math; her English exam is on Thursday (units 7–9). Eino starts at 9:15 with swimming, so pack a swimsuit and towel. There's also a new message from the class teacher about Friday's trip: the permission form is due Wednesday.
 
 WilmAI connects Wilma, the system Finnish schools use for schedules, homework, exams, grades and messages, to the AI assistant or agent you already use. It's an MCP server, a command-line tool and two agent skills, free and open source.
 
