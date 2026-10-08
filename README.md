@@ -155,6 +155,7 @@ npx skills add aikarjal/wilmai
 
 ```bash
 pnpm install
+pnpm --filter @wilm-ai/wilma-client build
 pnpm --filter @wilm-ai/wilma-cli build
 node packages/wilma-cli/dist/index.js
 ```
