@@ -1,6 +1,6 @@
 /*
- * WilmAI Intelligence in Settings: No AI, recommended OpenAI or an opt-in local pack.
- * Adding an OpenAI API key or completing local installation enables it. OpenAI
+ * WilmAI Intelligence in Settings: No AI, recommended OpenAI, Claude (Anthropic) or an opt-in local pack.
+ * Adding an OpenAI or Anthropic API key or completing local installation enables it. Cloud
  * usage has a light-use cost estimate, recorded spending in
  * USD and a separate pause limit (luna/client.ts). The tokens and prices
  * behind the recorded spending are under Details.
@@ -10,9 +10,9 @@ import { getState, updateSettings, useApp, useViewer } from "../data/store";
 import { useLocalEdition } from "../data/edition";
 import { shortDate } from "../data/dates";
 import { AI_BUDGET_STEP, MAX_AI_BUDGET, MIN_AI_BUDGET, budgetText, normalizeAIBudget } from "../data/ai-budget";
-import { intelligenceOn, intelligenceProvider, type Settings as SettingsModel, type UsageBucket } from "../data/model";
+import { intelligenceOn, intelligenceProvider, type CloudProvider, type Settings as SettingsModel, type UsageBucket } from "../data/model";
 import { buildFeed } from "../data/feed";
-import { DEFAULT_TRANSLATOR, TRANSLATION_LANGUAGES, TRANSLATORS, itemsPerMonth, needsTranslation, translationAvailable, translationSource } from "../ai/translate";
+import { TRANSLATION_LANGUAGES, itemsPerMonth, needsTranslation, translationAvailable, translationModel, translationSource, translatorsOf } from "../ai/translate";
 import { runTranslations } from "../data/translations";
 import { localPackStatus, stopLocalSetup } from "../ai/managed";
 import { LocalAISetup } from "./LocalAISetup";
@@ -21,6 +21,7 @@ import { DECISIONS_INPUT_PRICE, LUNA, LunaError, READING_MODELS, costOf, monthCo
 import { checkOpenAIKey, forgetLuna, lunaBacklog, runLuna } from "../luna/events";
 import { runJev } from "../jev/runner";
 import { isDesktopApp } from "../wilma/transport";
+import { CLAUDE_DECIDER } from "../ai/anthropic";
 import { Icon } from "./bits";
 import { language, plural, t } from "../i18n";
 
@@ -44,10 +45,11 @@ function marked(text: string, wrap: (part: string) => ReactNode): ReactNode {
 /** A fraction of a cent, in dollars as OpenAI bills them: "$0.0001", "$0.005". */
 const dollars = (n: number) => `$${n.toFixed(Math.max(2, -Math.floor(Math.log10(n))))}`;
 
-/** With OpenAI, in the AI card: what messages are translated into as they come, or nothing, and which model translates (data/translations.ts). */
+/** With a cloud AI (OpenAI or Claude), in the AI card: what messages are translated into as they come, or nothing, and which model translates (data/translations.ts). */
 function TranslationSettings({ settings }: { settings: SettingsModel }) {
   const chosen = settings.translateTo ?? "off";
-  const translator = settings.translateModel ?? DEFAULT_TRANSLATOR;
+  const translator = translationModel(settings);
+  const translators = translatorsOf(settings);
   const status = useApp((s) => s.translationStatus);
   // A usual month's cost, from what this family gets in another language than the one chosen.
   const snapshot = useApp((s) => s.snapshot);
@@ -80,13 +82,13 @@ function TranslationSettings({ settings }: { settings: SettingsModel }) {
       {chosen !== "off" ? (
         <fieldset className="translator">
           <legend>{t("Translator")}</legend>
-          {TRANSLATORS.map((x) => (
+          {translators.map((x) => (
             <label key={x.model} className="switch">
               <input type="radio" name="translator" checked={translator === x.model} onChange={() => change({ translateModel: x.model })} />
               <div>
                 <b>
                   {t(x.label)}
-                  {x.model === DEFAULT_TRANSLATOR ? <span className="translator-badge">{t("Recommended")}</span> : null}
+                  {x.model === translators[0].model ? <span className="translator-badge">{t("Recommended")}</span> : null}
                 </b>
                 <span className="translator-cost">
                   {monthly
@@ -117,8 +119,48 @@ function TranslationSettings({ settings }: { settings: SettingsModel }) {
 const AI_CHOICES = [
   { value: "off", label: "No AI", badge: "Default", icon: "book", help: "You read and sort everything yourself.", detail: "Free" },
   { value: "openai", label: "OpenAI", badge: "Recommended", icon: "sparkles", help: "Fast and accurate. Translates messages too.", detail: "Your own API key · tens of cents a month" },
+  { value: "anthropic", label: "Claude", badge: "Anthropic", icon: "spark", help: "Careful and accurate. Translates messages too.", detail: "Your own API key · tens of cents a month" },
   { value: "local", label: "Local AI", badge: "On this Mac", icon: "laptop", help: "Nothing goes to an AI service. Slower, less accurate, and no translations.", detail: "9.1 GB download · works the Mac hard" },
 ] as const;
+
+const isCloud = (choice: string): choice is CloudProvider => choice === "openai" || choice === "anthropic";
+
+/** What Settings says of each AI service: the same words, its own name. */
+const SERVICE = {
+  openai: {
+    keyField: "openaiKey",
+    models: { decider: "luna", decisionsModel: LUNA, readingModel: LUNA },
+    howTo: () => `https://wilm.ai/${language() === "fi" ? "fi" : "en"}/home#openai-key`,
+    addKey: () => t("Add your OpenAI API key"),
+    paste: () => t("Paste your OpenAI API key"),
+    sentOnly: () => t("Sent only to OpenAI."),
+    answered: () => t("On. OpenAI answered."),
+    noTest: (error: string) => t("Saved, but OpenAI didn't answer the test: {error}", { error }),
+    reaching: () => t("Checking that this computer can reach OpenAI…"),
+    usually: (limit: string) => t("For a family, OpenAI usually costs tens of cents a month. OpenAI bills your key directly, and the app pauses AI if a month reaches your limit ({limit}).", { limit }),
+    details: () => t("OpenAI key, limit and usage"),
+    keyLabel: () => t("OpenAI API key"),
+    bills: (date: string) => t("OpenAI bills your key directly. If a month reaches the limit, WilmAI Intelligence pauses until {date} and says so here.", { date }),
+    dollars: () => t("The first reading of your older messages costs a little more. Amounts are in US dollars, as OpenAI bills them."),
+  },
+  anthropic: {
+    keyField: "anthropicKey",
+    // Claude reads with Sonnet (luna/client.ts readingModel) and answers the questions with Haiku.
+    models: { decider: "luna", decisionsModel: CLAUDE_DECIDER },
+    howTo: () => "https://platform.claude.com/settings/keys",
+    addKey: () => t("Add your Anthropic API key"),
+    paste: () => t("Paste your Anthropic API key"),
+    sentOnly: () => t("Sent only to Anthropic."),
+    answered: () => t("On. Claude answered."),
+    noTest: (error: string) => t("Saved, but Claude didn't answer the test: {error}", { error }),
+    reaching: () => t("Checking that this computer can reach Anthropic…"),
+    usually: (limit: string) => t("For a family, Claude usually costs tens of cents a month. Anthropic bills your key directly, and the app pauses AI if a month reaches your limit ({limit}).", { limit }),
+    details: () => t("Anthropic key, limit and usage"),
+    keyLabel: () => t("Anthropic API key"),
+    bills: (date: string) => t("Anthropic bills your key directly. If a month reaches the limit, WilmAI Intelligence pauses until {date} and says so here.", { date }),
+    dollars: () => t("The first reading of your older messages costs a little more. Amounts are in US dollars, as Anthropic bills them."),
+  },
+} as const;
 
 /**
  * Can this computer run local AI? Only the Mac build has the runtime, and it needs Apple Silicon with 16 GB of
@@ -154,10 +196,13 @@ export function AISettings() {
   const [busy, setBusy] = useState(false);
   const blocked = useApp((s) => s.openaiBlocked);
   const [reaching, setReaching] = useState(false);
+  // The AI service chosen (its words and key), or the one shown when none is: OpenAI's.
+  const service = SERVICE[isCloud(choice) ? choice : "openai"];
+  const savedKey = isCloud(choice) ? (settings[SERVICE[choice].keyField] ?? "").trim() : "";
 
-  // Choosing OpenAI checks the network first: when it blocks OpenAI, no key can help, so none is asked for.
+  // Choosing a cloud AI checks the network first: when it blocks the service, no key can help, so none is asked for.
   useEffect(() => {
-    if (choice !== "openai" || on) return;
+    if (!isCloud(choice) || on) return;
     let live = true;
     setReaching(true);
     void openAIReach().finally(() => { if (live) setReaching(false); });
@@ -167,39 +212,40 @@ export function AISettings() {
   const turnOn = async () => {
     const token = ++sourceGeneration.current;
     const value = key.trim();
-    if (!value) return;
+    if (!value || !isCloud(choice)) return;
+    const chosen = SERVICE[choice];
     setBusy(true);
     setCheck(null);
     try {
       // Unreachable: nothing is saved, and the notice says why.
       if (!(await openAIReach()).reachable || sourceGeneration.current !== token) return;
-      updateSettings({ aiProvider: "openai", decider: "luna", decisionsModel: LUNA, readingModel: LUNA, openaiKey: value });
+      updateSettings({ aiProvider: choice, ...chosen.models, [chosen.keyField]: value });
       await checkOpenAIKey();
       if (sourceGeneration.current !== token) return;
-      setCheck({ ok: true, text: t("On. OpenAI answered.") });
+      setCheck({ ok: true, text: chosen.answered() });
       setKey("");
       setReplacing(false);
       void runJev();
       void runLuna();
     } catch (err) {
       if (sourceGeneration.current !== token) return;
-      // A key OpenAI refuses isn't kept (it would only fail later), nor one OpenAI couldn't be asked about (the typed key
-      // stays in the field for Check again); a busy OpenAI keeps it, to try again.
+      // A key the service refuses isn't kept (it would only fail later), nor one it couldn't be asked about (the typed key
+      // stays in the field for Check again); a busy service keeps it, to try again.
       if (err instanceof LunaError && !err.retryable) {
-        updateSettings({ openaiKey: "" });
+        updateSettings({ [chosen.keyField]: "" });
         if (getState().openaiBlocked) setCheck(null);
         else {
           setKey("");
           setCheck({ ok: false, text: err.message });
         }
-      } else setCheck({ ok: false, text: t("Saved, but OpenAI didn't answer the test: {error}", { error: err instanceof Error ? err.message : String(err) }) });
+      } else setCheck({ ok: false, text: chosen.noTest(err instanceof Error ? err.message : String(err)) });
     } finally {
       setBusy(false);
     }
   };
   const turnOff = () => {
     ++sourceGeneration.current;
-    updateSettings({ aiProvider: "off", openaiKey: "" });
+    updateSettings({ aiProvider: "off", [service.keyField]: "" });
     setChoice("off");
     setKey("");
     setReplacing(false);
@@ -210,9 +256,10 @@ export function AISettings() {
     setChoice(value);
     setCheck(null);
     setReplacing(false);
-    updateSettings({ aiProvider: value === "local" ? "off" : value, ...(value === "openai" ? { decider: "luna", decisionsModel: LUNA, readingModel: LUNA } as const : {}) });
+    updateSettings({ aiProvider: value === "local" ? "off" : value, ...(isCloud(value) ? SERVICE[value].models : {}) });
     void stopLocalSetup().catch((err) => setCheck({ ok: false, text: String(err) }));
-    if (value === "openai" && settings.openaiKey.trim()) { void runJev(); void runLuna(); }
+    // A key kept for the service chosen again picks up where it left off.
+    if (isCloud(value) && (settings[SERVICE[value].keyField] ?? "").trim()) { void runJev(); void runLuna(); }
   };
 
   const total = totalUsage(usage);
@@ -222,7 +269,7 @@ export function AISettings() {
   const changeBudget = (value: number) => {
     const next = normalizeAIBudget(value);
     updateSettings({ aiMonthlyBudgetUsd: next });
-    if (next > limit && on && choice === "openai" && !overLimit()) { void runJev(); void runLuna(); }
+    if (next > limit && on && isCloud(choice) && !overLimit()) { void runJev(); void runLuna(); }
   };
 
   const records = Object.values(luna);
@@ -247,7 +294,7 @@ export function AISettings() {
         onKeyDown={(e) => {
           if (e.key === "Enter") void turnOn();
         }}
-        placeholder={t("Paste your OpenAI API key")}
+        placeholder={service.paste()}
       />
       <button className="btn btn-primary" onClick={() => void turnOn()} disabled={busy || !key.trim()}>
         {busy ? t("Checking…") : on ? t("Save the new key") : t("Turn on")}
@@ -318,7 +365,12 @@ export function AISettings() {
       </fieldset>
       {/* What each AI sees, by the choice. */}
       <p className="help-line">
-        {marked(
+        {choice === "anthropic" ? marked(
+          student
+            ? t("*Anthropic sees one item at a time,* with your first name and class, when you choose Claude. Local AI reads everything on this Mac, and No AI reads nothing.")
+            : t("*Anthropic sees one item at a time,* with your children's first names and classes, when you choose Claude. Local AI reads everything on this Mac, and No AI reads nothing."),
+          (part) => <b>{part}</b>
+        ) : marked(
           student
             ? t("*OpenAI sees one item at a time,* with your first name and class, when you choose OpenAI. Local AI reads everything on this Mac, and No AI reads nothing.")
             : t("*OpenAI sees one item at a time,* with your children's first names and classes, when you choose OpenAI. Local AI reads everything on this Mac, and No AI reads nothing."),
@@ -337,26 +389,24 @@ export function AISettings() {
       ) : !on && blocked ? (
         <OpenAIBlocked where="settings" />
       ) : !on && reaching ? (
-        <p className="help-line">{t("Checking that this computer can reach OpenAI…")}</p>
+        <p className="help-line">{service.reaching()}</p>
       ) : !on ? (
         <>
           <div className="field">
             <div className="ai-key-label">
-              <label htmlFor="openai-key">{t("Add your OpenAI API key")}</label>
+              <label htmlFor="openai-key">{service.addKey()}</label>
               {/* Step by step on the website, for anyone who has never made one */}
-              <a className="linkish" href={`https://wilm.ai/${language() === "fi" ? "fi" : "en"}/home#openai-key`} target="_blank" rel="noreferrer">{t("How to get a key")} ↗</a>
+              <a className="linkish" href={service.howTo()} target="_blank" rel="noreferrer">{t("How to get a key")} ↗</a>
             </div>
             {keyInput}
             <span className="help">
-              {kept} {t("Sent only to OpenAI.")}
+              {kept} {service.sentOnly()}
             </span>
           </div>
           <p className="ai-reassure">
             <Icon name="check" />
             <span>
-              {t("For a family, OpenAI usually costs tens of cents a month. OpenAI bills your key directly, and the app pauses AI if a month reaches your limit ({limit}).", {
-                limit: limitText,
-              })}
+              {service.usually(limitText)}
             </span>
           </p>
         </>
@@ -386,18 +436,18 @@ export function AISettings() {
         </>
       )}
       {check ? <div className={`notice ${check.ok ? "ok" : "err"}`}>{check.text}</div> : null}
-      {on && choice === "openai" && translationAvailable(settings) ? <TranslationSettings settings={settings} /> : null}
+      {on && isCloud(choice) && translationAvailable(settings) ? <TranslationSettings settings={settings} /> : null}
 
-      {on && choice === "openai" ? (
+      {on && isCloud(choice) ? (
         <details className="ai-details">
-          <summary>{t("OpenAI key, limit and usage")}</summary>
+          <summary>{service.details()}</summary>
           <div className="field ai-key-row">
-            <label htmlFor="openai-key">{t("OpenAI API key")}</label>
+            <label htmlFor="openai-key">{service.keyLabel()}</label>
             {replacing ? (
               keyInput
             ) : (
               <div className="ai-key">
-                <span className="ai-key-saved">{t("Saved ({end})", { end: `…${settings.openaiKey.trim().slice(-4)}` })}</span>
+                <span className="ai-key-saved">{t("Saved ({end})", { end: `…${savedKey.slice(-4)}` })}</span>
                 <button className="btn btn-sm" onClick={() => setReplacing(true)}>
                   {t("Replace key")}
                 </button>
@@ -407,7 +457,7 @@ export function AISettings() {
               </div>
             )}
             <span className="help">
-              {kept} {t("Sent only to OpenAI.")}
+              {kept} {service.sentOnly()}
             </span>
           </div>
           <div className="field ai-budget-control">
@@ -416,8 +466,8 @@ export function AISettings() {
             <div className="ai-budget-scale" aria-hidden="true"><span>{budgetText(MIN_AI_BUDGET)}</span><span>{budgetText(MAX_AI_BUDGET)}</span></div>
             <span id="ai-budget-help" className="help">
               {t("$0.50–$3 a month, $1 to start with. Today warns you at 80%, and AI pauses at the limit. Raising the limit picks up what's waiting.")}{" "}
-              {t("OpenAI bills your key directly. If a month reaches the limit, WilmAI Intelligence pauses until {date} and says so here.", { date: shortDate(nextMonth()) })}{" "}
-              {t("The first reading of your older messages costs a little more. Amounts are in US dollars, as OpenAI bills them.")}
+              {service.bills(shortDate(nextMonth()))}{" "}
+              {service.dollars()}
             </span>
           </div>
           <div className="stats">
@@ -451,7 +501,16 @@ export function AISettings() {
             </tbody>
           </table>
           <p className="help-line">
-            {t(
+            {choice === "anthropic" ? t(
+              "Counted on this computer from the tokens Anthropic reports, at Anthropic's list prices (30 Oct 2026, per million tokens: Claude Sonnet ${input} in, ${cached} cached, ${output} out; questions with Claude Haiku ${decisions} in, ${decisionsOut} out). The bill itself is in your Anthropic account.",
+              {
+                input: price.input.toFixed(2),
+                cached: price.cached.toFixed(2),
+                output: price.output.toFixed(2),
+                decisions: READING_MODELS[CLAUDE_DECIDER].input.toFixed(2),
+                decisionsOut: READING_MODELS[CLAUDE_DECIDER].output.toFixed(2),
+              }
+            ) : t(
               "Counted on this computer from the tokens OpenAI reports, at OpenAI's list prices for GPT-6 Luna (8 Oct 2026, per million tokens: ${input} in, ${cached} cached, ${output} out; questions ${decisions} in). The bill itself is in your OpenAI account.",
               {
                 input: price.input.toFixed(2),

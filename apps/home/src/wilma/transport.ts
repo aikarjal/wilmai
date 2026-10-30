@@ -4,8 +4,8 @@
  * It follows no redirects and keeps no cookies: wilma-client does that, with
  * this pipe as its transport.
  *
- * - desktop app (Tauri): native commands, wilma_send, jev_call and
- *   openai_call (src-tauri/src/lib.rs);
+ * - desktop app (Tauri): native commands, wilma_send, jev_call,
+ *   openai_call and anthropic_call (src-tauri/src/lib.rs);
  * - development in a browser: the local 127.0.0.1 bridge in the Vite dev
  *   server (bridge/bridge.ts), which can also borrow the WilmAI CLI's login.
  */
@@ -51,6 +51,8 @@ interface DesktopBridge {
   jev(key: string | undefined, body: unknown): Promise<unknown>;
   openai(key: string | undefined, path: string | undefined, body: unknown): Promise<unknown>;
   openaiReach(): Promise<unknown>;
+  anthropic(key: string | undefined, body: unknown): Promise<unknown>;
+  anthropicReach(): Promise<unknown>;
   ollama(wire: unknown): Promise<unknown>;
   cliAccounts(): Promise<unknown>;
   cliSession(index: number): Promise<unknown>;
@@ -106,6 +108,8 @@ const desktop: DesktopBridge | undefined = isDesktopApp
       jev: (key, body) => native("jev_call", { key: key ?? "", body }),
       openai: (key, path, body) => native("openai_call", { key: key ?? "", path: path ?? "", body }),
       openaiReach: () => native("openai_reach", {}),
+      anthropic: (key, body) => native("anthropic_call", { key: key ?? "", body }),
+      anthropicReach: () => native("anthropic_reach", {}),
       ollama: (wire) => native("ollama_call", { wire }),
       // The CLI's saved logins on this computer (no secrets), for "Continue as".
       cliAccounts: async () => {
@@ -132,6 +136,10 @@ async function desktopCall(d: DesktopBridge, path: string, init: { body?: unknow
       return d.openai(init.headers?.["x-openai-key"], init.headers?.["x-openai-path"], init.body);
     case "openai-reach":
       return d.openaiReach();
+    case "anthropic":
+      return d.anthropic(init.headers?.["x-anthropic-key"], init.body);
+    case "anthropic-reach":
+      return d.anthropicReach();
     case "ollama":
       return d.ollama(init.body);
     case "cli/accounts":

@@ -12,6 +12,8 @@ import { KINDS, PUPIL_SCOPES, SCOPES, TRIAGE_PUPIL_QS } from "../jev/questions";
 import type { ReplyForm } from "@wilma-client/src/write";
 import { Icon, Mark, Tabs, TriageChips } from "./bits";
 import { TranslationNote, TranslationSwitch, useTranslation } from "./Translated";
+import { InFinnish } from "./InFinnish";
+import { currentOutgoing, outgoingAvailable, readOutgoing, type Outgoing } from "../ai/outgoing";
 import { go, jevReadingOpen } from "./shared";
 import { language, plural, t, tx } from "../i18n";
 
@@ -684,11 +686,24 @@ function Composer({ messageId, to, collated, onSent }: { messageId: number; to: 
   const snap = useApp((s) => s.snapshot);
   // The sender's name without Wilma's "(role)" suffix; null when Wilma didn't give one.
   const who = to?.replace(/\s*\(.*\)\s*$/, "") || null;
+  // Written in the parent's language, sent in Finnish (InFinnish.tsx): the Finnish is kept with the draft.
+  const fiKey = `${draftKey}.fi`;
+  const canFinnish = useApp((s) => outgoingAvailable(s.settings, language()));
+  const [inFinnish, setInFinnish] = useState(true);
+  const [fi, setFi] = useState<Outgoing | null>(() => readOutgoing(localStorage.getItem(fiKey)));
+  const finnish = canFinnish && inFinnish;
+  const ready = finnish ? currentOutgoing(fi, null, text) : null;
+  // What goes to Wilma: the Finnish the parent saw, or what they wrote.
+  const body = finnish ? (ready?.text ?? "") : text;
 
   useEffect(() => {
     if (text) localStorage.setItem(draftKey, text);
     else localStorage.removeItem(draftKey);
   }, [text, draftKey]);
+  useEffect(() => {
+    if (fi) localStorage.setItem(fiKey, JSON.stringify(fi));
+    else localStorage.removeItem(fiKey);
+  }, [fi, fiKey]);
 
   const open = async () => {
     setStage({ kind: "preparing" });
@@ -748,7 +763,7 @@ function Composer({ messageId, to, collated, onSent }: { messageId: number; to: 
           id: Date.now(),
           sentAt: new Date(),
           senderName: t("You (sample, not sent)"),
-          content: text,
+          content: body,
         };
         setState({
           snapshot: {
@@ -768,13 +783,15 @@ function Composer({ messageId, to, collated, onSent }: { messageId: number; to: 
         });
       }
       setText("");
+      setFi(null);
       setStage({ kind: "sent" });
       onSent();
       return;
     }
     try {
-      await replyApi(messageId)!.send(form, text);
+      await replyApi(messageId)!.send(form, body);
       setText("");
+      setFi(null);
       setStage({ kind: "sent" });
       onSent();
     } catch (err) {
@@ -846,6 +863,7 @@ function Composer({ messageId, to, collated, onSent }: { messageId: number; to: 
         aria-label={t("Your answer")}
         disabled={stage.kind === "sending"}
       />
+      {canFinnish ? <InFinnish on={inFinnish} setOn={setInFinnish} subject={null} text={text} value={fi} onChange={setFi} disabled={stage.kind === "sending" || stage.kind === "confirm"} /> : null}
       {stage.kind === "error" ? (
         <div className="notice err composer-error">
           <span>{stage.message}</span>
@@ -858,6 +876,7 @@ function Composer({ messageId, to, collated, onSent }: { messageId: number; to: 
       ) : null}
       {stage.kind === "confirm" || stage.kind === "sending" ? (
         <div className="confirm">
+          {finnish && ready ? <blockquote className="outgoing-preview" lang="fi">{ready.text}</blockquote> : null}
           <span>
             {stage.kind === "confirm" && stage.note ? <>{stage.note} </> : null}
             {sendQuestion}
@@ -879,9 +898,11 @@ function Composer({ messageId, to, collated, onSent }: { messageId: number; to: 
               className="btn btn-quiet btn-sm"
               onClick={() => {
                 const kept = text;
+                const keptFi = fi;
                 setText("");
+                setFi(null);
                 setStage({ kind: "closed" });
-                showToast(t("Draft discarded"), () => setText(kept));
+                showToast(t("Draft discarded"), () => (setText(kept), setFi(keptFi)));
               }}
             >
               {t("Discard draft")}
@@ -890,7 +911,7 @@ function Composer({ messageId, to, collated, onSent }: { messageId: number; to: 
           <button className="btn btn-quiet btn-sm" onClick={() => setStage({ kind: "closed" })}>
             {t("Close")}
           </button>
-          <button className="btn btn-primary btn-sm" disabled={!text.trim() || !form || stage.kind === "preparing"} onClick={() => form && setStage({ kind: "confirm", form })}>
+          <button className="btn btn-primary btn-sm" disabled={!text.trim() || !form || stage.kind === "preparing" || (finnish && !ready)} onClick={() => form && setStage({ kind: "confirm", form })}>
             {t("Send…")}
           </button>
         </div>

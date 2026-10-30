@@ -66,5 +66,7 @@ export function providerIdentity(s: Settings): string {
     decision: localDecisions(s) ? s.localAI?.decisionModel ?? LOCAL_DECIDER : s.decider === "jev" ? s.jevModel : s.decisionsModel ?? "gpt-6-luna",
     reading: localReading(s) ? s.localAI?.readingModel ?? LOCAL_READER : s.readingModel,
     local: usesLocalAI(s) ? [localEndpoint(s), s.localAI?.fingerprint ?? "unchecked", LOCAL_CONTEXT, s.localAI?.think ?? true] : null,
+    // Only Claude's answers say so, so OpenAI's and local AI's earlier answers keep their identity (and aren't read again).
+    provider: intelligenceProvider(s) === "anthropic" ? "anthropic" : undefined,
   });
 }

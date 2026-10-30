@@ -1,10 +1,10 @@
 /*
- * Translating messages, bulletins and teachers' notes into the language chosen in Settings, with OpenAI and the
- * parent's key: GPT-6.1 Sol or GPT-6 Luna as chosen, each at its least reasoning (which bills as output). Not with local
- * AI: its small model translates the languages offered poorly. What's translated, when, and where it's kept:
+ * Translating messages, bulletins and teachers' notes into the language chosen in Settings, with the AI service chosen
+ * and the parent's key: OpenAI's GPT-6.1 Sol or GPT-6 Luna, or Anthropic's Claude Sonnet or Haiku, each at its least
+ * reasoning (which bills as output). Not with local AI: its small model translates the languages offered poorly. What's translated, when, and where it's kept:
  * data/translations.ts; this is the call, and what decides what an item's translation is.
  */
-import { intelligenceOn, intelligenceProvider, type ItemTranslation, type Settings, type Snapshot, type TranslationLanguage } from "../data/model";
+import { cloudOf, intelligenceOn, type CloudProvider, type ItemTranslation, type Settings, type Snapshot, type TranslationLanguage } from "../data/model";
 import type { FeedItem } from "../data/feed";
 import { getState } from "../data/store";
 import { hash } from "../data/hash";
@@ -14,31 +14,53 @@ import { respond } from "../luna/client";
 export const TRANSLATION_LANGUAGES: Record<TranslationLanguage, string> = { fi: "Suomi", sv: "Svenska", en: "English", uk: "Українська", ar: "العربية" };
 const IN_ENGLISH: Record<TranslationLanguage, string> = { fi: "Finnish", sv: "Swedish", en: "English", uk: "Ukrainian", ar: "Arabic" };
 
+export interface Translator {
+  model: string;
+  label: string;
+  help: string;
+  /** What a message's translation costs, in dollars, rounded up. */
+  perMessage: number;
+}
+
 /**
- * The two OpenAI translators offered, with what a message's translation costs at OpenAI's list prices, rounded up
- * (evals/translate.ts, 26 Oct 2026: made-up messages, bulletins and threads, Finnish and Swedish into the other four;
- * Sol $0.0024 on average and $0.0039 at most, all 180 checks; Luna $0.0001 and $0.0002, and a Swedish bulletin came
- * back untranslated into Finnish). Sol is the default: Luna's slip is caught (below), but Sol doesn't need catching.
+ * The translators offered with each AI service, the accurate one first (the default, and the one a fast one's slip goes
+ * to). OpenAI's costs are measured (evals/translate.ts, 26 Oct 2026: made-up messages, bulletins and threads, Finnish
+ * and Swedish into the other four; Sol $0.0024 on average and $0.0039 at most, all 180 checks; Luna $0.0001 and
+ * $0.0002, and a Swedish bulletin came back untranslated into Finnish). Claude's are estimated from list prices, the
+ * same as Sol's and Luna's, until the eval suite measures them. Sol is the default: Luna's slip is caught (below),
+ * but Sol doesn't need catching; Claude Sonnet and Haiku the same.
  */
-export const TRANSLATORS = [
-  { model: "gpt-6.1-sol", label: "Most accurate", help: "Careful with long and tricky messages.", perMessage: 0.003 },
-  { model: "gpt-6-luna", label: "Fast", help: "Good for everyday messages. If it can't translate one, Most accurate does.", perMessage: 0.0001 },
-] as const;
-export type Translator = (typeof TRANSLATORS)[number]["model"];
-export const DEFAULT_TRANSLATOR: Translator = "gpt-6.1-sol";
-/** The least reasoning a model takes: Sol's least is low (26 Oct 2026), Luna's none. */
+export const TRANSLATORS: Record<CloudProvider, readonly Translator[]> = {
+  openai: [
+    { model: "gpt-6.1-sol", label: "Most accurate", help: "Careful with long and tricky messages.", perMessage: 0.003 },
+    { model: "gpt-6-luna", label: "Fast", help: "Good for everyday messages. If it can't translate one, Most accurate does.", perMessage: 0.0001 },
+  ],
+  anthropic: [
+    { model: "claude-sonnet-5-5", label: "Most accurate", help: "Careful with long and tricky messages.", perMessage: 0.003 },
+    { model: "claude-haiku-5-5", label: "Fast", help: "Good for everyday messages. If it can't translate one, Most accurate does.", perMessage: 0.0002 },
+  ],
+};
+
+/** The chosen AI service's translators (OpenAI's when none is chosen). */
+export const translatorsOf = (s: Settings): readonly Translator[] => TRANSLATORS[cloudOf(s)?.provider ?? "openai"];
+export const DEFAULT_TRANSLATOR = TRANSLATORS.openai[0].model;
+/** The least reasoning a model takes: Sol's least is low (26 Oct 2026), Luna's none, Claude's low. */
 const leastEffort = (model: string) => (model === "gpt-6-luna" ? "none" : "low") as "none" | "low";
 
-/** Translation comes with OpenAI. */
-export const translationAvailable = (s: Settings) => intelligenceProvider(s) === "openai" && intelligenceOn(s);
+/** Translation comes with a cloud AI (OpenAI or Claude), not with local AI. */
+export const translationAvailable = (s: Settings) => cloudOf(s) !== null && intelligenceOn(s);
 
-/** What everything is translated into: null when translation is off (until a language is chosen), or OpenAI isn't the AI. */
+/** What everything is translated into: null when translation is off (until a language is chosen), or no cloud AI is chosen. */
 export function translationTarget(s: Settings): TranslationLanguage | null {
   if (!translationAvailable(s) || !s.translateTo || s.translateTo === "off") return null;
   return s.translateTo;
 }
 
-export const translationModel = (s: Settings): string => s.translateModel ?? DEFAULT_TRANSLATOR;
+/** The translator chosen, when it's the chosen AI service's; else that service's accurate one. */
+export const translationModel = (s: Settings): string => {
+  const offered = translatorsOf(s);
+  return offered.some((x) => x.model === s.translateModel) ? s.translateModel! : offered[0].model;
+};
 
 /*
  * The language a text is most likely in, from its letters and its most common words: enough to leave alone what's
@@ -149,7 +171,8 @@ const SCHEMA = {
 export type Translation = Pick<ItemTranslation, "language" | "model" | "from" | "title" | "texts">;
 
 /**
- * Translate a title and its texts. A Luna answer still in the original language goes to Sol once; Sol's, an error.
+ * Translate a title and its texts. A fast translator's answer still in the original language goes to the accurate one
+ * once (Luna's to Sol, Haiku's to Sonnet); the accurate one's, an error.
  * `options` is for the eval suite, which compares models and efforts (evals/translate.ts).
  */
 export async function translate(
@@ -169,7 +192,8 @@ export async function translate(
   });
   if (answer.texts.length !== texts.length) throw new Error(`The translation came back with ${answer.texts.length} texts for ${texts.length}.`);
   if (untranslated(texts, answer.texts, language)) {
-    if (model !== "gpt-6.1-sol") return translate(title, texts, language, { model: "gpt-6.1-sol" });
+    const accurate = translatorsOf(getState().settings)[0].model;
+    if (model !== accurate) return translate(title, texts, language, { model: accurate });
     throw new Error("It came back in the original language.");
   }
   return { language, model, from: answer.from, title: answer.title, texts: answer.texts };

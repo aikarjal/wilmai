@@ -1,6 +1,6 @@
 import { aiBudgetState, normalizeAIBudget } from "../data/ai-budget";
 import { shortDate } from "../data/dates";
-import { intelligenceOn, intelligenceProvider } from "../data/model";
+import { cloudOf, intelligenceOn } from "../data/model";
 import { useApp } from "../data/store";
 import { t } from "../i18n";
 import { costOf, nextMonth, thisMonth } from "../luna/client";
@@ -12,7 +12,7 @@ export function AIBudgetWarning() {
   const spent = usage ? costOf(usage) : 0;
   const limit = normalizeAIBudget(settings.aiMonthlyBudgetUsd);
   const status = aiBudgetState(spent, limit);
-  if (!intelligenceOn(settings) || intelligenceProvider(settings) !== "openai" || status === "ok") return null;
+  if (!intelligenceOn(settings) || !cloudOf(settings) || status === "ok") return null;
 
   return (
     <div className={`notice ai-budget-warning ${status === "paused" ? "err" : "near"}`} role={status === "paused" ? "alert" : "status"}>

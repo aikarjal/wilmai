@@ -4,7 +4,10 @@
  * writes something; the composer decides that, these are the rules for what's kept and what opens.
  */
 
-export type Draft = { subject: string; text: string };
+import type { Outgoing } from "../ai/outgoing";
+
+/** What the parent wrote, and its Finnish when they write in another language (ai/outgoing.ts). */
+export type Draft = { subject: string; text: string; finnish?: Outgoing };
 /** A child's drafts by who they're to (`draftTo`); "" is one from before drafts knew who they were to. */
 export type Drafts = Record<string, Draft>;
 
@@ -51,7 +54,7 @@ export function openDraft(drafts: Drafts, to: string, initialSubject: string | n
 export function saveDraft(drafts: Drafts, to: string, words: Draft, from: string | null): Drafts {
   const next = { ...drafts };
   if (from !== null) delete next[from];
-  if (words.subject || words.text) next[to] = { subject: words.subject, text: words.text };
+  if (words.subject || words.text) next[to] = { subject: words.subject, text: words.text, ...(words.finnish ? { finnish: words.finnish } : {}) };
   else delete next[to];
   return next;
 }

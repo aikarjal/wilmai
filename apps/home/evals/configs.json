@@ -29,6 +29,14 @@
     "escalateToSol": true,
     "matrix": true
   },
+  "claude": {
+    "label": "Claude: Sonnet 5.5 reads at low effort, Haiku 5.5 answers the questions",
+    "readingStrategy": "fixed",
+    "readingModel": "claude-sonnet-5-5",
+    "decisionsModel": "claude-haiku-5-5",
+    "readingEffort": "low",
+    "matrix": true
+  },
   "sol": {
     "label": "Sol 6.1, one pass",
     "readingStrategy": "fixed",

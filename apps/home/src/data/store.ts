@@ -99,6 +99,7 @@ function upgradeSession(saved: (SavedSession & { cookies?: [string, string][] })
 const SETTINGS_KEY = "wilmai.settings";
 const JEV_KEY = "wilmai.jevKey";
 const OPENAI_KEY = "wilmai.openaiKey";
+const ANTHROPIC_KEY = "wilmai.anthropicKey";
 const WILMA_PASSWORD = "wilmai.wilmaPassword";
 const PASSWORDS = "wilmai.passwords";
 /** Set once the key in the old keychain place has been looked for (so macOS asks at most once more). */
@@ -141,6 +142,7 @@ function loadSettings(): Settings {
       readingModel: DEFAULT_SETTINGS.readingModel,
       jevKey: unscramble(localStorage.getItem(JEV_KEY)) ?? saved.jevKey ?? "",
       openaiKey: unscramble(localStorage.getItem(OPENAI_KEY)) ?? "",
+      anthropicKey: unscramble(localStorage.getItem(ANTHROPIC_KEY)) ?? "",
       wilmaPassword: unscramble(localStorage.getItem(WILMA_PASSWORD)) ?? "",
       passwords: passwordsOf(unscramble(localStorage.getItem(PASSWORDS))),
     };
@@ -326,7 +328,7 @@ function migrateAccountStorage() {
 }
 
 function saveSettings() {
-  const { jevKey, openaiKey, wilmaPassword, passwords, ...rest } = state.settings;
+  const { jevKey, openaiKey, anthropicKey, wilmaPassword, passwords, ...rest } = state.settings;
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(rest));
   // The Wilma password while it's remembered (one-click sign-in) or staying signed in needs it.
   if (wilmaPassword && keepsPassword(rest)) localStorage.setItem(WILMA_PASSWORD, scramble(wilmaPassword));
@@ -337,6 +339,8 @@ function saveSettings() {
   else localStorage.removeItem(JEV_KEY);
   if (openaiKey) localStorage.setItem(OPENAI_KEY, scramble(openaiKey));
   else localStorage.removeItem(OPENAI_KEY);
+  if (anthropicKey) localStorage.setItem(ANTHROPIC_KEY, scramble(anthropicKey));
+  else localStorage.removeItem(ANTHROPIC_KEY);
 }
 
 /**

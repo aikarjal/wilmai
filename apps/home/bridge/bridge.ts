@@ -20,7 +20,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve } from "node:path";
 import type { Plugin } from "vite";
-import { HttpError, cliAccounts, cliSession, forwardToJev, forwardToOpenAI, forwardToOllama, forwardToWilma, openAIReach, readJson, sharedSessionGet, sharedSessionSet, wilmaHosts, type WireRequest } from "./core.ts";
+import { HttpError, cliAccounts, cliSession, anthropicReach, forwardToAnthropic, forwardToJev, forwardToOpenAI, forwardToOllama, forwardToWilma, openAIReach, readJson, sharedSessionGet, sharedSessionSet, wilmaHosts, type WireRequest } from "./core.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../../..");
 
@@ -59,6 +59,12 @@ export function bridge(): Plugin {
       }
       if (path === "/bridge/openai-reach") {
         return send(res, 200, await openAIReach());
+      }
+      if (path === "/bridge/anthropic" && req.method === "POST") {
+        return send(res, 200, await forwardToAnthropic(req.headers["x-anthropic-key"], await readJson<unknown>(req)));
+      }
+      if (path === "/bridge/anthropic-reach") {
+        return send(res, 200, await anthropicReach());
       }
       if (path === "/bridge/ollama" && req.method === "POST") {
         return send(res, 200, await forwardToOllama(await readJson<{ endpoint: string; path: string; body?: unknown }>(req)));

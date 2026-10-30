@@ -1518,6 +1518,8 @@ button.gt-term[aria-pressed="true"], button.gt-now[aria-pressed="true"] { color:
 .ai-settings h2 > .icon { color: var(--pen); }
 .ai-choices { border: 0; padding: 0; margin: 1.25rem 0 .8rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; min-width: 0; }
 .ai-choices legend { font-weight: 700; margin-bottom: .75rem; }
+/* Four choices (No AI, OpenAI, Claude, local): two by two, so none sits alone on a row. */
+.ai-choices:has(> .ai-choice:nth-of-type(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ai-choice { --ai-accent: var(--ink-2); --ai-soft: var(--paper-2); display: flex; position: relative; flex-direction: column; min-width: 0; padding: 14px; border: 1px solid var(--rule); border-radius: 14px; background: color-mix(in srgb, var(--ai-soft) 28%, var(--sheet)); cursor: pointer; }
 .ai-choice-openai { --ai-accent: var(--pen); --ai-soft: var(--pen-soft); border-color: color-mix(in srgb, var(--marker) 70%, var(--rule-2)); box-shadow: 0 -3px 0 var(--marker); }
 .ai-choice-local { --ai-accent: var(--good); --ai-soft: var(--good-soft); }
@@ -1554,7 +1556,7 @@ button.gt-term[aria-pressed="true"], button.gt-now[aria-pressed="true"] { color:
 .local-ai-progress span { color: var(--ink-2); font-size: .85rem; }
 .local-ai-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; margin: 1rem 0; }
 @media (max-width: 700px) {
-  .ai-choices { grid-template-columns: 1fr; }
+  .ai-choices, .ai-choices:has(> .ai-choice:nth-of-type(4):last-child) { grid-template-columns: 1fr; }
   .ai-choice { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 17px; }
   .ai-choice-top { grid-column: 1 / -1; margin-bottom: 12px; }
   .ai-choice-art { grid-column: 1; grid-row: 2 / 4; margin: 0; }
@@ -1567,3 +1569,14 @@ button.gt-term[aria-pressed="true"], button.gt-now[aria-pressed="true"] { color:
   .nav-ai-label > span { display: none; }
   .nav-ai-label .icon { width: 11px; height: 11px; }
 }
+
+/* Under a composer: the message in Finnish, to check and edit before it goes (InFinnish.tsx). */
+.in-finnish { padding: 4px 14px 12px; border-top: 1px solid var(--rule); background: var(--paper); }
+.in-finnish-text { border: 1px solid var(--rule-2); border-radius: 10px; background: var(--sheet); margin: 2px 0 8px; overflow: hidden; }
+.in-finnish-text textarea { min-height: 90px; }
+.in-finnish-back { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; background: var(--pen-soft); color: var(--ink-2); font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
+.in-finnish-back .icon { flex: none; width: 16px; height: 16px; color: var(--pen); margin-top: 1px; }
+.in-finnish .help-line { margin: 0 0 8px; }
+.in-finnish .notice { margin-bottom: 8px; }
+/* In the confirmation: exactly the Finnish that goes to Wilma. */
+.outgoing-preview { flex-basis: 100%; margin: 0; padding: 8px 12px; border-left: 3px solid var(--pen); background: var(--sheet); white-space: pre-wrap; font-size: 14px; max-height: 220px; overflow: auto; }

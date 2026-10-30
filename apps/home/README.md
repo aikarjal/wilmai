@@ -613,6 +613,31 @@ family's monthly volume would cost. Decisions don't report tokens in the
 guide's examples, so until they do they're estimated from the request's
 length (marked ~).
 
+## Claude (Anthropic) as the AI
+
+Settings has Claude as a fourth choice, next to No AI, OpenAI and local AI: one AI at a time, and the one chosen
+does everything AI does here (what needs you and by when, the calendar's dates, translating messages, and writing
+to the school in Finnish). OpenAI's and local AI's behaviour is unchanged, and their earlier answers keep their
+cache identity.
+
+- **Key**: the parent's own Anthropic key, kept scrambled like the OpenAI key (`wilmai.anthropicKey`), sent only to
+  `api.anthropic.com/v1/messages` (Rust `anthropic_call`, the dev bridge's `/bridge/anthropic`), API version
+  `2026-10-21`, no redirects followed. A block page is told from Anthropic's answer by its `request-id` and
+  `anthropic-*` headers, and pauses AI as a blocked OpenAI does.
+- **Reading** (`src/ai/anthropic.ts`, plugged into `respond()`): Claude Sonnet 5.5 answers in the same JSON schema
+  through structured outputs (`output_config.format`), with the instructions as a cached system prompt.
+- **Decisions** (`decide()`): Anthropic has no Decisions endpoint, so Claude Haiku 5.5 answers a question set in one
+  call, a probability per answer, in the Decisions shape. They're Claude's own estimates, not token probabilities;
+  `pnpm eval --config claude` (with `ANTHROPIC_API_KEY`) is how to check them against the thresholds.
+- **Cost**: counted from the tokens Anthropic reports at its list prices, under the same monthly limit.
+- **Translating**: Claude Sonnet ("Most accurate") or Haiku ("Fast"); a translator chosen with the other AI isn't sent.
+
+**Writing in your own language** (`src/ai/outgoing.ts`, `src/ui/InFinnish.tsx`), with either cloud AI when the app
+isn't in Finnish: under a new message or an answer, "Send it in Finnish". The accurate translator turns the parent's
+words into Finnish, with a translation back to check the meaning; the Finnish can be edited, the confirmation shows
+exactly the Finnish that goes, and changed words need translating again before Send. A new message's draft keeps its
+Finnish. Not yet sent for real to a teacher.
+
 ## Verified, and not yet
 
 Verified against a real Helsinki Wilma (6 Oct 2026): reading everything

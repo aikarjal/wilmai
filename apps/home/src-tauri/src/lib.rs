@@ -23,6 +23,9 @@ const JEV_URL: &str = "https://api.typesafe.ai/v1/systemone";
 /// OpenAI, for the Luna experiment: only these two endpoints.
 const OPENAI_URL: &str = "https://api.openai.com";
 const OPENAI_PATHS: [&str; 2] = ["/v1/responses", "/v1/decisions"];
+/// Anthropic, when Claude is the AI: only the Messages endpoint, at the API version the app's requests are written for.
+const ANTHROPIC_URL: &str = "https://api.anthropic.com";
+const ANTHROPIC_VERSION: &str = "2026-10-21";
 /// Every Wilma the app may talk to (from wilma-client's tenant list).
 const TENANT_LIST: &str = include_str!("../../../../packages/wilma-client/tenant_list.json");
 
@@ -155,6 +158,9 @@ struct JevResponse {
     /** The answer carries OpenAI's own headers: it came from OpenAI, not from a network that stood in for it. */
     #[serde(skip_serializing_if = "Option::is_none")]
     from_openai: Option<bool>,
+    /** The same for Anthropic's own headers, when Claude answered. */
+    #[serde(skip_serializing_if = "Option::is_none")]
+    from_anthropic: Option<bool>,
 }
 
 /// One question set to Jev with the parent's own key.
@@ -174,7 +180,7 @@ async fn jev_call(key: String, body: serde_json::Value) -> Result<JevResponse, S
     let status = response.status().as_u16();
     let retry_after = response.headers().get(RETRY_AFTER).and_then(|v| v.to_str().ok()).map(str::to_owned);
     let body = response.text().await.map_err(|e| e.to_string())?;
-    Ok(JevResponse { status, retry_after, body, from_openai: None })
+    Ok(JevResponse { status, retry_after, body, from_openai: None, from_anthropic: None })
 }
 
 /// A slower client for OpenAI: a model that reasons may take longer than Wilma or Jev. OpenAI's API never redirects,
@@ -236,7 +242,46 @@ async fn openai_call(key: String, path: String, body: serde_json::Value) -> Resu
     let retry_after = response.headers().get(RETRY_AFTER).and_then(|v| v.to_str().ok()).map(str::to_owned);
     let openai = from_openai(response.headers());
     let body = response.text().await.map_err(|e| e.to_string())?;
-    Ok(JevResponse { status, retry_after, body, from_openai: Some(openai) })
+    Ok(JevResponse { status, retry_after, body, from_openai: Some(openai), from_anthropic: None })
+}
+
+/// Anthropic's own headers: every answer from its API has a request-id (and anthropic-* headers); a block page doesn't.
+fn from_anthropic(headers: &reqwest::header::HeaderMap) -> bool {
+    headers.contains_key("request-id") || headers.keys().any(|name| name.as_str().starts_with("anthropic-"))
+}
+
+/// Can this computer reach Anthropic at all? One request without a key (Anthropic answers 401 with its own headers).
+#[tauri::command]
+async fn anthropic_reach() -> Reach {
+    let request = openai_http().get(format!("{ANTHROPIC_URL}/v1/models")).header("anthropic-version", ANTHROPIC_VERSION);
+    match request.timeout(Duration::from_secs(20)).send().await {
+        Ok(response) if from_anthropic(response.headers()) => Reach { reachable: true, reason: None, detail: None },
+        Ok(response) => Reach { reachable: false, reason: Some("intercepted".into()), detail: Some(format!("HTTP {}", response.status().as_u16())) },
+        Err(e) => Reach { reachable: false, reason: Some("network".into()), detail: Some(error_chain(&e)) },
+    }
+}
+
+/// One Messages request to Anthropic (Claude) with the parent's own key; nothing kept. Same client as OpenAI's:
+/// no redirects followed, room for a model that thinks.
+#[tauri::command]
+async fn anthropic_call(key: String, body: serde_json::Value) -> Result<JevResponse, String> {
+    let key = key.trim();
+    if key.is_empty() {
+        return Err("No Anthropic key".into());
+    }
+    let response = openai_http()
+        .post(format!("{ANTHROPIC_URL}/v1/messages"))
+        .header("x-api-key", key)
+        .header("anthropic-version", ANTHROPIC_VERSION)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Couldn't reach Anthropic: {}", error_chain(&e)))?;
+    let status = response.status().as_u16();
+    let retry_after = response.headers().get(RETRY_AFTER).and_then(|v| v.to_str().ok()).map(str::to_owned);
+    let anthropic = from_anthropic(response.headers());
+    let body = response.text().await.map_err(|e| e.to_string())?;
+    Ok(JevResponse { status, retry_after, body, from_openai: None, from_anthropic: Some(anthropic) })
 }
 
 #[derive(Deserialize)]
@@ -279,7 +324,7 @@ async fn ollama_call(manager: tauri::State<'_, local_ai::LocalAi>, wire: OllamaR
         .map_err(|e| format!("Couldn't reach Ollama: {e}"))?;
     let status = response.status().as_u16();
     let body = response.text().await.map_err(|e| e.to_string())?;
-    Ok(JevResponse { status, retry_after: None, body, from_openai: None })
+    Ok(JevResponse { status, retry_after: None, body, from_openai: None, from_anthropic: None })
 }
 
 /// The Luna experiment's comparison with Jev, written where the app keeps its data
@@ -376,6 +421,8 @@ pub fn run() {
             jev_call,
             openai_call,
             openai_reach,
+            anthropic_call,
+            anthropic_reach,
             ollama_call,
             local_ai::local_ai_status,
             local_ai::local_ai_install,
