@@ -704,6 +704,7 @@ impl LocalAi {
                 retry_after: None,
                 body: value.to_string(),
                 from_openai: None,
+                from_anthropic: None,
             })
         };
         match path {
@@ -786,6 +787,7 @@ impl LocalAi {
                 retry_after: None,
                 body: text,
                 from_openai: None,
+                from_anthropic: None,
             });
         }
         let data: Value = serde_json::from_str(&text)

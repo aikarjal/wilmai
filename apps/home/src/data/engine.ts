@@ -7,6 +7,7 @@
  * message marks it read in Wilma.
  */
 import {
+  APIError,
   AuthenticationError,
   SessionEndedError,
   WilmaClient,
@@ -1245,7 +1246,8 @@ async function runSync() {
                 limit(() => c.messages.list("inbox")),
                 // What the family sent and nobody has answered yet is only in the Sent folder.
                 limit(() => c.messages.list("outbox")),
-                limit(() => c.news.list()),
+                // Some Wilmas refuse a guardian's bulletins page (Helsinki answers /news with 403): no bulletins, not nothing read.
+                limit(() => c.news.list().catch((err) => (err instanceof APIError && (err.status === 403 || err.status === 404) ? [] : Promise.reject(err)))),
                 // The weeks ahead too: a teacher may note a make-up exam on a coming lesson (for the calendar).
                 limit(() => c.attendance.list({ from: addDays(now, -20), to: addDays(now, 60) })),
                 // Start times are a bonus; upcoming exams themselves come with the overview.

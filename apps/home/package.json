@@ -20,7 +20,7 @@
     "release:build": "tsx scripts/release-home.ts",
     "release:downloads": "tsx scripts/home-downloads.ts",
     "test:release": "tsx --test evals/home-release.test.ts evals/updates.test.ts",
-    "test:ai": "tsx --test evals/local-ai.test.ts evals/local-setup.test.ts evals/local-runtime.test.ts evals/ai-budget.test.ts evals/note-exams.test.ts evals/note-kinds.test.ts evals/openai-blocked.test.ts evals/own-messages.test.ts evals/schedule-change.test.ts evals/account-storage.test.ts evals/logins.test.ts evals/drafts.test.ts evals/calendar-sync.test.ts evals/translate.test.ts evals/i18n.test.ts",
+    "test:ai": "tsx --test evals/local-ai.test.ts evals/local-setup.test.ts evals/local-runtime.test.ts evals/ai-budget.test.ts evals/note-exams.test.ts evals/note-kinds.test.ts evals/openai-blocked.test.ts evals/own-messages.test.ts evals/schedule-change.test.ts evals/account-storage.test.ts evals/logins.test.ts evals/drafts.test.ts evals/calendar-sync.test.ts evals/translate.test.ts evals/i18n.test.ts evals/anthropic.test.ts evals/outgoing.test.ts",
     "replay": "tsx evals/replay.ts",
     "calibrate": "tsx evals/calibrate.ts",
     "home:feed": "tsx scripts/home-feed.ts"

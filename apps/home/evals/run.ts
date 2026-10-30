@@ -92,7 +92,7 @@ const { runLuna, lunaBacklog } = await import("../src/luna/events.ts");
 const { READING_MODELS, costOf, totalUsage } = await import("../src/luna/client.ts");
 const { LOCAL_MODEL_PROFILES } = await import("../src/ai/config.ts");
 const { checkOllama, probeOllama } = await import("../src/ai/ollama.ts");
-const { forwardToOllama } = await import("../bridge/core.ts");
+const { forwardToAnthropic, forwardToOllama } = await import("../bridge/core.ts");
 for (const [name, cfg] of configs) {
   if (Boolean(cfg.localDecisions) !== Boolean(cfg.localReading)) throw new Error(`${name}: choose fully local or fully cloud intelligence; mixed providers are not supported.`);
   if (cfg.localProfile && !LOCAL_MODEL_PROFILES[cfg.localProfile]) throw new Error(`${name}: unknown local model profile ${cfg.localProfile}`);
@@ -100,15 +100,19 @@ for (const [name, cfg] of configs) {
 }
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY ?? "";
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY ?? "";
+/** A config reads with Claude when its reading model is Anthropic's (decisions then go to Claude too). */
+const claudeConfig = (cfg: EvalConfig) => !cfg.localReading && READING_MODELS[cfg.readingModel]?.provider === "anthropic";
 const JEV_KEY = process.env.JEV_API_KEY ?? "";
 
-// The app's bridge calls go straight to OpenAI and Jev with the keys from the environment.
+// The app's bridge calls go straight to OpenAI, Anthropic and Jev with the keys from the environment.
 overrideBridge(async (path, init) => {
   const send = async (url: string, key: string) => {
     const resp = await fetch(url, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(init.body) });
     return { status: resp.status, retryAfter: resp.headers.get("retry-after"), body: await resp.text() };
   };
   if (path === "openai") return send(`https://api.openai.com${init.headers?.["x-openai-path"]}`, OPENAI_KEY);
+  if (path === "anthropic") return forwardToAnthropic(ANTHROPIC_KEY, init.body);
   if (path === "jev") return send("https://api.typesafe.ai/v1/systemone", JEV_KEY);
   if (path === "ollama") return forwardToOllama(init.body as Parameters<typeof forwardToOllama>[0]);
   return { error: `The eval suite has no route ${path}`, status: 404 };
@@ -229,8 +233,9 @@ async function runCase(
     local: { opened: {}, done: {} },
     settings: {
       ...DEFAULT_SETTINGS,
-      aiProvider: allLocal(cfg) ? "local" : "openai",
+      aiProvider: allLocal(cfg) ? "local" : claudeConfig(cfg) ? "anthropic" : "openai",
       openaiKey: OPENAI_KEY ? "from the environment" : "",
+      anthropicKey: ANTHROPIC_KEY ? "from the environment" : "",
       jevKey: JEV_KEY ? "from the environment" : "",
       decider: cfg.localDecisions ? "local" : cfg.decider ?? "luna",
       decisionsModel: cfg.decisionsModel,

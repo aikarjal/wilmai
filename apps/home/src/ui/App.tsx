@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { accountKey, accountStorageKey, getState, useApp } from "../data/store";
-import { intelligenceProvider } from "../data/model";
+import { cloudOf, intelligenceProvider } from "../data/model";
 import { OPENAI_PAUSE_MS } from "../luna/client";
 import { checkOpenAIAgain } from "../luna/events";
 import { buildFeed, forChildren, needsYou } from "../data/feed";
@@ -72,12 +72,12 @@ export function App() {
       stop();
     };
   }, []);
-  // OpenAI unreachable (luna/client.ts): when the pause is over, one quick check. Still blocked starts a new pause.
+  // OpenAI (or Anthropic) unreachable (luna/client.ts): when the pause is over, one quick check. Still blocked starts a new pause.
   const blockedAt = useApp((s) => s.openaiBlocked?.at ?? null);
   useEffect(() => {
     if (blockedAt === null) return;
     const t = setTimeout(() => {
-      if (intelligenceProvider(getState().settings) === "openai") void checkOpenAIAgain();
+      if (cloudOf(getState().settings)) void checkOpenAIAgain();
     }, Math.max(0, blockedAt + OPENAI_PAUSE_MS - Date.now()));
     return () => clearTimeout(t);
   }, [blockedAt]);

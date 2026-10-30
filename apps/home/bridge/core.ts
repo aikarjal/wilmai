@@ -121,6 +121,38 @@ export async function openAIReach(): Promise<{ reachable: boolean; reason: strin
   }
 }
 
+const ANTHROPIC_URL = "https://api.anthropic.com";
+/** The Messages API version the app's requests are written for (`output_config`; no sampling parameters). */
+export const ANTHROPIC_VERSION = "2026-10-21";
+
+/** Anthropic, when Claude is the AI: only the Messages endpoint. */
+export async function forwardToAnthropic(key: unknown, body: unknown) {
+  if (typeof key !== "string" || !key.trim()) throw new HttpError(400, "No Anthropic key");
+  // Anthropic's API never redirects either: a redirect is a network standing in for it.
+  const resp = await fetch(`${ANTHROPIC_URL}/v1/messages`, {
+    method: "POST",
+    headers: { "x-api-key": key.trim(), "anthropic-version": ANTHROPIC_VERSION, "content-type": "application/json" },
+    body: JSON.stringify(body),
+    redirect: "manual",
+    signal: AbortSignal.timeout(120_000),
+  });
+  return { status: resp.status, retryAfter: resp.headers.get("retry-after"), body: await resp.text(), fromAnthropic: fromAnthropic(resp.headers) };
+}
+
+/** Anthropic's own headers: every answer from its API has a request-id (and anthropic-* headers); a block page doesn't. */
+const fromAnthropic = (headers: Headers) => headers.has("request-id") || [...headers.keys()].some((name) => name.startsWith("anthropic-"));
+
+/** Can this computer reach Anthropic at all? One request without a key (Anthropic answers 401 with its own headers). */
+export async function anthropicReach(): Promise<{ reachable: boolean; reason: string | null; detail: string | null }> {
+  try {
+    const resp = await fetch(`${ANTHROPIC_URL}/v1/models`, { headers: { "anthropic-version": ANTHROPIC_VERSION }, redirect: "manual", signal: AbortSignal.timeout(20_000) });
+    await resp.body?.cancel();
+    return fromAnthropic(resp.headers) ? { reachable: true, reason: null, detail: null } : { reachable: false, reason: "intercepted", detail: `HTTP ${resp.status}` };
+  } catch (err) {
+    return { reachable: false, reason: "network", detail: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 const OLLAMA_GET = ["/api/version", "/api/tags", "/api/ps"];
 const OLLAMA_POST = ["/api/chat", "/v1/systemone", "/api/show", "/api/generate"];
 export async function forwardToOllama(wire: { endpoint: string; path: string; body?: unknown }) {

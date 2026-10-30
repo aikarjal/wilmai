@@ -1,6 +1,6 @@
 /*
- * The app's AI: OpenAI's GPT-6 Luna, with the parent's own key. Two
- * endpoints:
+ * The app's AI: OpenAI's GPT-6 Luna, or Anthropic's Claude (ai/anthropic.ts), with the parent's own key, whichever
+ * the parent chose (one at a time). OpenAI has two endpoints:
  *  - Responses (/v1/responses): Luna reads a text and answers in a JSON
  *    schema (structured outputs). What it reads is not kept at OpenAI
  *    (store: false).
@@ -14,24 +14,30 @@ import { bridgeCall } from "../wilma/transport";
 import { accountScope, getState, resetScope, setState } from "../data/store";
 import type { ReadingUsage, UsageBucket } from "../data/model";
 import { t } from "../i18n";
-import { intelligenceProvider } from "../data/model";
+import { cloudOf, intelligenceProvider, type CloudProvider } from "../data/model";
 import { aiBudgetState, budgetText, normalizeAIBudget } from "../data/ai-budget";
 import { LOCAL_DECIDER, LOCAL_READER, localDecisions, localReading } from "../ai/config";
 import { LocalAIError, decideLocally, readLocally } from "../ai/ollama";
+import { CLAUDE_DECIDER, CLAUDE_READER, answerOf, decisionsOf, decisionsRequest, readingRequest, usageOf, type MessagesReply } from "../ai/anthropic";
 
 export const LUNA = "gpt-6-luna";
 /** How much the reading model reasons unless set: medium read best on the eval suite (8 Oct 2026), for a fraction of a cent a month more than low. */
 export const READING_EFFORT = "medium" as const;
 
 /**
- * Models that can read (Responses API), with OpenAI's list prices in dollars
- * per 1M tokens (developers.openai.com/api/docs/pricing, 8 Oct 2026). Luna is
- * the app's; Sol is there to compare on the eval suite.
+ * Models that can read, with their list prices in dollars per 1M tokens: OpenAI's Responses API
+ * (developers.openai.com/api/docs/pricing, 8 Oct 2026; Luna is the app's, Sol is there to compare on the eval suite)
+ * and Anthropic's Messages API (platform.claude.com pricing, 30 Oct 2026; Haiku also answers Claude's decisions).
  */
-export const READING_MODELS: Record<string, { label: string; input: number; cached: number; output: number }> = {
-  "gpt-6-luna": { label: "GPT-6 Luna", input: 0.1, cached: 0.01, output: 0.5 },
-  "gpt-6.1-sol": { label: "GPT-6.1 Sol", input: 2, cached: 0.1, output: 10 },
+export const READING_MODELS: Record<string, { label: string; provider: CloudProvider; input: number; cached: number; output: number }> = {
+  "gpt-6-luna": { label: "GPT-6 Luna", provider: "openai", input: 0.1, cached: 0.01, output: 0.5 },
+  "gpt-6.1-sol": { label: "GPT-6.1 Sol", provider: "openai", input: 2, cached: 0.1, output: 10 },
+  "claude-sonnet-5-5": { label: "Claude Sonnet 5.5", provider: "anthropic", input: 2, cached: 0.2, output: 10 },
+  "claude-haiku-5-5": { label: "Claude Haiku 5.5", provider: "anthropic", input: 0.1, cached: 0.01, output: 0.5 },
 };
+
+/** A model of the chosen AI service (a saved model of the other one doesn't count). */
+const ofChosen = (model: string | undefined): model is string => Boolean(model && READING_MODELS[model]?.provider === (cloudOf(getState().settings)?.provider ?? "openai"));
 
 /** Decisions (gpt-6-luna only) bill input only. */
 export const DECISIONS_INPUT_PRICE = 0.1;
@@ -42,12 +48,19 @@ export const monthlyLimit = () => normalizeAIBudget(getState().settings.aiMonthl
 /** The usage bucket of this month ("2026-10"), for what it has cost so far. */
 export const thisMonth = () => new Date().toISOString().slice(0, 7);
 
+const claudeChosen = () => intelligenceProvider(getState().settings) === "anthropic";
+
 export const readingModel = () => {
   if (localReading(getState().settings)) return getState().settings.localAI?.readingModel ?? LOCAL_READER;
   const m = getState().settings.readingModel;
-  return READING_MODELS[m] ? m : LUNA;
+  return ofChosen(m) ? m : claudeChosen() ? CLAUDE_READER : LUNA;
 };
-export const decisionsModel = () => localDecisions(getState().settings) ? getState().settings.localAI?.decisionModel ?? LOCAL_DECIDER : getState().settings.decisionsModel ?? LUNA;
+export const decisionsModel = () => {
+  const s = getState().settings;
+  if (localDecisions(s)) return s.localAI?.decisionModel ?? LOCAL_DECIDER;
+  if (claudeChosen()) return ofChosen(s.decisionsModel) ? s.decisionsModel : CLAUDE_DECIDER;
+  return s.decisionsModel ?? LUNA;
+};
 
 async function localCall<T>(work: () => Promise<T>): Promise<T> {
   try { return await work(); }
@@ -130,7 +143,7 @@ export function nextMonth(): string {
   return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
 }
 
-/** At most what the calls on their way to OpenAI cost, in dollars: it counts against the limit until their usage is counted. */
+/** At most what the calls on their way to the AI service cost, in dollars: it counts against the limit until their usage is counted. */
 let reserved = 0;
 
 /** Reasoning a call can use at each effort, in tokens, for its most cost. */
@@ -160,10 +173,14 @@ export const overLimit = () => aiBudgetState(monthCost() + reserved, monthlyLimi
  * A network that can't reach OpenAI (a school or work network that blocks it, or no connection): calls stop at the
  * first sign of it, with one clear message, and AI waits a few minutes before one quick check (App.tsx), or until
  * Check again. A block page or a proxy's error isn't OpenAI's answer: it doesn't carry OpenAI's own headers.
+ * With Claude chosen, the same goes for Anthropic (state.openaiBlocked is the chosen service's).
  */
 export const OPENAI_PAUSE_MS = 5 * 60_000;
 
-export const openAIBlockedMessage = () => t("OpenAI can't be reached from this network, so AI is paused. It tries again in a few minutes, or check again in Settings.");
+export const openAIBlockedMessage = () =>
+  claudeChosen()
+    ? t("Claude can't be reached from this network, so AI is paused. It tries again in a few minutes, or check again in Settings.")
+    : t("OpenAI can't be reached from this network, so AI is paused. It tries again in a few minutes, or check again in Settings.");
 
 /** OpenAI was unreachable a moment ago: no calls yet. */
 export const openAIPaused = () => {
@@ -179,10 +196,10 @@ function blocked(reason: "network" | "intercepted", detail: string | null): Luna
 type Reach = { reachable: boolean; reason: "network" | "intercepted" | null; detail: string | null };
 let reaching: Promise<Reach> | null = null;
 
-/** Can this computer reach OpenAI at all (no key needed)? Clears the pause when it can. */
+/** Can this computer reach the chosen AI service (OpenAI, or Anthropic for Claude) at all (no key needed)? Clears the pause when it can. */
 export function openAIReach(): Promise<Reach> {
   reaching ??= (async () => {
-    const r = await bridgeCall<Reach>("openai-reach").catch((err: unknown) => ({ reachable: false, reason: "network" as const, detail: err instanceof Error ? err.message : String(err) }));
+    const r = await bridgeCall<Reach>(claudeChosen() ? "anthropic-reach" : "openai-reach").catch((err: unknown) => ({ reachable: false, reason: "network" as const, detail: err instanceof Error ? err.message : String(err) }));
     setState({ openaiBlocked: r.reachable ? null : { at: Date.now(), reason: r.reason ?? "network", detail: r.detail } });
     return r;
   })().finally(() => {
@@ -199,22 +216,27 @@ export async function openAIReady(): Promise<boolean> {
   return (await openAIReach()).reachable;
 }
 
-async function post(path: "/v1/responses" | "/v1/decisions", body: unknown): Promise<unknown> {
+/** One request to the chosen AI service: OpenAI's Responses or Decisions, or Anthropic's Messages (Claude). */
+async function post(path: "/v1/responses" | "/v1/decisions" | "/v1/messages", body: unknown): Promise<unknown> {
   const scope = accountScope();
-  if (intelligenceProvider(getState().settings) !== "openai") throw new LunaError(t("OpenAI isn't chosen in Settings."), false);
-  const key = getState().settings.openaiKey.trim();
-  if (!key) throw new LunaError(t("Add an OpenAI API key in Settings."), false);
+  const cloud = cloudOf(getState().settings);
+  const claude = cloud?.provider === "anthropic";
+  if (!cloud || claude !== (path === "/v1/messages")) throw new LunaError(claude ? t("Claude isn't chosen in Settings.") : t("OpenAI isn't chosen in Settings."), false);
+  const key = cloud.key;
+  if (!key) throw new LunaError(claude ? t("Add an Anthropic API key in Settings.") : t("Add an OpenAI API key in Settings."), false);
   if (openAIPaused()) throw new LunaError(openAIBlockedMessage(), false);
   for (let attempt = 1; ; attempt += 1) {
     if (scope !== accountScope()) throw new LunaError("Account changed", false);
     if (overLimit()) throw new LunaError(t("WilmAI Intelligence has reached this month's limit of {limit}. It starts again next month.", { limit: budgetText(monthlyLimit()) }), false);
-    let r: { status: number; retryAfter: string | null; body: string; fromOpenai?: boolean };
+    let r: { status: number; retryAfter: string | null; body: string; fromOpenai?: boolean; fromAnthropic?: boolean };
     try {
-      r = await bridgeCall<typeof r>("openai", { body, headers: { "x-openai-key": key, "x-openai-path": path } });
+      r = claude
+        ? await bridgeCall<typeof r>("anthropic", { body, headers: { "x-anthropic-key": key } })
+        : await bridgeCall<typeof r>("openai", { body, headers: { "x-openai-key": key, "x-openai-path": path } });
     } catch (err) {
-      throw blocked("network", (err instanceof Error ? err.message : String(err)).replace(/^Couldn't reach OpenAI: /, ""));
+      throw blocked("network", (err instanceof Error ? err.message : String(err)).replace(/^Couldn't reach (OpenAI|Anthropic): /, ""));
     }
-    if (r.fromOpenai === false) throw blocked("intercepted", `HTTP ${r.status}`);
+    if ((claude ? r.fromAnthropic : r.fromOpenai) === false) throw blocked("intercepted", `HTTP ${r.status}`);
     if (getState().openaiBlocked) setState({ openaiBlocked: null });
     if (r.status === 200) return JSON.parse(r.body);
     const message = (() => {
@@ -224,9 +246,11 @@ async function post(path: "/v1/responses" | "/v1/decisions", body: unknown): Pro
         return null;
       }
     })();
-    if (r.status === 401 || r.status === 403) throw new LunaError(t("OpenAI didn't accept the API key."), false);
+    if (r.status === 401 || r.status === 403) throw new LunaError(claude ? t("Anthropic didn't accept the API key.") : t("OpenAI didn't accept the API key."), false);
+    // Anthropic answers 529 when it's overloaded: like a 503, worth another try.
     const retryable = r.status === 429 || r.status >= 500;
-    if (!retryable || attempt >= 4) throw new LunaError(message ? `OpenAI ${r.status}: ${message}` : t("OpenAI couldn't answer (error {status}). Try again later.", { status: r.status }), retryable);
+    const service = claude ? "Anthropic" : "OpenAI";
+    if (!retryable || attempt >= 4) throw new LunaError(message ? `${service} ${r.status}: ${message}` : claude ? t("Anthropic couldn't answer (error {status}). Try again later.", { status: r.status }) : t("OpenAI couldn't answer (error {status}). Try again later.", { status: r.status }), retryable);
     const wait = Number(r.retryAfter) > 0 ? Math.min(Number(r.retryAfter) * 1000, 30_000) : 500 * 2 ** attempt;
     await new Promise((resolve) => setTimeout(resolve, wait));
   }
@@ -237,13 +261,32 @@ interface ResponsesReply {
   usage?: { input_tokens?: number; output_tokens?: number; input_tokens_details?: { cached_tokens?: number }; output_tokens_details?: { reasoning_tokens?: number } };
 }
 
+/** Counts one call's tokens under its model, for what it costs (Claude's decisions too: they bill as reading does). */
+function countReading(model: string, used: ReadingUsage) {
+  count((b) => {
+    const reading = readingOf(b);
+    return { ...b, responses: undefined, reading: { ...reading, [model]: reading[model] ? addReading(reading[model], used) : used } };
+  });
+}
+
 /** The reading model reads `input` and answers in `schema` (strict structured outputs). */
 export async function respond<T>(opts: { name: string; instructions: string; input: string; schema: Record<string, unknown>; effort?: "none" | "low" | "medium" | "high"; model?: string }): Promise<T> {
   if (localReading(getState().settings)) return localCall(() => readLocally<T>(opts));
   const generation = resetScope();
-  const model = opts.model && READING_MODELS[opts.model] ? opts.model : readingModel();
+  const model = ofChosen(opts.model) ? opts.model : readingModel();
   const effort = opts.effort ?? getState().settings.readingEffort ?? READING_EFFORT;
   const ceiling = responsesCeiling(model, opts.instructions.length + opts.input.length + JSON.stringify(opts.schema).length, effort);
+  if (claudeChosen()) {
+    const reply = await reserving(ceiling, async () => {
+      const r = (await post("/v1/messages", readingRequest(opts, model, effort))) as MessagesReply;
+      if (generation === resetScope()) countReading(model, usageOf(r));
+      return r;
+    });
+    const answer = answerOf(reply);
+    if ("refusal" in answer) throw new LunaError(t("The AI didn't answer: {why}", { why: answer.refusal }), false);
+    if ("cut" in answer || !answer.text) throw new LunaError(t("The AI's answer was empty."), true);
+    return JSON.parse(answer.text) as T;
+  }
   const data = await reserving(ceiling, async () => {
     const reply = (await post("/v1/responses", {
       model,
@@ -261,10 +304,7 @@ export async function respond<T>(opts: { name: string; instructions: string; inp
       output: u.output_tokens ?? 0,
       reasoning: u.output_tokens_details?.reasoning_tokens ?? 0,
     };
-    if (generation === resetScope()) count((b) => {
-      const reading = readingOf(b);
-      return { ...b, responses: undefined, reading: { ...reading, [model]: reading[model] ? addReading(reading[model], used) : used } };
-    });
+    if (generation === resetScope()) countReading(model, used);
     return reply;
   });
   const parts = (data.output ?? []).flatMap((o) => o.content ?? []);
@@ -289,6 +329,7 @@ export type DecisionAnswer =
 /** Typed questions about `input`, answered with probabilities (Luna's Decisions endpoint). */
 export async function decide(input: string, questions: DecisionQuestion[]): Promise<Record<string, DecisionAnswer>> {
   if (localDecisions(getState().settings)) return localCall(() => decideLocally(input, questions));
+  if (claudeChosen()) return decideWithClaude(input, questions);
   const generation = resetScope();
   const body = { model: getState().settings.decisionsModel || LUNA, input, questions };
   // Input only, at three characters a token at most.
@@ -306,4 +347,26 @@ export async function decide(input: string, questions: DecisionQuestion[]): Prom
   const answers = Object.fromEntries((data.answers ?? []).map((a) => [a.name, a]));
   for (const q of questions) if (!answers[q.name]) throw new LunaError(t("The AI's answer was missing a question"), true);
   return answers;
+}
+
+/** Claude answers the questions in one Messages call (ai/anthropic.ts); its tokens count as reading does, under its model. */
+async function decideWithClaude(input: string, questions: DecisionQuestion[]): Promise<Record<string, DecisionAnswer>> {
+  const generation = resetScope();
+  const model = decisionsModel();
+  const body = decisionsRequest(input, questions, model);
+  const reply = await reserving(responsesCeiling(model, JSON.stringify(body).length, "low"), async () => {
+    const r = (await post("/v1/messages", body)) as MessagesReply;
+    if (generation === resetScope()) {
+      countReading(model, usageOf(r));
+      count((b) => ({ ...b, decisions: { ...b.decisions, calls: b.decisions.calls + 1 } }));
+    }
+    return r;
+  });
+  let answers: DecisionAnswer[];
+  try {
+    answers = decisionsOf(reply, questions);
+  } catch {
+    throw new LunaError(t("The AI's answer was missing a question"), true);
+  }
+  return Object.fromEntries(answers.map((a) => [a.name, a]));
 }

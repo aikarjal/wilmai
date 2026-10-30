@@ -288,7 +288,7 @@ export interface ItemTranslation {
 
 export interface Settings {
   /** Explicit opt-in. Older installations infer OpenAI from their saved key. */
-  aiProvider?: "off" | "openai" | "local";
+  aiProvider?: "off" | CloudProvider | "local";
   localAI?: {
     /** Download/probe opt-in pending; does not enable school-data inference. */
     setupPending?: boolean;
@@ -302,6 +302,8 @@ export interface Settings {
   jevKey: string;
   /** The parent's OpenAI key, for the Luna experiment (kept scrambled like the Jev key). */
   openaiKey: string;
+  /** The parent's Anthropic key, when Claude is the AI (kept scrambled like the OpenAI key). */
+  anthropicKey?: string;
   /** Monthly OpenAI pause limit in USD, from 1 to 5; older settings default to 2. */
   aiMonthlyBudgetUsd?: number;
   /** Who answers the decision questions (not in the app's settings view: the eval suite runs Jev's own to compare). */
@@ -351,10 +353,10 @@ export interface Settings {
   language: "auto" | "en" | "fi" | "sv";
   /** Light or dark: unset or "auto" follows the computer. */
   theme?: "auto" | "light" | "dark";
-  /** What messages are translated into, with OpenAI (data/translations.ts); unset: no translations. */
+  /** What messages are translated into, with OpenAI or Claude (data/translations.ts); unset: no translations. */
   translateTo?: TranslationLanguage | "off";
-  /** Who translates with OpenAI (ai/translate.ts TRANSLATORS); unset: the default there. */
-  translateModel?: "gpt-6-luna" | "gpt-6.1-sol";
+  /** Who translates (ai/translate.ts TRANSLATORS, the chosen AI's); unset or another AI's: the default there. */
+  translateModel?: string;
   /** Look for a newer version on wilm.ai now and then (desktop app). */
   updateChecks: boolean;
 }
@@ -367,8 +369,18 @@ export const keepsPassword = (s: Pick<Settings, "rememberPassword" | "staySigned
 export const viewerOf = (account: Pick<AccountInfo, "wilmaRole"> | null | undefined, local: Pick<LocalState, "viewAs"> | null | undefined): Viewer =>
   local?.viewAs ?? account?.wilmaRole ?? "guardian";
 
-export const intelligenceProvider = (s: Pick<Settings, "aiProvider" | "openaiKey">): "off" | "openai" | "local" => s.aiProvider ?? (s.openaiKey.trim() ? "openai" : "off");
-export const intelligenceOn = (s: Pick<Settings, "aiProvider" | "openaiKey">): boolean => intelligenceProvider(s) === "local" || (intelligenceProvider(s) === "openai" && Boolean(s.openaiKey.trim()));
+/** The AI services the app can use with the parent's own key: one at a time, chosen in Settings. */
+export type CloudProvider = "openai" | "anthropic";
+
+export const intelligenceProvider = (s: Pick<Settings, "aiProvider" | "openaiKey">): "off" | CloudProvider | "local" => s.aiProvider ?? (s.openaiKey.trim() ? "openai" : "off");
+/** The chosen AI service and its key, or null when the AI isn't a service (none, or local). */
+export function cloudOf(s: Pick<Settings, "aiProvider" | "openaiKey" | "anthropicKey">): { provider: CloudProvider; key: string } | null {
+  const provider = intelligenceProvider(s);
+  if (provider === "openai") return { provider, key: s.openaiKey.trim() };
+  if (provider === "anthropic") return { provider, key: (s.anthropicKey ?? "").trim() };
+  return null;
+}
+export const intelligenceOn = (s: Pick<Settings, "aiProvider" | "openaiKey" | "anthropicKey">): boolean => intelligenceProvider(s) === "local" || Boolean(cloudOf(s)?.key);
 
 export const DEFAULT_SETTINGS: Settings = {
   jevKey: "",

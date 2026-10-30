@@ -14,6 +14,8 @@ import { draftTo, openDraft, readDrafts, saveDraft, writeDrafts, type Drafts } f
 import { loginOfChild } from "../data/logins";
 import type { Contacts } from "../data/model";
 import { Icon, Tab } from "./bits";
+import { InFinnish } from "./InFinnish";
+import { currentOutgoing, outgoingAvailable, readOutgoing, type Outgoing } from "../ai/outgoing";
 import { go, hrefFor, useChildFilter } from "./shared";
 import { showToast } from "./Toast";
 import { language, plural, t, tx } from "../i18n";
@@ -119,6 +121,14 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
   const [written, setWritten] = useState(false);
   // The saved draft the words opened from, so it moves with them if the parent sends them to someone else.
   const draftFrom = useRef<string | null>(null);
+  // Written in the parent's language, sent in Finnish (InFinnish.tsx): the Finnish is kept with the draft.
+  const canFinnish = useApp((s) => outgoingAvailable(s.settings, language()));
+  const [inFinnish, setInFinnish] = useState(true);
+  const [fi, setFi] = useState<Outgoing | null>(null);
+  const finnish = canFinnish && inFinnish;
+  const ready = finnish ? currentOutgoing(fi, subject, text) : null;
+  // What goes to Wilma: the Finnish the parent saw, or what they wrote.
+  const outgoing = finnish ? { subject: ready?.subject.trim() ?? "", text: ready?.text ?? "" } : { subject: subject.trim(), text };
   const subjectRef = useRef<HTMLInputElement>(null);
   const demo = isDemo();
   const stored = () => readDrafts(localStorage.getItem(draftKey));
@@ -143,9 +153,9 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
   useEffect(() => {
     if (!written || !recipient) return;
     const to = draftTo(recipient.composePath);
-    store(saveDraft(stored(), to, { subject, text }, draftFrom.current));
+    store(saveDraft(stored(), to, { subject, text, finnish: fi ?? undefined }, draftFrom.current));
     draftFrom.current = subject || text ? to : null;
-  }, [subject, text, written, recipient, draftKey]);
+  }, [subject, text, fi, written, recipient, draftKey]);
 
   /** The words gone, and their draft (sent or thrown away). */
   const forget = () => {
@@ -154,6 +164,7 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
     setWritten(false);
     setSubject("");
     setText("");
+    setFi(null);
   };
 
   // What each teacher teaches this child, from the timetable's teacher codes.
@@ -208,6 +219,7 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
       draftFrom.current = opened.from;
       setSubject(opened.words.subject);
       setText(opened.words.text);
+      setFi(readOutgoing(opened.words.finnish));
     }
     setStage({ kind: "preparing" });
     try {
@@ -222,7 +234,7 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
   const send = async (form: MessageForm) => {
     setStage({ kind: "sending", form });
     try {
-      await messageApi(child).send(form, subject.trim(), text);
+      await messageApi(child).send(form, outgoing.subject, outgoing.text);
       setStage({ kind: "sent", to: form.recipients.join(", ") || recipient?.name || "" });
       forget();
     } catch (err) {
@@ -334,6 +346,7 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
           disabled={stage.kind === "sending"}
         />
         <textarea value={text} onChange={(e) => (setText(e.target.value), setWritten(true))} placeholder={t("Write your message")} aria-label={t("Your message")} disabled={stage.kind === "sending"} />
+        {canFinnish ? <InFinnish on={inFinnish} setOn={setInFinnish} subject={subject} text={text} value={fi} onChange={(v) => (setFi(v), setWritten(true))} disabled={stage.kind === "sending" || stage.kind === "confirm"} /> : null}
         {stage.kind === "error" ? (
           <div className="notice err composer-error">
             <span>{stage.message}</span>
@@ -346,10 +359,11 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
         ) : null}
         {stage.kind === "confirm" || stage.kind === "sending" ? (
           <div className="confirm">
+            {finnish && ready ? <blockquote className="outgoing-preview" lang="fi">{ready.text}</blockquote> : null}
             <span>
               {stage.kind === "confirm" && stage.note ? <>{t(stage.note)} </> : null}
               {tx(demo ? "Send “{subject}” to {to} in Wilma (sample family: nothing is really sent)?" : "Send “{subject}” to {to} in Wilma?", {
-                subject: subject.trim(),
+                subject: outgoing.subject,
                 to: <b>{to}</b>,
               })}
             </span>
@@ -371,7 +385,7 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
             ) : null}
             <button
               className="btn btn-primary btn-sm"
-              disabled={!form || !subject.trim() || !text.trim()}
+              disabled={!form || !subject.trim() || !text.trim() || (finnish && !ready)}
               onClick={() => form && setStage({ kind: "confirm", form })}
             >
               {t("Send…")}
