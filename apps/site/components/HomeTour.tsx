@@ -204,6 +204,10 @@ function buildTour(host: HTMLElement, lang: Lang, labels: TourLabels): () => voi
   const ARRIVE = 0.6;
   // What Messages ends on, which Search opens over.
   let messagesDone = () => {};
+  // The tour's first view takes over from the picture the page shows before it runs (.ht-poster): Today, whole. So
+  // the first time it's drawn, its rows are already in, as in the picture, and nothing changes as one becomes the
+  // other.
+  let opening = true;
 
   // Today: each child's school day arrives, what needs you lifts out, then the page runs down to the results.
   (() => {
@@ -215,11 +219,11 @@ function buildTour(host: HTMLElement, lang: Lang, labels: TourLabels): () => voi
     STEPS.push({
       id: "today", view: "today", still: 2.0, heads: [[0, said.today[0]], [1.3, said.today[1]]],
       reset() {
-        gsap.set(days, { autoAlpha: 0, y: 24 });
+        gsap.set(days, opening ? { autoAlpha: 1, y: 0 } : { autoAlpha: 0, y: 24 });
         gsap.set(v.mv, { y: 0 });
       },
       build(tl, t) {
-        tl.to(days, { autoAlpha: 1, y: 0, duration: 0.55, ease: "expo.out", stagger: 0.14 }, t - ARRIVE);
+        if (!opening) tl.to(days, { autoAlpha: 1, y: 0, duration: 0.55, ease: "expo.out", stagger: 0.14 }, t - ARRIVE);
         dim(tl, t + 1.3, true);
         lift(tl, needs, 1.3, t + 1.3);
         dim(tl, t + 4.0, false);
@@ -320,11 +324,15 @@ function buildTour(host: HTMLElement, lang: Lang, labels: TourLabels): () => voi
         const o = t - 0.4;
         tl.fromTo(backdrop, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3, ease: "sine.out", immediateRender: false }, o);
         tl.fromTo(menu, { autoAlpha: 0, scale: 0.97, y: 20 }, { autoAlpha: 1, ...grow(r.menu[0], 1), duration: 0.5, ease: "expo.out", immediateRender: false }, o);
-        // the query ("koe") is about an eighth of the field: a letter at a time
-        tl.to(typed, { clipPath: "inset(0% 96% 0% 0%)", duration: 0.01 }, o + 0.45);
-        tl.to(typed, { clipPath: "inset(0% 92% 0% 0%)", duration: 0.01 }, o + 0.6);
-        tl.to(typed, { clipPath: "inset(0% 0% 0% 0%)", duration: 0.01 }, o + 0.75);
-        tl.to(lines, { autoAlpha: 1, y: 0, duration: 0.45, ease: "expo.out", stagger: 0.09 }, o + 0.85);
+        // the query ("koe", "exam"), a step at a time across where its words are in the field
+        const [fx0, , fx1] = field;
+        const [qx0, , qx1] = r.query?.[0] ?? [fx0, 0, fx0 + (fx1 - fx0) / 8];
+        const STEPS = 4;
+        for (let k = 1; k <= STEPS; k++) {
+          const right = k === STEPS ? 0 : (100 * (fx1 - (qx0 + ((qx1 - qx0) * k) / STEPS))) / (fx1 - fx0);
+          tl.to(typed, { clipPath: `inset(0% ${right}% 0% 0%)`, duration: 0.01 }, o + 0.33 + k * 0.12);
+        }
+        tl.to(lines, { autoAlpha: 1, y: 0, duration: 0.45, ease: "expo.out", stagger: 0.09 }, o + 0.9);
       },
     });
   })();
@@ -383,6 +391,7 @@ function buildTour(host: HTMLElement, lang: Lang, labels: TourLabels): () => voi
   function switchView(id: string) {
     const next = views[id];
     const prev = shown;
+    opening = !prev;
     const tl = timeline();
     Object.values(views).forEach((x) => {
       if (x !== next && x !== prev) gsap.set(x.v, { autoAlpha: 0 });

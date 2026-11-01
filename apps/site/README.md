@@ -22,7 +22,8 @@ static files and served by Cloudflare Workers.
   way the product tours in Antti's decks are: screens of the app put in motion with GSAP, in code, so it stays
   up to date with a new capture instead of a new recording. `pnpm --filter @wilm-ai/site capture:home-tour`
   (scripts/capture-home-tour.mjs) starts the app's dev server and takes them with Google Chrome the same way as the
-  screenshots (sample family, clock frozen, No AI, the menu's foot left out), 1305×816 at 2×: Today (the whole
+  screenshots (sample family, clock frozen, No AI, the menu's foot left out; in English, translated into English,
+  which the sample family does without AI), 1305×816 at 2×: Today (the whole
   page), the inbox where messages and bulletins mix with an answer being written, ⌘K search (captured over Today;
   the tour opens it over the inbox, the page it's on), the Week with a lesson's day open beside it,
   Grades. It writes each screen at 2×

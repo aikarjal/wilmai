@@ -1,7 +1,9 @@
 /*
  * The screens of the Home page's hero tour (components/HomeTour.tsx), taken from WilmAI Home itself: the app's
  * development build with the made-up sample family, in its light theme, No AI, the clock frozen on a school-day
- * morning, at 1305×816 CSS px and 2× pixels. Nothing is edited by hand afterwards.
+ * morning, at 1305×816 CSS px and 2× pixels. Nothing is edited by hand afterwards. In English the family is shown
+ * translated into English, as Settings → Translating messages does it: the sample family comes with its English
+ * (apps/home/src/demo), so that needs no AI.
  *
  * It writes, for each language, public/home-tour/<lang>/<screen>.webp (2×, lossless: what a large display shows)
  * and <screen>-1x.webp (1×, for phones), and lib/home-tour.json: each screen's size and where its parts are, in 2× px.
@@ -30,6 +32,11 @@ const W = 1305, H = 816, DPR = 2;
 // A Wednesday morning in a school week: the sample family is built around "today".
 const NOW = new Date("2026-10-21T09:40:00+03:00");
 const LANGS = { en: "en-GB", fi: "fi-FI" };
+/** Each language's settings on top of the common ones, the message opened and answered, and the search. */
+const IN = {
+  en: { settings: { translateTo: "en" }, message: "School starts at 10.15 tomorrow", reply: "Thank you for letting me know!", search: "exam" },
+  fi: { settings: {}, message: "Huomenna koulu alkaa", reply: "Kiitos tiedosta!", search: "koe" },
+};
 
 /** The app's dev server, on a port of its own, for as long as the capture runs. */
 async function startApp() {
@@ -94,10 +101,12 @@ async function capture(lang, locale) {
   await mkdir(out, { recursive: true });
   const browser = await chromium.launch({ channel: "chrome" });
   const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DPR, colorScheme: "light", locale, timezoneId: "Europe/Helsinki" });
-  // The app's language, the light theme, and No AI chosen (so the menu has no "Choose AI" cue).
-  await context.addInitScript((language) => {
-    if (!localStorage.getItem("wilmai.settings")) localStorage.setItem("wilmai.settings", JSON.stringify({ language, theme: "light", aiProvider: "off" }));
-  }, lang);
+  // The app's language, the light theme, and No AI chosen (so the menu has no "Choose AI" cue); in English, translating
+  // into English.
+  const words = IN[lang];
+  await context.addInitScript(([language, extra]) => {
+    if (!localStorage.getItem("wilmai.settings")) localStorage.setItem("wilmai.settings", JSON.stringify({ language, theme: "light", aiProvider: "off", ...extra }));
+  }, [lang, words.settings]);
   const page = await context.newPage();
   await page.clock.setFixedTime(NOW);
   await page.goto(APP);
@@ -147,11 +156,11 @@ async function capture(lang, locale) {
   // The inbox where messages and bulletins mix, and an answer being written to today's message from a teacher (short,
   // so the whole of it shows with the answer under it).
   await go("#/inbox");
-  await page.locator(".inbox-list a.row").filter({ hasText: "Huomenna koulu alkaa" }).first().click();
+  await page.locator(".inbox-list a.row").filter({ hasText: words.message }).first().click();
   await page.locator(".reader-wrap .body").first().waitFor();
   await page.keyboard.press("r"); // Reply
   await page.locator(".composer textarea").waitFor();
-  await page.locator(".composer textarea").fill("Kiitos tiedosta!");
+  await page.locator(".composer textarea").fill(words.reply);
   await page.evaluate(() => {
     document.querySelector(".composer").scrollIntoView({ block: "nearest" });
     // the list where messages and bulletins mix: the first bulletin a little over halfway down
@@ -171,8 +180,8 @@ async function capture(lang, locale) {
   await go("#/today");
   await page.keyboard.press("Meta+k");
   await page.locator(".cmdk-search").waitFor();
-  await page.keyboard.type("koe", { delay: 30 });
-  await shot("search", { main: ".main", menu: "dialog.cmdk", input: ".cmdk-search input", lines: ".cmdk-group, .cmdk-item" });
+  await page.keyboard.type(words.search, { delay: 30 });
+  await shot("search", { main: ".main", menu: "dialog.cmdk", input: ".cmdk-search input", query: (p) => typedIn(p, ".cmdk-search input"), lines: ".cmdk-group, .cmdk-item" });
   await page.keyboard.press("Escape");
 
   // Both children's week side by side, as a parent sees it (the site's picture), then with today's first lesson
