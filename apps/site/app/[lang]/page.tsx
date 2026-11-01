@@ -171,6 +171,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
           </div>
         </section>
 
+        {/* The other way to use WilmAI, low on the page so it doesn't pull parents away from setting up an assistant. */}
         <HomeCard lang={lang} />
 
         <section className="section">

@@ -2850,7 +2850,7 @@ main {
   font: 700 11px var(--font-body), sans-serif;
 }
 
-/* The banner across the very top of the front page, above everything: WilmAI Home is new. */
+/* The banner across the very top of the front page, above everything: WilmAI Home, what it gives you, and a button. */
 .home-banner {
   display: block;
   background: var(--ink);
@@ -2861,27 +2861,42 @@ main {
 .home-banner-inner {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 18px;
   max-width: 1040px;
   margin: 0 auto;
-  padding: 10px 20px;
+  padding: 12px 20px;
   font-size: 15px;
   line-height: 1.35;
 }
 
 .home-banner-shot {
   flex: none;
-  width: 96px;
+  width: 132px;
   height: auto;
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
-  border-radius: 6px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
-  transform: rotate(-3deg);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: 7px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
   transition: transform 0.18s ease;
 }
 
 .home-banner:hover .home-banner-shot {
-  transform: rotate(0deg) scale(1.06);
+  transform: translateY(-2px) scale(1.04);
+}
+
+.home-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.home-banner-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0;
+  row-gap: 4px;
+  font-size: 17px;
 }
 
 .home-banner-badge {
@@ -2890,30 +2905,49 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 11px 4px 9px;
+  margin-right: 10px;
+  padding: 3px 10px 3px 8px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--marker);
   color: var(--ink);
-  font: 700 13px var(--font-body), sans-serif;
+  font: 700 12.5px var(--font-body), sans-serif;
 }
 
-.home-banner-text b {
+.home-banner-title b {
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
 }
 
-.home-banner-more {
-  color: rgba(255, 255, 255, 0.82);
+.home-banner-comma {
+  white-space: pre;
 }
 
+.home-banner-detail {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14.5px;
+}
+
+/* A real button, as the page's own: yellow with a hard shadow. */
 .home-banner-cta {
   flex: none;
   margin-left: auto;
+  padding: 9px 18px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--marker);
+  color: var(--ink);
+  box-shadow: 3px 3px 0 rgba(255, 255, 255, 0.85);
   font-family: var(--font-display), sans-serif;
+  font-size: 15.5px;
   font-weight: 700;
-  color: var(--marker);
   white-space: nowrap;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-banner:hover .home-banner-cta {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 rgba(255, 255, 255, 0.85);
 }
 
 .home-banner-arrow {
@@ -2962,16 +2996,17 @@ main {
   }
 }
 
-/* The front page's card about Home, after the setup guides. */
+/* Home on the front page, after the setup guides: the app of your own. */
 .home-card {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 32px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 36px;
   align-items: center;
-  padding: 28px;
+  padding: 32px;
   background: var(--note-teal);
+  border: 2px solid var(--ink);
   border-radius: 18px;
-  box-shadow: 0 5px 12px rgba(27, 43, 52, 0.1);
+  box-shadow: 6px 7px 0 rgba(27, 43, 52, 0.14);
 }
 
 .home-card-shot img {
@@ -2991,37 +3026,107 @@ main {
 
 .home-card h2 .home-beta {
   margin-left: 8px;
+  vertical-align: middle;
 }
 
-.home-card-copy > p:not(.eyebrow) {
-  margin: 12px 0 20px;
+.home-card-text {
+  margin: 12px 0 14px;
   color: var(--ink-soft);
   line-height: 1.55;
+}
+
+.home-card-points {
+  display: grid;
+  gap: 9px;
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+  line-height: 1.45;
+}
+
+.home-card-points li {
+  position: relative;
+  padding-left: 30px;
+}
+
+/* A tick, as on the Home page's lists. */
+.home-card-points li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 1px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--teal-deep);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.home-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .home-card .button {
   display: inline-block;
 }
 
+/* Tablets: the line on what it gives you goes, the rest stays on one row. */
+@media (max-width: 860px) {
+  .home-banner-detail {
+    display: none;
+  }
+}
+
+/* Phones: the picture, the name and what it is, and the button on its own row under them. */
 @media (max-width: 640px) {
-  .topbar-home,
-  .home-banner-more,
-  .home-banner-cta-label {
+  .topbar-home {
     display: none;
   }
 
-  .home-banner-cta {
-    margin-left: 0;
-  }
-
   .home-banner-inner {
-    justify-content: center;
-    gap: 12px;
-    padding: 8px 16px;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding: 10px 16px 12px;
   }
 
   .home-banner-shot {
-    width: 64px;
+    width: 84px;
+  }
+
+  .home-banner-text {
+    flex: 1;
+  }
+
+  .home-banner-title {
+    font-size: 16px;
+  }
+
+  .home-banner-comma {
+    display: none;
+  }
+
+  .home-banner-more {
+    flex-basis: 100%;
+    white-space: normal;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .home-banner-more::first-letter {
+    text-transform: uppercase;
+  }
+
+  .home-banner-cta {
+    flex: 1 0 100%;
+    margin-left: 0;
+    padding: 8px 14px;
+    text-align: center;
   }
 }
 

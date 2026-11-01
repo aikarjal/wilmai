@@ -82,9 +82,10 @@ export interface HomeCopy {
   };
   closing: { eyebrow: string; text: string; signature: string; button: string };
   /** The banner across the very top of the front page. `more` and `cta` are left out on phones. */
-  announce: { badge: string; text: string; more: string; cta: string };
-  /** The card about Home on the front page, after the setup guides. */
-  card: { eyebrow: string; text: string; link: string };
+  /** The strip across the top of the front page: what Home is, what it gives you (`detail`), and the way in. */
+  announce: { badge: string; text: string; more: string; detail: string; cta: string };
+  /** Home on the front page, after the setup guides: the app for those who'd rather not use an assistant. */
+  card: { eyebrow: string; text: string; points: string[]; download: string; link: string };
 }
 
 const en: HomeCopy = {
@@ -361,11 +362,24 @@ const en: HomeCopy = {
     signature: "— Antti",
     button: "Give feedback on GitHub"
   },
-  announce: { badge: "New", text: "WilmAI Home", more: ": a fast desktop Wilma app for students and parents", cta: "See the app" },
+  announce: {
+    badge: "New",
+    text: "WilmAI Home",
+    more: "a free Wilma app for your computer",
+    detail: "Every child's day, messages in your language, and AI if you want it. For Mac and Windows.",
+    cta: "See the app"
+  },
   card: {
-    eyebrow: "new: a desktop app",
-    text: "Rather have an app of your own? WilmAI Home is a fast, modern Wilma app for students and parents: everything in one view, a notification when something needs you, and AI if you want it. Free and open, now in beta, for Mac and Windows.",
-    link: "Meet WilmAI Home"
+    eyebrow: "or an app of your own",
+    text: "Don't use an AI assistant? WilmAI Home is a fast Wilma app for students and parents, on your own computer. It works without AI.",
+    points: [
+      "Every child's day, messages, exams and grades in one view.",
+      "Messages translated into your language, the original a click away.",
+      "AI that puts what needs you first, if you want it.",
+      "Children at different schools, together."
+    ],
+    download: "Download for Mac or Windows",
+    link: "See how it works"
   }
 };
 
@@ -643,11 +657,24 @@ const fi: HomeCopy = {
     signature: "— Antti",
     button: "Anna palautetta GitHubissa"
   },
-  announce: { badge: "Uutta", text: "WilmAI Home", more: ": nopea Wilma-työpöytäsovellus oppilaille ja vanhemmille", cta: "Katso sovellus" },
+  announce: {
+    badge: "Uutta",
+    text: "WilmAI Home",
+    more: "ilmainen Wilma-sovellus tietokoneellesi",
+    detail: "Jokaisen lapsen päivä, viestit omalla kielelläsi ja tekoäly, jos haluat. Macille ja Windowsille.",
+    cta: "Katso sovellus"
+  },
   card: {
-    eyebrow: "uutta: työpöytäsovellus",
-    text: "Haluaisitko mieluummin oman sovelluksen? WilmAI Home on nopea ja moderni Wilma-sovellus oppilaille ja vanhemmille: kaikki yhdessä näkymässä, ilmoitus, kun jokin vaatii sinua, ja tekoäly, jos haluat. Ilmainen ja avoin, nyt beetana, Macille ja Windowsille.",
-    link: "Tutustu WilmAI Homeen"
+    eyebrow: "tai oma sovellus",
+    text: "Etkö käytä tekoälyavustajaa? WilmAI Home on nopea Wilma-sovellus oppilaille ja vanhemmille omalle tietokoneellesi. Se toimii ilman tekoälyä.",
+    points: [
+      "Jokaisen lapsen päivä, viestit, kokeet ja arvosanat yhdessä näkymässä.",
+      "Viestit käännettyinä omalle kielellesi, alkuperäinen klikkauksen päässä.",
+      "Tekoäly nostaa ensin sen, mikä vaatii sinua, jos haluat.",
+      "Eri koulujen lapset yhdessä."
+    ],
+    download: "Lataa Macille tai Windowsille",
+    link: "Katso, miten se toimii"
   }
 };
 
