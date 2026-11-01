@@ -20,19 +20,23 @@ static files and served by Cloudflare Workers.
   1305×372 at 2×). The page's `<Image>` sizes and the Open Graph size follow the pictures.
 - `public/home-tour/<lang>/*.webp`, `lib/home-tour.json` — the hero's tour (components/HomeTour.tsx), made the
   way the product tours in Antti's decks are: screens of the app put in motion with GSAP, in code, so it stays
-  up to date with a new capture instead of a new recording. `pnpm --filter @wilm-ai/site capture:home-tour`
+  up to date with a new capture instead of a new recording. Seven parts: Today; Messages (the inbox, an answer typed,
+  ⌘K search over it); a message translated and its original; Today read by the AI (what needs you, by when); the
+  Week with a lesson's day open beside it; Grades; and the family's two schools' Wilmas, each signed in.
+  `op run --env-file apps/home/evals/keys.env -- pnpm --filter @wilm-ai/site capture:home-tour`
   (scripts/capture-home-tour.mjs) starts the app's dev server and takes them with Google Chrome the same way as the
   screenshots (sample family, clock frozen, No AI, the menu's foot left out; in English, translated into English,
-  which the sample family does without AI), 1305×816 at 2×: Today (the whole
-  page), the inbox where messages and bulletins mix with an answer being written, ⌘K search (captured over Today;
-  the tour opens it over the inbox, the page it's on), the Week with a lesson's day open beside it,
-  Grades. It writes each screen at 2×
-  (lossless) and 1× (phones), and in `lib/home-tour.json` where each screen's parts are (Today's school days and
-  Needs you, the inbox's rows and the answer, the search menu's field and results, the week's days and the open
-  day's schedule, the grade rows), which the
-  tour moves and lifts out as cards. A line under the window says what each part shows (`hero.tour.captions` in
-  `lib/home.ts`; on phones every caption must fit two lines, or the window moves). After a capture, check each section's still (`window.__homeTour.showStill(i)`
-  in the browser): a part that moved in the app moves in the tour with it, but a new part needs a line in the tour.
+  which the sample family does without AI), 1305×816 at 2×. The AI's screen is read by OpenAI with the key from
+  1Password (about 25 calls, a fraction of a cent), so it varies a little from capture to capture; `CAPTURE_NO_AI=1`
+  takes it without AI, for trying the tour out only. It writes each screen at 2× (lossless) and 1× (phones), and in
+  `lib/home-tour.json` where each screen's parts are (Today's school days and Needs you, the inbox's rows and the
+  answer, the search menu's field and results, the reader and its Show original, the week's days and the open day's
+  schedule, the grade rows, the list of Wilmas), which the tour moves and lifts out as cards. A capture rewrites some
+  screens that didn't change with a few pixels of rendering noise: keep the old ones (git checkout) unless something
+  changed. A caption in the window says what each part shows, as a video's would, beside what the part is about:
+  under it, else over it or beside it, and it goes when its moment is over (`hero.tour.captions` in `lib/home.ts`;
+  keep each short). After a capture, check each section's still (`window.__homeTour.showStill(i)` in the browser): a
+  part that moved in the app moves in the tour with it, but a new part needs a line in the tour.
 - `components/AssistantTour.tsx` — the front page's tour: an assistant answering the made-up family's questions in
   the chat window, one question per part (typed into the message box and sent, the assistant reading Wilma, the
   answer line by line with its key words highlighted). The conversation carries on from part to part, earlier turns

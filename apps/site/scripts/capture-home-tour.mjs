@@ -13,10 +13,16 @@
  * page's share image and the front page's card), home-thumb-<lang>.png (the banner), home-parent-<lang>.png (both
  * children's week) and home-student-<lang>.png (a student's own Today), and the main README's assets/readme-home-top.png.
  *
+ * Three screens come from the family set up otherwise: a message translated and its original (translating into
+ * English, in Finnish too: the sample family comes with its English, so that needs no AI), and Today read by the AI
+ * (OpenAI, with the key from 1Password: about 25 calls, a fraction of a cent, so it varies a little from run to run).
+ *
  * Run it after the app's look changes (Google Chrome drives it; nothing is downloaded):
- *   pnpm --filter @wilm-ai/site capture:home-tour
+ *   op run --env-file apps/home/evals/keys.env -- pnpm --filter @wilm-ai/site capture:home-tour
+ * CAPTURE_NO_AI=1 takes the AI's screen without AI, for trying the tour out (never for the site).
  */
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,6 +38,13 @@ const W = 1305, H = 816, DPR = 2;
 // A Wednesday morning in a school week: the sample family is built around "today".
 const NOW = new Date("2026-10-21T09:40:00+03:00");
 const LANGS = { en: "en-GB", fi: "fi-FI" };
+const KEY = process.env.OPENAI_API_KEY?.startsWith("sk-") ? process.env.OPENAI_API_KEY : null;
+if (!KEY && !process.env.CAPTURE_NO_AI) {
+  throw new Error("The AI's screen needs OpenAI: op run --env-file apps/home/evals/keys.env -- pnpm --filter @wilm-ai/site capture:home-tour");
+}
+/** How the app keeps the key (its store's scrambling), so it starts with OpenAI on. */
+const SECRET_PREFIX = /SECRET_PREFIX = "([^"]*)"/.exec(readFileSync(resolve(HOME, "src/data/store.ts"), "utf8"))[1];
+
 /** Each language's settings on top of the common ones, the message opened and answered, and the search. */
 const IN = {
   en: { settings: { translateTo: "en" }, message: "School starts at 10.15 tomorrow", reply: "Thank you for letting me know!", search: "exam" },
@@ -100,21 +113,30 @@ async function capture(lang, locale) {
   const out = resolve(SITE, "public/home-tour", lang);
   await mkdir(out, { recursive: true });
   const browser = await chromium.launch({ channel: "chrome" });
-  const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DPR, colorScheme: "light", locale, timezoneId: "Europe/Helsinki" });
-  // The app's language, the light theme, and No AI chosen (so the menu has no "Choose AI" cue); in English, translating
-  // into English.
   const words = IN[lang];
-  await context.addInitScript(([language, extra]) => {
-    if (!localStorage.getItem("wilmai.settings")) localStorage.setItem("wilmai.settings", JSON.stringify({ language, theme: "light", aiProvider: "off", ...extra }));
-  }, [lang, words.settings]);
-  const page = await context.newPage();
-  await page.clock.setFixedTime(NOW);
-  await page.goto(APP);
-  await page.locator(".wilmas-foot .linkish").click(); // Look around with a sample family
-  await page.locator(".nav").waitFor();
-  // Still: no transitions, carets or animations; and the menu's foot (the sample family's way out, the version) left
-  // out, so Settings sits at the menu's foot as it does for a signed-in family.
-  await page.addStyleTag({ content: "*, *::before, *::after { transition: none !important; animation: none !important; caret-color: transparent !important; } .nav-wilmas-wrap, .nav-meta { display: none !important; }" });
+  /**
+   * The sample family in a browser of its own, set up with `settings` (and the OpenAI key, `key`): the app's language,
+   * the light theme, and No AI chosen unless the AI is on (so the menu has no "Choose AI" cue).
+   */
+  async function family(settings, key = null) {
+    const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DPR, colorScheme: "light", locale, timezoneId: "Europe/Helsinki" });
+    await context.addInitScript(([language, extra, k, prefix]) => {
+      if (localStorage.getItem("wilmai.settings")) return;
+      localStorage.setItem("wilmai.settings", JSON.stringify({ language, theme: "light", aiProvider: k ? "openai" : "off", ...extra }));
+      if (k) localStorage.setItem("wilmai.openaiKey", btoa(String.fromCharCode(...new TextEncoder().encode(prefix + k))));
+    }, [lang, settings, key, SECRET_PREFIX]);
+    const p = await context.newPage();
+    await p.clock.setFixedTime(NOW);
+    await p.goto(APP);
+    await p.locator(".wilmas-foot .linkish").click(); // Look around with a sample family
+    await p.locator(".nav").waitFor();
+    // Still: no transitions, carets or animations; and the menu's foot (the sample family's way out, the version) left
+    // out, so Settings sits at the menu's foot as it does for a signed-in family.
+    await p.addStyleTag({ content: "*, *::before, *::after { transition: none !important; animation: none !important; caret-color: transparent !important; } .nav-wilmas-wrap, .nav-meta { display: none !important; }" });
+    return p;
+  }
+  // In English, translating into English.
+  let page = await family(words.settings);
 
   const plates = {};
   /** One screen: the window (or the whole page, `full`), and its parts (a selector, or a function of the page). */
@@ -201,6 +223,12 @@ async function capture(lang, locale) {
   await go("#/grades");
   await shot("grades", { main: ".main", rows: ".xs-row" });
 
+  // The family's two schools on the Wilma page: Kiia's and Otso's Wilmas, each signed in, and the way into the app.
+  await go("#/wilmas");
+  await page.locator(".wilma-list").waitFor();
+  await shot("schools", { main: ".signin-panel", list: ".wilma-list", open: ".wilmas-go" });
+  await go("#/today");
+
   // A student's own Today (the site's picture): Kiia picked and the app read as the student. A student's own login
   // has one child, so no children's picker (the sample family has two).
   await go("#/today");
@@ -208,6 +236,36 @@ async function capture(lang, locale) {
   await page.evaluate(async () => (await import("/src/data/store.ts")).setViewAs("student"));
   await page.addStyleTag({ content: ".topbar .kids { visibility: hidden !important; }" });
   await savePng(await png(), resolve(SITE, `public/home-student-${lang}.png`));
+
+  // A message in your language: the forest trip translated into English (in Finnish too), then its original.
+  page = await family({ translateTo: "en" });
+  await go("#/inbox");
+  await page.locator(".inbox-list a.row").filter({ hasText: "Forest trip to Nuuksio" }).first().click();
+  await page.locator(".translated-note").waitFor();
+  await shot("translate", { main: ".main", reader: ".reader-wrap", original: ".translated-note .linkish", toggle: ".reader-wrap .btn.pinned" });
+  await page.locator(".translated-note .linkish").click();
+  await page.locator(".translated-note").waitFor({ state: "detached" });
+  await shot("original", { main: ".main", reader: ".reader-wrap" });
+
+  // Today once the AI has read everything (OpenAI; in English it translates too): what needs you, and by when.
+  page = await family(words.settings, KEY);
+  if (KEY) {
+    const reading = () =>
+      page.evaluate(async () => {
+        const s = (await import("/src/data/store.ts")).getState();
+        return { busy: s.jevStatus.running || s.lunaStatus.running || s.translationStatus.running, done: s.lunaStatus.done, error: s.jevStatus.error || s.lunaStatus.error || s.translationStatus.error };
+      });
+    let quiet = 0;
+    for (let i = 0; i < 240 && quiet < 4; i += 1) {
+      await page.waitForTimeout(1000);
+      const r = await reading();
+      if (r.error) throw new Error(`The AI's reading failed: ${r.error}`);
+      quiet = !r.busy && r.done > 0 ? quiet + 1 : 0;
+    }
+    if (quiet < 4) throw new Error("The AI's reading didn't finish in four minutes");
+  } else console.warn(`${lang}/ai: without AI (CAPTURE_NO_AI), not for the site`);
+  await go("#/today");
+  await shot("ai", { main: ".main", days: ".sd-row", needs: ".card.needs" }, { full: true });
 
   manifest[lang] = plates;
   await browser.close();

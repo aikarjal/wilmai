@@ -1749,6 +1749,44 @@ main {
   box-shadow: 0 60px 160px rgba(15, 23, 42, 0.32);
 }
 
+/* The Home tour's caption, in the window like a video's: what each part shows, beside what it's about (the tour places
+   it, components/HomeTour.tsx; in the corner until it runs). */
+.ht-frame .ht-caption {
+  --ht-caption-gap: 10px;
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 3;
+  display: block;
+  width: max-content;
+  max-width: min(380px, calc(100% - 28px));
+  text-wrap: balance;
+  min-height: 0;
+  margin: 0;
+  padding: 9px 15px 10px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: #fff;
+  font-size: clamp(15px, 1.8vw, 19px);
+  line-height: 1.25;
+  text-align: left;
+  box-shadow: 3px 4px 0 rgba(27, 43, 52, 0.18);
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .ht-frame .ht-caption {
+    --ht-caption-gap: 6px;
+    left: 8px;
+    bottom: 8px;
+    max-width: calc(100% - 16px);
+    padding: 6px 10px 7px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    box-shadow: 2px 3px 0 rgba(27, 43, 52, 0.18);
+  }
+}
+
 .ht-paused {
   position: absolute;
   top: 12px;
@@ -1817,10 +1855,12 @@ main {
   display: none;
 }
 
+/* One column per part (the tour sets how many). */
 .ht-timeline {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   align-items: start;
   gap: 10px;
 }
@@ -1888,6 +1928,17 @@ main {
   /* No bolder label on the part on show: a long one ("Odottaa sinua") would wrap and move the page. */
   .ht-seg.active .ht-lbl {
     font-weight: inherit;
+  }
+
+  /* The Home tour's seven parts don't fit their names here, and its caption says each one in the window: the bars
+     only (the names stay for screen readers). */
+  .ht-home .ht-lbl {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 

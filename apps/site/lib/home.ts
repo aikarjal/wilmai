@@ -114,15 +114,19 @@ const en: HomeCopy = {
       pause: "Pause the tour",
       today: "Today",
       message: "Messages",
-      search: "Search",
+      translate: "Translation",
+      ai: "AI",
       week: "Week",
       grades: "Grades",
+      schools: "Schools",
       captions: {
-        today: ["Every child's day at a glance.", "Always know what needs you first."],
-        message: ["Messages, news and bulletins, all in one view.", "Reply right away, without opening Wilma."],
-        search: "Search everything at once.",
+        today: "Every child's day at a glance.",
+        message: ["Messages, news and bulletins, all in one view.", "Reply right away, without opening Wilma.", "Search everything at once."],
+        translate: "Messages in your language, the original a click away.",
+        ai: "With AI, what needs you comes first, and by when.",
         week: "Week and calendar views for the whole family.",
-        grades: "Grades and notes in one view, with averages and trends."
+        grades: "Grades and notes in one view, with averages and trends.",
+        schools: "Children at different schools, in one view."
       }
     }
   },
@@ -392,15 +396,19 @@ const fi: HomeCopy = {
       pause: "Keskeytä esittely",
       today: "Tänään",
       message: "Viestit",
-      search: "Haku",
+      translate: "Käännös",
+      ai: "Tekoäly",
       week: "Viikko",
       grades: "Arvosanat",
+      schools: "Koulut",
       captions: {
-        today: ["Jokaisen lapsen päivä yhdellä silmäyksellä.", "Tiedät aina, mikä vaatii sinua ensin."],
-        message: ["Viestit ja tiedotteet samassa näkymässä.", "Vastaa heti, avaamatta Wilmaa."],
-        search: "Hae kaikesta kerralla.",
+        today: "Jokaisen lapsen päivä yhdellä silmäyksellä.",
+        message: ["Viestit ja tiedotteet samassa näkymässä.", "Vastaa heti, avaamatta Wilmaa.", "Hae kaikesta kerralla."],
+        translate: "Viestit omalla kielelläsi, alkuperäinen klikkauksen päässä.",
+        ai: "Tekoäly nostaa ensin sen, mikä vaatii sinua, ja mihin mennessä.",
         week: "Viikko- ja kalenterinäkymä koko perheelle.",
-        grades: "Arvosanat ja merkinnät keskiarvoineen."
+        grades: "Arvosanat ja merkinnät keskiarvoineen.",
+        schools: "Eri koulujen lapset samassa näkymässä."
       }
     }
   },

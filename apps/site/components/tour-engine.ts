@@ -15,8 +15,11 @@ import { gsap } from "gsap";
 
 export interface TourStep {
   id: string;
-  /** The line under the window, from these seconds into the section's build. */
-  heads: [number, string][];
+  /**
+   * The line under the window, from these seconds into the section's build; with a third, where it goes (called as
+   * its words change, while it's out of sight: the Home tour's sits beside what each part is about).
+   */
+  heads: [number, string, (() => void)?][];
   /** Seconds into the section's build that its still frame shows. */
   still: number;
   reset?: () => void;
@@ -69,11 +72,12 @@ export function playTour(host: HTMLElement, o: TourOptions): () => void {
   }
 
   // The line under the window changes: out upwards, the new words in from below (as in the decks' tours).
-  function caption(text: string) {
+  function caption(text: string, place?: () => void) {
     const tl = timeline();
     tl.to(headline, { autoAlpha: 0, y: -10, duration: 0.22, ease: "power2.in" }, 0);
     tl.call(() => {
       headline.textContent = text;
+      place?.();
     }, undefined, 0.23);
     tl.fromTo(headline, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: "expo.out", immediateRender: false }, 0.24);
     return tl;
@@ -104,8 +108,11 @@ export function playTour(host: HTMLElement, o: TourOptions): () => void {
     if (o.drawn) tl.call(o.drawn, undefined, 0.75);
     tl.addLabel("in", 1.0);
     // the section's first line comes with its view; the rest at their moments
-    step.heads.forEach(([when, text], j) => {
-      if (j > 0 || headline.textContent !== text) tl.add(caption(text), j ? 1.0 + when - 0.24 : 0.1);
+    step.heads.forEach(([when, text, place], j) => {
+      // A section's first line, already showing (the page put it there): placed, not shown again.
+      const showing = j === 0 && headline.textContent === text && getComputedStyle(headline).visibility !== "hidden";
+      if (!showing) tl.add(caption(text, place), j ? 1.0 + when - 0.24 : 0.1);
+      else if (place) tl.call(place, undefined, 0.1);
     });
     step.build(tl, 1.0);
     tl.to({}, { duration: 1.0 });
