@@ -27,7 +27,7 @@ export default function HomeCard({ lang }: { lang: Lang }) {
         </ul>
         <div className="home-card-actions">
           <a className="button primary small" href={`/${lang}/home#download`}>
-            {t.download} ↓
+            {t.download} →
           </a>
           <a className="button secondary small" href={`/${lang}/home`}>
             {t.link} →
