@@ -188,6 +188,7 @@ const en: HomeCopy = {
       "Into Finnish, Swedish, English, Ukrainian or Arabic.",
       "New messages arrive translated, and turning it on translates the last 30 days too.",
       "The original is always a click away.",
+      "What you write to the school can go in Finnish or Swedish, with the translation beside your words before you send.",
       "It uses the app's OpenAI choice: usually a fraction of a cent a message, within the monthly limit you set.",
       "The app itself is in Finnish, Swedish or English."
     ],
@@ -308,11 +309,11 @@ const en: HomeCopy = {
       },
       {
         q: "Can it translate messages?",
-        a: "Yes, if you choose OpenAI. Pick a language in Settings (Finnish, Swedish, English, Ukrainian or Arabic), and messages, bulletins and notes in another language are translated as they come in, titles too, with the original a click away. It usually costs a fraction of a cent a message. The app itself is in Finnish, Swedish or English."
+        a: "Yes, if you choose OpenAI. Pick a language in Settings (Finnish, Swedish, English, Ukrainian or Arabic), and messages, bulletins and notes in another language are translated as they come in, titles too, with the original a click away. It usually costs a fraction of a cent a message. It can also send what you write to the school in Finnish or Swedish: the translation shows beside your words, and only what's shown is sent. The app itself is in Finnish, Swedish or English."
       },
       {
         q: "What does OpenAI see?",
-        a: "Only if you choose OpenAI: one message, bulletin or note at a time, with your children's first names and classes so it can tell who it's about. With translations on, also the texts it translates. Your Wilma password never goes there. With local AI or no AI, nothing goes to an AI service."
+        a: "Only if you choose OpenAI: one message, bulletin or note at a time, with your children's first names and classes so it can tell who it's about. With translations on, also the texts it translates, and the messages you write when you translate them into Finnish or Swedish. Your Wilma password never goes there. With local AI or no AI, nothing goes to an AI service."
       },
       {
         q: "Where is my data?",
@@ -465,6 +466,7 @@ const fi: HomeCopy = {
       "Suomeksi, ruotsiksi, englanniksi, ukrainaksi tai arabiaksi.",
       "Uudet viestit tulevat valmiiksi käännettyinä, ja käyttöön ottaessa käännetään myös viimeiset 30 päivää.",
       "Alkuperäinen on aina klikkauksen päässä.",
+      "Koululle kirjoittamasi viesti voi lähteä suomeksi tai ruotsiksi, ja käännös näkyy sanojesi vieressä ennen lähettämistä.",
       "Käyttää sovelluksen OpenAI-vaihtoehtoa: yleensä sentin murto-osa viestiltä, asettamasi kuukausirajan sisällä.",
       "Itse sovellus on suomeksi, ruotsiksi tai englanniksi."
     ],
@@ -585,11 +587,11 @@ const fi: HomeCopy = {
       },
       {
         q: "Voiko se kääntää viestejä?",
-        a: "Kyllä, jos valitset OpenAI:n. Valitse asetuksista kieli (suomi, ruotsi, englanti, ukraina tai arabia), niin muunkieliset viestit, tiedotteet ja merkinnät käännetään sitä mukaa kuin ne tulevat, otsikoita myöten, ja alkuperäinen on klikkauksen päässä. Se maksaa yleensä sentin murto-osan viestiltä. Itse sovellus on suomeksi, ruotsiksi tai englanniksi."
+        a: "Kyllä, jos valitset OpenAI:n. Valitse asetuksista kieli (suomi, ruotsi, englanti, ukraina tai arabia), niin muunkieliset viestit, tiedotteet ja merkinnät käännetään sitä mukaa kuin ne tulevat, otsikoita myöten, ja alkuperäinen on klikkauksen päässä. Se maksaa yleensä sentin murto-osan viestiltä. Koululle kirjoittamasi viestin se voi myös lähettää suomeksi tai ruotsiksi: käännös näkyy sanojesi vieressä, ja vain se, mikä näkyy, lähetetään. Itse sovellus on suomeksi, ruotsiksi tai englanniksi."
       },
       {
         q: "Mitä OpenAI näkee?",
-        a: "Vain jos valitset OpenAI:n: yhden viestin, tiedotteen tai merkinnän kerrallaan sekä lasten etunimet ja luokat, jotta se tietää, ketä asia koskee. Kun käännökset ovat päällä, myös käännettävät tekstit. Wilma-salasanasi ei koskaan mene sinne. Paikallisella tekoälyllä tai ilman tekoälyä mitään ei lähetetä tekoälypalveluun."
+        a: "Vain jos valitset OpenAI:n: yhden viestin, tiedotteen tai merkinnän kerrallaan sekä lasten etunimet ja luokat, jotta se tietää, ketä asia koskee. Kun käännökset ovat päällä, myös käännettävät tekstit, ja kirjoittamasi viestit, kun käännät ne suomeksi tai ruotsiksi. Wilma-salasanasi ei koskaan mene sinne. Paikallisella tekoälyllä tai ilman tekoälyä mitään ei lähetetä tekoälypalveluun."
       },
       {
         q: "Missä tietoni ovat?",

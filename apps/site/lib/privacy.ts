@@ -31,7 +31,7 @@ const en: PrivacyCopy = {
   eyebrow: "privacy",
   title: "Your data stays with you",
   lead: "WilmAI has no server that holds your data, no accounts and no tracking. Your Wilma login and your school data stay on your own computer, and go only where you send them.",
-  updated: "Updated 27 October 2026",
+  updated: "Updated 1 November 2026",
   sections: [
     {
       id: "who",
@@ -75,7 +75,7 @@ const en: PrivacyCopy = {
         "The app runs on your computer and talks to your school's Wilma directly. Messages, timetables, drafts and AI answers are stored in the app, on your computer.",
         "When you sign in with a password, the app remembers it on your computer, scrambled, not encrypted, so signing in again is one click. On a shared computer, untick Remember on this computer. Forget it in Settings, or signing out, removes it. An OpenAI API key is kept the same way. Reset app in Settings deletes all of it.",
         "No AI, the default: nothing goes to an AI service. Local AI: the models are downloaded once from Hugging Face, and the reading happens on your Mac, so no school data leaves it.",
-        "OpenAI, with your own API key: the app sends one message, bulletin or lesson note at a time, with your children's first names and classes so it can tell whom it's about, straight from your computer to OpenAI. It asks OpenAI not to store the readings. If you turn on translations, it also sends the texts it translates the same way: messages and bulletins, and Wilma's shorter texts such as subject names, list titles and teachers' notes. OpenAI handles the data under its API terms, and bills your key.",
+        "OpenAI, with your own API key: the app sends one message, bulletin or lesson note at a time, with your children's first names and classes so it can tell whom it's about, straight from your computer to OpenAI. It asks OpenAI not to store the readings. If you turn on translations, it also sends the texts it translates the same way: messages and bulletins, and Wilma's shorter texts such as subject names, list titles and teachers' notes. If you choose to write to the school in Finnish or Swedish, Translate sends what you wrote, with its subject, the same way. OpenAI handles the data under its API terms, and bills your key.",
         "A few times a day the app asks wilm.ai whether there's a newer version. The request carries no identifier, only what any request carries: your computer's IP address, and the updater's name and version. Updates and installers are downloaded from GitHub. Look for new versions in Settings turns the checks off.",
         "The app has no telemetry, no crash reports and no accounts. GitHub tells me only how many times each installer was downloaded."
       ]
@@ -123,7 +123,7 @@ const fi: PrivacyCopy = {
   eyebrow: "tietosuoja",
   title: "Tietosi pysyvät sinulla",
   lead: "WilmAI:lla ei ole palvelinta, jolla tietosi olisivat, eikä käyttäjätilejä tai seurantaa. Wilma-tunnuksesi ja koulun tiedot pysyvät omalla tietokoneellasi ja menevät vain sinne, minne itse ne lähetät.",
-  updated: "Päivitetty 27.10.2026",
+  updated: "Päivitetty 1.11.2026",
   sections: [
     {
       id: "who",
@@ -167,7 +167,7 @@ const fi: PrivacyCopy = {
         "Sovellus toimii koneellasi ja on yhteydessä suoraan koulusi Wilmaan. Viestit, lukujärjestykset, luonnokset ja tekoälyn vastaukset tallennetaan sovellukseen omalle koneellesi.",
         "Kun kirjaudut salasanalla, sovellus muistaa sen koneellasi peitettynä, ei salattuna, joten uudelleen kirjautuminen on yksi klikkaus. Yhteiskäyttöisellä koneella jätä Muista tällä koneella pois. Asetusten Unohda se tai uloskirjautuminen poistaa salasanan. OpenAI:n API-avain säilytetään samalla tavalla. Asetusten Nollaa sovellus poistaa ne kaikki.",
         "Ei tekoälyä, oletus: mitään ei lähetetä tekoälypalveluun. Paikallinen tekoäly: mallit ladataan kerran Hugging Facesta, ja lukeminen tapahtuu Macillasi, joten koulutiedot eivät lähde siltä.",
-        "OpenAI omalla API-avaimellasi: sovellus lähettää yhden viestin, tiedotteen tai tuntimerkinnän kerrallaan suoraan koneeltasi OpenAI:lle, mukana lasten etunimet ja luokat, jotta se tietää, ketä asia koskee. Sovellus pyytää OpenAI:ta olemaan tallentamatta lukemiaan. Jos otat käännökset käyttöön, sovellus lähettää samalla tavalla myös kääntämänsä tekstit: viestit ja tiedotteet sekä Wilman lyhyemmät tekstit, kuten aineiden nimet, listojen otsikot ja opettajien merkinnät. OpenAI käsittelee tiedot API-ehtojensa mukaan ja laskuttaa avaintasi.",
+        "OpenAI omalla API-avaimellasi: sovellus lähettää yhden viestin, tiedotteen tai tuntimerkinnän kerrallaan suoraan koneeltasi OpenAI:lle, mukana lasten etunimet ja luokat, jotta se tietää, ketä asia koskee. Sovellus pyytää OpenAI:ta olemaan tallentamatta lukemiaan. Jos otat käännökset käyttöön, sovellus lähettää samalla tavalla myös kääntämänsä tekstit: viestit ja tiedotteet sekä Wilman lyhyemmät tekstit, kuten aineiden nimet, listojen otsikot ja opettajien merkinnät. Jos valitset kirjoittavasi koululle suomeksi tai ruotsiksi, Käännä lähettää samalla tavalla kirjoittamasi viestin otsikkoineen. OpenAI käsittelee tiedot API-ehtojensa mukaan ja laskuttaa avaintasi.",
         "Muutaman kerran päivässä sovellus kysyy wilm.ai:sta, onko uudempaa versiota. Pyynnössä ei ole mitään tunnistetta, vain se mikä missä tahansa pyynnössä: koneesi IP-osoite sekä päivittäjän nimi ja versio. Päivitykset ja asennusohjelmat ladataan GitHubista. Asetusten Tarkista uudet versiot ottaa tarkistukset pois.",
         "Sovelluksessa ei ole telemetriaa, virheraportointia eikä käyttäjätilejä. GitHub kertoo minulle vain, montako kertaa kukin asennusohjelma on ladattu."
       ]
