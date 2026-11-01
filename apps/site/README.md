@@ -23,8 +23,9 @@ static files and served by Cloudflare Workers.
   up to date with a new capture instead of a new recording. `pnpm --filter @wilm-ai/site capture:home-tour`
   (scripts/capture-home-tour.mjs) starts the app's dev server and takes them with Google Chrome the same way as the
   screenshots (sample family, clock frozen, No AI, the menu's foot left out), 1305×816 at 2×: Today (the whole
-  page), the inbox where messages and bulletins mix with an answer being written, ⌘K search over Today, the
-  Week with a lesson's day open beside it, Grades. It writes each screen at 2×
+  page), the inbox where messages and bulletins mix with an answer being written, ⌘K search (captured over Today;
+  the tour opens it over the inbox, the page it's on), the Week with a lesson's day open beside it,
+  Grades. It writes each screen at 2×
   (lossless) and 1× (phones), and in `lib/home-tour.json` where each screen's parts are (Today's school days and
   Needs you, the inbox's rows and the answer, the search menu's field and results, the week's days and the open
   day's schedule, the grade rows), which the
@@ -32,10 +33,12 @@ static files and served by Cloudflare Workers.
   `lib/home.ts`; on phones every caption must fit two lines, or the window moves). After a capture, check each section's still (`window.__homeTour.showStill(i)`
   in the browser): a part that moved in the app moves in the tour with it, but a new part needs a line in the tour.
 - `components/AssistantTour.tsx` — the front page's tour: an assistant answering the made-up family's questions in
-  the chat window, one question per part (the question, the assistant reading Wilma, the answer line by line with its
-  key words highlighted). It's the page's own text, not screens: the questions, answers, timeline labels and captions
-  are `hero.tour` in `lib/i18n.tsx` (`==words==` are highlighted), so editing them is all an update takes. The window
-  is as tall as the longest answer. Check each part with `window.__assistantTour.showStill(i)`.
+  the chat window, one question per part (typed into the message box and sent, the assistant reading Wilma, the
+  answer line by line with its key words highlighted). The conversation carries on from part to part, earlier turns
+  going up under the title bar, so the window is always full and the loop never plays backwards. It's the page's own
+  text, not screens: the questions, answers, timeline labels and captions are `hero.tour` in `lib/i18n.tsx`
+  (`==words==` are highlighted), so editing them is all an update takes. The window is as tall as the longest turn,
+  in either language. Check each part with `window.__assistantTour.showStill(i)`.
 - `components/tour-engine.ts` — what both tours share: the timeline of parts, the caption, play and pause, playing only
   while on screen, and one still frame per part with less motion asked for.
 - `public/_headers` — security and cache headers

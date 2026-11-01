@@ -170,10 +170,12 @@ export function playTour(host: HTMLElement, o: TourOptions): () => void {
   });
 
   // On screen or not, from where it is (an IntersectionObserver's first word can be late, or not come at all in a
-  // page that isn't being drawn).
+  // page that isn't being drawn). It counts as on screen once about 40% of it shows (of the screen's height, for
+  // a tour taller than that), so a part doesn't play out under the fold to nobody.
   const look = () => {
     const r = host.getBoundingClientRect();
-    const now = r.bottom > 0 && r.top < innerHeight;
+    const shows = Math.min(r.bottom, innerHeight) - Math.max(r.top, 0);
+    const now = shows > 0.4 * Math.min(r.height, innerHeight);
     if (now !== seen) {
       seen = now;
       sync();

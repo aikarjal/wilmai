@@ -430,10 +430,11 @@ main {
   }
 }
 
+/* Its arrow points at the answer, low in the window (the turn being asked sits at the bottom). */
 .hand-note {
   position: absolute;
   left: -178px;
-  top: 42px;
+  top: 150px;
   width: 156px;
   font-family: var(--font-hand), cursive;
   font-size: 21px;
@@ -491,10 +492,6 @@ main {
 
 /* The display face here: the body face's slashed zero makes times like 11:00 look like code. */
 .chat-body {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 24px 26px 28px;
   font-family: var(--font-display), sans-serif;
 }
 
@@ -520,12 +517,8 @@ main {
   border-bottom-left-radius: 4px;
 }
 
-.chat-assistant p + p {
-  margin-top: 8px;
-}
-
-/* The hero's tour (components/AssistantTour.tsx): one question at a time in the chat window, with the timeline and
-   the line under it as on the Home page (.ht-controls, .ht-caption). */
+/* The hero's tour (components/AssistantTour.tsx): a conversation in the chat window, a question at a time, with the
+   timeline and the line under it as on the Home page (.ht-controls, .ht-caption). */
 .at-window {
   position: relative;
   cursor: pointer;
@@ -535,21 +528,89 @@ main {
   cursor: default;
 }
 
-/* Every question in the same place, so the window is as tall as the longest answer. Before the tour runs (or
-   without it), only the first shows, answered. */
+/* As tall as the longest turn (.at-sizer, never seen) and a glimpse of the turn before it, in either language and
+   at any width. The conversation (.at-thread) sits on it from the bottom up, earlier turns going up under the title
+   bar. */
 .at-body {
+  position: relative;
+  padding: 12px 26px 18px;
+}
+
+.at-sizer {
   display: grid;
+  visibility: hidden;
+}
+
+.at-sizer .at-turn {
+  grid-area: 1 / 1;
+}
+
+.at-thread {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 26px 18px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 34px);
+  mask-image: linear-gradient(transparent, #000 34px);
+}
+
+/* data-age: how many parts ago a turn was asked. Before the tour runs (or without it) the first part shows,
+   answered, under the end of the last. */
+.at-thread .at-turn[data-age="0"] {
+  order: 3;
+}
+
+.at-thread .at-turn[data-age="1"] {
+  order: 2;
+}
+
+.at-thread .at-turn[data-age="2"] {
+  order: 1;
+}
+
+.at-thread .at-turn[data-age="3"] {
+  display: none;
 }
 
 .at-turn {
-  grid-area: 1 / 1;
   display: flex;
   flex-direction: column;
-  gap: 14px;
 }
 
-.at-turn:not(.at-first) {
-  visibility: hidden;
+/* Room that opens with what's in it: the tour takes the row from 0fr to 1fr. The spacing above each part is inside
+   it, so the conversation moves up smoothly as it opens. */
+.at-fold {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.at-fold-in {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.at-ask-fold .chat-user {
+  margin-top: 22px;
+}
+
+/* New bubbles come up from the bottom, as a chat scrolls: a sent question rises out of the message box, and only
+   the conversation's bottom edge (the box's top) cuts them. */
+.at-ask-fold > .at-fold-in,
+.at-answer-fold > .at-fold-in {
+  overflow: visible;
+}
+
+.at-answer-fold .chat-assistant {
+  margin-top: 12px;
+}
+
+.at-line-fold .at-line {
+  margin-top: 8px;
 }
 
 /* The assistant reading Wilma: dots while it reads, a tick and what it read once it has. */
@@ -559,7 +620,7 @@ main {
   grid-template-columns: auto auto;
   align-items: center;
   column-gap: 8px;
-  margin: -4px 0 -2px 6px;
+  margin: 12px 0 0 6px;
   font-family: var(--font-body), sans-serif;
   font-size: 13px;
   color: var(--ink-soft);
@@ -631,6 +692,107 @@ main {
   background: linear-gradient(var(--marker), var(--marker)) no-repeat 0 88% / 100% 45%;
   border-radius: 2px;
   padding: 0 1px;
+}
+
+/* The message box under the conversation: each question is typed here and sent. One line, as a phone's is: a long
+   question slides left as it's typed. */
+.at-composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 26px 24px;
+  padding: 7px 7px 7px 18px;
+  background: #fff;
+  border: 1.5px solid rgba(27, 43, 52, 0.18);
+  border-radius: 999px;
+  font-family: var(--font-display), sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.at-field {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+
+.at-placeholder,
+.at-input {
+  grid-area: 1 / 1;
+}
+
+.at-placeholder {
+  color: var(--ink-soft);
+}
+
+.at-input {
+  display: flex;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.at-input-line {
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-width: 100%;
+  white-space: pre;
+}
+
+.at-caret {
+  width: 2px;
+  height: 1.2em;
+  margin-left: 1px;
+  border-radius: 1px;
+  background: var(--teal-deep);
+  visibility: hidden;
+  animation: at-blink 1.06s steps(1) infinite;
+}
+
+/* A caret holds still while keys go down. */
+.is-typing .at-caret {
+  animation: none;
+}
+
+@keyframes at-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.at-send {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(27, 43, 52, 0.16);
+  transition: background-color 0.2s ease;
+}
+
+.is-ready .at-send {
+  background: var(--teal-deep);
+}
+
+@media (max-width: 520px) {
+  .at-body {
+    padding: 10px 16px 14px;
+  }
+
+  .at-thread {
+    padding: 0 16px 14px;
+  }
+
+  .chat-bubble {
+    max-width: 92%;
+    padding: 10px 14px;
+  }
+
+  .at-composer {
+    margin: 0 16px 16px;
+  }
 }
 
 /* ---------- Sections ---------- */
@@ -1568,6 +1730,19 @@ main {
   border-radius: 22px;
 }
 
+/* The caret in a lifted card's field while its words are typed (plate px) */
+.ht-caret {
+  position: absolute;
+  border-radius: 2px;
+  background: #0f172a;
+  visibility: hidden;
+  animation: at-blink 1.06s steps(1) infinite;
+}
+
+.ht-caret.is-typing {
+  animation: none;
+}
+
 /* ⌘K's menu, as the app draws it (its dialog's corners and shadow) */
 .ht-menu {
   border-radius: 32px;
@@ -1708,6 +1883,11 @@ main {
 
   .ht-lbl {
     font-size: 11.5px;
+  }
+
+  /* No bolder label on the part on show: a long one ("Odottaa sinua") would wrap and move the page. */
+  .ht-seg.active .ht-lbl {
+    font-weight: inherit;
   }
 }
 
@@ -2823,6 +3003,8 @@ main {
 
   .marker::before,
   .at-dots i,
+  .at-caret,
+  .ht-caret,
   .terminal-sticker,
   .home-banner-badge::after,
   .home-sparkle {

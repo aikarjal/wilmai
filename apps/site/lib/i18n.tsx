@@ -41,6 +41,8 @@ export interface AssistantScene {
 export interface AssistantTourText {
   /** What the window shows, for screen readers. */
   label: string;
+  /** The empty message box under the conversation. */
+  ask: string;
   sections: string;
   paused: string;
   play: string;
@@ -133,6 +135,7 @@ const en: Dictionary = {
     tour: {
       label:
         "An assistant answering a made-up family's questions from Wilma: tomorrow's school day for each child, what needs doing this week, the next exams, and this week's bulletins in a few lines.",
+      ask: "Ask anything",
       sections: "Parts of the tour",
       paused: "Paused",
       play: "Play the tour",
@@ -417,6 +420,7 @@ const fi: Dictionary = {
     tour: {
       label:
         "Avustaja vastaa kuvitteellisen perheen kysymyksiin Wilmasta: kunkin lapsen huominen koulupäivä, mitä tällä viikolla pitää tehdä, seuraavat kokeet ja viikon tiedotteet muutamalla rivillä.",
+      ask: "Kysy mitä vain",
       sections: "Esittelyn osat",
       paused: "Tauko",
       play: "Jatka esittelyä",

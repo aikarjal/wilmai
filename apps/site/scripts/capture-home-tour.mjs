@@ -68,13 +68,20 @@ function typedIn(page, selector) {
     ([sel, dpr]) => {
       const field = document.querySelector(sel);
       const css = getComputedStyle(field);
-      const ctx = document.createElement("canvas").getContext("2d");
-      ctx.font = css.font;
+      // The words' width as the page draws them: a canvas given the field's font shorthand fell back to its own
+      // small default and measured two thirds of it.
+      const probe = document.createElement("span");
+      probe.textContent = field.value;
+      for (const p of ["fontFamily", "fontSize", "fontWeight", "fontStyle", "fontStretch", "fontVariant", "fontFeatureSettings", "fontVariationSettings", "letterSpacing", "wordSpacing"]) probe.style[p] = css[p];
+      Object.assign(probe.style, { position: "absolute", visibility: "hidden", whiteSpace: "pre" });
+      document.body.appendChild(probe);
+      const width = probe.getBoundingClientRect().width;
+      probe.remove();
       const r = field.getBoundingClientRect();
       const x0 = r.left + parseFloat(css.borderLeftWidth) + parseFloat(css.paddingLeft);
       const y0 = r.top + parseFloat(css.borderTopWidth) + parseFloat(css.paddingTop);
       const line = parseFloat(css.lineHeight) || parseFloat(css.fontSize) * 1.4;
-      return [[x0, y0, x0 + ctx.measureText(field.value).width + 2, y0 + line].map((v, i) => Math.round((v + (i % 2 ? scrollY : scrollX)) * dpr))];
+      return [[x0, y0, x0 + width + 2, y0 + line].map((v, i) => Math.round((v + (i % 2 ? scrollY : scrollX)) * dpr))];
     },
     [selector, DPR]
   );
