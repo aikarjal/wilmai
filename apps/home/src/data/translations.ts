@@ -10,6 +10,7 @@ import { needsTranslation, sourceHash, translate, translationSource, translation
 import { LunaError, openAIReady } from "../luna/client";
 import type { ItemTranslation, TranslationLanguage } from "./model";
 import { useWilma } from "./phrases";
+import { demoTranslations } from "../demo/translations";
 
 /**
  * An item's translation into the language chosen, for lists and search (null: none). Not checked against the item's
@@ -60,6 +61,7 @@ function waiting(item: FeedItem, language: TranslationLanguage): boolean {
  * error, so it isn't tried again until the item changes.
  */
 export async function translateItem(item: FeedItem): Promise<void> {
+  if (getState().snapshot?.account.via === "demo") return;
   const { snapshot, settings } = getState();
   const language = translationTarget(settings);
   if (!snapshot || !language || busy.has(item.key) || !waiting(item, language)) return;
@@ -92,6 +94,11 @@ let again = false;
 /** Translate what's waiting from the last 30 days, newest first (after each reading: luna/events.ts runLuna). */
 export function runTranslations(): Promise<void> {
   if (!translationTarget(getState().settings)) return Promise.resolve();
+  // The sample family's translations come with it, and nothing is asked of the AI.
+  if (getState().snapshot?.account.via === "demo") {
+    setState((s) => ({ translations: { ...s.translations, ...demoTranslations(s) } }));
+    return Promise.resolve();
+  }
   if (running) {
     again = true;
     return running;

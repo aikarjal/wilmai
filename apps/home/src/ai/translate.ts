@@ -32,8 +32,12 @@ const leastEffort = (model: string) => (model === "gpt-6-luna" ? "none" : "low")
 /** Translation comes with OpenAI. */
 export const translationAvailable = (s: Settings) => intelligenceProvider(s) === "openai" && intelligenceOn(s);
 
+/** The sample family comes translated into English, so that needs no AI (demo/translations.ts). */
+const sampleFamilyTranslated = (s: Settings) => getState().snapshot?.account.via === "demo" && s.translateTo === "en";
+
 /** What everything is translated into: null when translation is off (until a language is chosen), or OpenAI isn't the AI. */
 export function translationTarget(s: Settings): TranslationLanguage | null {
+  if (sampleFamilyTranslated(s)) return "en";
   if (!translationAvailable(s) || !s.translateTo || s.translateTo === "off") return null;
   return s.translateTo;
 }

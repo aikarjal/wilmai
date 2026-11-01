@@ -10,6 +10,7 @@ import { hash } from "./hash";
 import { guessLanguage, translationModel, translationTarget } from "../ai/translate";
 import { LunaError, respond } from "../luna/client";
 import type { TranslationLanguage } from "./model";
+import { demoPhrase } from "../demo/translations";
 
 const IN_ENGLISH: Record<TranslationLanguage, string> = { fi: "Finnish", sv: "Swedish", en: "English", uk: "Ukrainian", ar: "Arabic" };
 /** A batch: up to this many texts, or about this many characters. */
@@ -53,7 +54,8 @@ function pump() {
 
 async function send() {
   const language = translationTarget(getState().settings);
-  if (!language || Date.now() < pausedUntil) return waiting.clear();
+  // The sample family's phrases come with it (demo/translations.ts): nothing is asked of the AI for it.
+  if (!language || Date.now() < pausedUntil || getState().snapshot?.account.via === "demo") return waiting.clear();
   const batch: [string, string][] = [];
   let chars = 0;
   for (const [key, w] of waiting) {
@@ -101,14 +103,16 @@ async function send() {
 export function useWilma(): (text: string | null | undefined) => string {
   const language = useApp((s) => translationTarget(s.settings));
   const phrases = useApp((s) => s.phrases);
+  const demo = useApp((s) => s.snapshot?.account.via === "demo");
   return useCallback(
     (text) => {
       if (!text || !language) return text ?? "";
+      if (demo) return demoPhrase(language, text) ?? text;
       const done = phrases[phraseKey(language, text)];
       if (done !== undefined) return done;
       ask(language, text);
       return text;
     },
-    [language, phrases]
+    [language, phrases, demo]
   );
 }

@@ -53,6 +53,7 @@ import { aboutShown, accountOf, familyChild, familyChildren, familyId, loginOf, 
 import { demoContacts, demoSnapshot } from "../demo/demo";
 import { runJev } from "../jev/runner";
 import { runLuna } from "../luna/events";
+import { runTranslations } from "./translations";
 import { t } from "../i18n";
 import { retainedScheduleWeeks } from "./schedule";
 import { TENANTS } from "./tenants";
@@ -910,6 +911,8 @@ export async function signInDemo() {
   await flushPersisted();
   void runJev();
   void runLuna();
+  // Its translations into English, when that's chosen (demo/translations.ts): they come with it, without AI.
+  void runTranslations();
 }
 
 /** Back from the sample family to the Wilma page: the family signed in here last, or an empty page. */
