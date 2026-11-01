@@ -120,7 +120,8 @@ test("two screens: the app once every Wilma is signed in, otherwise the Wilma pa
   assert.equal(screenFor("signed-out", "password", "today"), "wilmas", "a Wilma not signed in");
   assert.equal(screenFor("ready", "password", "wilmas"), "wilmas", "opened from the app");
   assert.equal(screenFor("ready", "password", "today"), "app");
-  assert.equal(screenFor("ready", "demo", "wilmas"), "app", "the sample family has no Wilmas");
+  assert.equal(screenFor("ready", "demo", "today"), "app");
+  assert.equal(screenFor("ready", "demo", "wilmas"), "wilmas", "the sample family's two schools, to look at");
 });
 
 test("two Wilmas with the same numbers read side by side, and the app shows only while both are signed in", async () => {

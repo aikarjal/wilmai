@@ -66,10 +66,12 @@ Then open http://127.0.0.1:5199.
   `huoltaja` / `testi` (Aino, listed twice as after a school change, and
   Veeti), `oppilas` / `testi` (Aino's own login). Etelä: `huoltaja` / `testi`
   (Eino). Release builds leave them out.
-- **Look around with a sample family**: made-up data, safe for screenshots. Its texts are written with their
-  English (`src/demo/demo.ts`), so with *Translating messages* set to English it shows translated without asking the
-  AI (`src/demo/translations.ts`; the Home page's tour shows it so, and `evals/demo-english.test.ts` checks every text
-  has its English).
+- **Look around with a sample family**: made-up data, safe for screenshots. Its children are at schools on two
+  Wilmas (Kiia's the first login, Otso's added after it), and its Wilma page (`#/wilmas`) shows both signed in, to
+  look at. Its texts are written with their English (`src/demo/demo.ts`), so with *Translating messages* set to
+  English and no AI it shows translated without asking the AI (`src/demo/translations.ts`; `evals/demo-english.test.ts`
+  checks every text has its English). With OpenAI on, the AI reads and translates it as it does a real family's (the
+  Home page's tour takes its AI screen so).
 - **Settings → WilmAI Intelligence**: choose No AI, recommended OpenAI
   with the parent's own key, or local AI (Clef-flash + Qwen3.5 4B). On a
   computer that can't run local AI (not an Apple Silicon Mac with 16 GB of

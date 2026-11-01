@@ -7,7 +7,7 @@
 import { useCallback } from "react";
 import { getState, setState, useApp } from "./store";
 import { hash } from "./hash";
-import { guessLanguage, translationModel, translationTarget } from "../ai/translate";
+import { guessLanguage, sampleFamilyTranslated, translationModel, translationTarget } from "../ai/translate";
 import { LunaError, respond } from "../luna/client";
 import type { TranslationLanguage } from "./model";
 import { demoPhrase } from "../demo/translations";
@@ -54,8 +54,8 @@ function pump() {
 
 async function send() {
   const language = translationTarget(getState().settings);
-  // The sample family's phrases come with it (demo/translations.ts): nothing is asked of the AI for it.
-  if (!language || Date.now() < pausedUntil || getState().snapshot?.account.via === "demo") return waiting.clear();
+  // The sample family's phrases come with it when there's no AI to ask (demo/translations.ts).
+  if (!language || Date.now() < pausedUntil || sampleFamilyTranslated(getState().settings)) return waiting.clear();
   const batch: [string, string][] = [];
   let chars = 0;
   for (const [key, w] of waiting) {
@@ -103,7 +103,7 @@ async function send() {
 export function useWilma(): (text: string | null | undefined) => string {
   const language = useApp((s) => translationTarget(s.settings));
   const phrases = useApp((s) => s.phrases);
-  const demo = useApp((s) => s.snapshot?.account.via === "demo");
+  const demo = useApp((s) => sampleFamilyTranslated(s.settings));
   return useCallback(
     (text) => {
       if (!text || !language) return text ?? "";

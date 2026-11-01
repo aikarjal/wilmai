@@ -6,7 +6,7 @@
  */
 import { buildFeed, preview, type FeedItem } from "./feed";
 import { accountScope, getState, setState, useApp, type AppState } from "./store";
-import { needsTranslation, sourceHash, translate, translationSource, translationTarget } from "../ai/translate";
+import { needsTranslation, sampleFamilyTranslated, sourceHash, translate, translationSource, translationTarget } from "../ai/translate";
 import { LunaError, openAIReady } from "../luna/client";
 import type { ItemTranslation, TranslationLanguage } from "./model";
 import { useWilma } from "./phrases";
@@ -61,7 +61,7 @@ function waiting(item: FeedItem, language: TranslationLanguage): boolean {
  * error, so it isn't tried again until the item changes.
  */
 export async function translateItem(item: FeedItem): Promise<void> {
-  if (getState().snapshot?.account.via === "demo") return;
+  if (sampleFamilyTranslated(getState().settings)) return;
   const { snapshot, settings } = getState();
   const language = translationTarget(settings);
   if (!snapshot || !language || busy.has(item.key) || !waiting(item, language)) return;
@@ -94,8 +94,8 @@ let again = false;
 /** Translate what's waiting from the last 30 days, newest first (after each reading: luna/events.ts runLuna). */
 export function runTranslations(): Promise<void> {
   if (!translationTarget(getState().settings)) return Promise.resolve();
-  // The sample family's translations come with it, and nothing is asked of the AI.
-  if (getState().snapshot?.account.via === "demo") {
+  // The sample family's translations come with it when there's no AI to ask.
+  if (sampleFamilyTranslated(getState().settings)) {
     setState((s) => ({ translations: { ...s.translations, ...demoTranslations(s) } }));
     return Promise.resolve();
   }

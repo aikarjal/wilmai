@@ -85,10 +85,10 @@ export const aboutShown = (snap: Pick<Snapshot, "children">, children: string[])
 /**
  * Which screen shows: the app, once every Wilma of the family is signed in; otherwise the Wilma page, where the parent
  * (or student) sets everything up and signs in. The Wilma page also shows from the app (#/wilmas). The sample family
- * has no Wilma: always the app.
+ * is always in the app, and its Wilma page (#/wilmas) shows its two schools as signed in, to look at.
  */
 export function screenFor(phase: "loading" | "signed-out" | "ready", via: AccountInfo["via"] | null, view: string): "loading" | "wilmas" | "app" {
   if (phase === "loading") return "loading";
-  if (via === "demo") return "app";
+  if (via === "demo") return view === "wilmas" ? "wilmas" : "app";
   return phase === "ready" && view !== "wilmas" ? "app" : "wilmas";
 }

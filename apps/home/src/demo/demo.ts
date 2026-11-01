@@ -1,15 +1,24 @@
 /*
  * A made-up family for trying the app without signing in (and for
  * screenshots without real children's data). Dates follow today.
+ *
+ * The children are at schools on two Wilmas, as a family with children in two towns signs in to both: Kiia's school
+ * is the first login and Otso's was added after it, so his number and the ids of what his school sent carry its slot
+ * (data/logins.ts). Each school writes only to its own pupils.
  */
 import type { ExamGrade, LessonNote, PastExam, ScheduleLesson, UpcomingExam } from "@wilma-client/src/core";
 import { addDays, isoWeek, mondayOf, today, weekday } from "../data/dates";
 import { finnishTime } from "@wilma-client/src/finnish-time";
 import type { Contacts, MessageRec, NewsRec, Snapshot } from "../data/model";
 import type { InvitationSlot as InviteSlot } from "@wilma-client/src/core";
+import { familyChild, familyId, wilmaNumber } from "../data/logins";
 
 const KIIA = "1001";
-const OTSO = "1002";
+const OTSO = familyChild(1, "1002");
+
+/** The two schools' Wilmas (made-up addresses; the towns as on the Home page's picture of signing in to two). */
+const KIIAS_WILMA = { baseUrl: "https://example.inschool.fi", username: "demo", tenantName: "Espoon kaupunki", via: "demo" as const };
+const OTSOS_WILMA = { baseUrl: "https://example-2.inschool.fi", username: "demo", tenantName: "Helsingin kaupunki", via: "demo" as const };
 
 function at(iso: string, hhmm: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
@@ -98,7 +107,7 @@ const OTSO_WEEK: Slot[][] = [
 /** Who the sample family can write to: each child's teachers from the timetable, the class teacher first. */
 export function demoContacts(child: string): Contacts {
   const kiia = child === KIIA;
-  const path = (query: string) => `/!${child}/messages/compose?${query}`;
+  const path = (query: string) => `/!${wilmaNumber(child)}/messages/compose?${query}`;
   const teachers = new Map<string, string>();
   for (const [, , , , teacher, code] of (kiia ? KIIA_WEEK : OTSO_WEEK).flat()) {
     const [first, last] = teacher.split(" ");
@@ -145,7 +154,8 @@ export function demoSnapshot(): Snapshot {
   const tomorrow = addDays(now, 1);
   const d = (days: number) => addDays(now, days);
   const fri = next(d(1), 4);
-  const wed = next(d(1), 2);
+  // The trip's permission is due the school day before it, never after (a Wednesday from tomorrow was, on a Wednesday).
+  const permissionBy = addDays(fri, -1);
   const mathExam = next(d(2), 3, 1);
   const parentsEvening = next(d(3), 1);
   const lastMonday = addDays(monday, weekday(now) === 0 ? -7 : 0);
@@ -256,8 +266,8 @@ export function demoSnapshot(): Snapshot {
       children: [OTSO],
       thread: thread(
         en(
-          `Hei 3B:n huoltajat!\n\nLähdemme perjantaina ${fi(fri)} metsäretkelle Nuuksioon. Lähtö koululta klo 8.30 ja paluu noin klo 14.00.\n\nMukaan:\n- reilut eväät ja juomapullo\n- sään mukainen vaatetus ja kumisaappaat\n- pieni reppu\n\nPalauttakaa retkilupa allekirjoitettuna ${fiDay(wed)} mennessä tai vastatkaa tähän viestiin, että lapsenne saa osallistua.\n\nTerveisin\nLaura`,
-          `Hi 3B's guardians!\n\nOn Friday ${fi(fri)} we're going on a forest trip to Nuuksio. We leave school at 8.30 and are back at about 14.00.\n\nBring:\n- a good packed lunch and a water bottle\n- clothes for the weather and rubber boots\n- a small backpack\n\nPlease return the signed trip permission (retkilupa) by ${enDay(wed)}, or reply to this message that your child may take part.\n\nBest wishes\nLaura`
+          `Hei 3B:n huoltajat!\n\nLähdemme perjantaina ${fi(fri)} metsäretkelle Nuuksioon. Lähtö koululta klo 8.30 ja paluu noin klo 14.00.\n\nMukaan:\n- reilut eväät ja juomapullo\n- sään mukainen vaatetus ja kumisaappaat\n- pieni reppu\n\nPalauttakaa retkilupa allekirjoitettuna ${fiDay(permissionBy)} mennessä tai vastatkaa tähän viestiin, että lapsenne saa osallistua.\n\nTerveisin\nLaura`,
+          `Hi 3B's guardians!\n\nOn Friday ${fi(fri)} we're going on a forest trip to Nuuksio. We leave school at 8.30 and are back at about 14.00.\n\nBring:\n- a good packed lunch and a water bottle\n- clothes for the weather and rubber boots\n- a small backpack\n\nPlease return the signed trip permission (retkilupa) by ${enDay(permissionBy)}, or reply to this message that your child may take part.\n\nBest wishes\nLaura`
         )
       ),
     }),
@@ -292,7 +302,7 @@ export function demoSnapshot(): Snapshot {
       sender: "Salo Pekka (rehtori)",
       sentAt: at(d(-4), "12:00"),
       unreadInWilma: false,
-      children: [KIIA, OTSO],
+      children: [KIIA],
       thread: thread(
         en(
           `Hyvät huoltajat,\n\ntervetuloa koulun vanhempainiltaan ${fiDay(parentsEvening)} klo 18.00 koulun auditorioon. Illan aiheina ovat koulun hyvinvointisuunnitelma ja syksyn tapahtumat. Lopuksi luokkakohtaiset tapaamiset omien luokanopettajien ja -valvojien kanssa.\n\nIlmoittauduttehan Wilman lomakkeella ${fiDay(fri)} mennessä, jotta osaamme varata kahvia riittävästi.\n\nPekka Salo\nrehtori`,
@@ -360,7 +370,7 @@ export function demoSnapshot(): Snapshot {
       sender: "Virtanen Sari (terveydenhoitaja)",
       sentAt: at(d(-8), "13:30"),
       unreadInWilma: false,
-      children: [KIIA, OTSO],
+      children: [KIIA],
       thread: thread(
         en(
           `Hyvät huoltajat,\n\nlaajat terveystarkastukset 3. ja 8. luokille alkavat ${fi(next(d(1), 0, 1))}. Saatte kutsun ja ajan erikseen. Täyttäkää ennen tarkastusta esitietolomake, jonka lähetän Wilmaan lomakkeena.\n\nYstävällisin terveisin\nSari Virtanen, kouluterveydenhoitaja`,
@@ -469,7 +479,7 @@ export function demoSnapshot(): Snapshot {
       author: "Rehtori Pekka Salo",
       published: at(d(-12), "09:00"),
       pinned: false,
-      children: [KIIA, OTSO],
+      children: [KIIA],
       detail: {
         content: en(
           `Syysloma on ${fi(autumnBreak)}–${fi(addDays(autumnBreak, 4))}. Koulu alkaa jälleen maanantaina ${fi(addDays(autumnBreak, 7))} lukujärjestyksen mukaan. Iltapäiväkerho on suljettu loman ajan.`,
@@ -480,23 +490,23 @@ export function demoSnapshot(): Snapshot {
       },
     },
     {
-      id: 901,
+      id: familyId(1, 901),
       title: en("Lokakuun ruokalista", "October's menu"),
       subtitle: en("Kouluruokalan ruokalista ja erityisruokavaliot", "The school canteen's menu and special diets"),
       author: "Ruokapalvelut",
       published: at(d(-7), "08:00"),
       pinned: false,
-      children: [KIIA, OTSO],
+      children: [OTSO],
       detail: { content: en("Lokakuun ruokalista on julkaistu koulun verkkosivuilla. Erityisruokavaliot ilmoitetaan terveydenhoitajalle lomakkeella.", "October's menu is on the school's website. Special diets are reported to the school nurse with a form."), resources: [], fetchedAt: new Date() },
     },
     {
-      id: 902,
+      id: familyId(1, 902),
       title: en("Lukudiplomi alkaa", "The reading diploma starts"),
       subtitle: en("Kaikille luokille 1–9", "For all years 1–9"),
       author: "Kirjasto",
       published: at(d(-15), "12:00"),
       pinned: false,
-      children: [KIIA, OTSO],
+      children: [OTSO],
       detail: { content: en("Lukudiplomin kirjalistat on päivitetty. Diplomin voi suorittaa koko lukuvuoden ajan; kirjat löytyvät koulun kirjastosta.", "The reading diploma's book lists have been updated. The diploma can be done at any time in the school year; the books are in the school library."), resources: [], fetchedAt: new Date() },
     },
   ];
@@ -540,12 +550,17 @@ export function demoSnapshot(): Snapshot {
     teacherCode,
   });
 
+  const firstSyncAt = at(d(-2), "12:00").getTime();
   const kiiaLessons = lessons(KIIA_WEEK, monday);
   const otsoLessons = lessons(OTSO_WEEK, monday, { date: tomorrow, from: "10:00" });
 
   return {
     version: 1,
-    account: { baseUrl: "https://example.inschool.fi", username: "demo", tenantName: "Esimerkkikoulu (sample family)", via: "demo" },
+    account: KIIAS_WILMA,
+    logins: [
+      { slot: 0, account: KIIAS_WILMA, students: [{ number: KIIA, name: "Kiia Virtanen" }], firstSyncAt },
+      { slot: 1, account: OTSOS_WILMA, students: [{ number: OTSO, name: "Otso Virtanen" }], firstSyncAt },
+    ],
     children: [
       { number: KIIA, name: "Kiia Virtanen", first: "Kiia", color: 0 },
       { number: OTSO, name: "Otso Virtanen", first: "Otso", color: 1 },
@@ -621,9 +636,10 @@ export function demoSnapshot(): Snapshot {
         syncedAt: new Date(),
       },
     },
-    messages: Object.fromEntries(messages.map((m) => [m.id, m])),
+    // What Otso's school sent comes through its Wilma, with ids that carry its slot.
+    messages: Object.fromEntries(messages.map((m) => (m.children.includes(OTSO) ? { ...m, id: familyId(1, m.id) } : m)).map((m) => [m.id, m])),
     news: Object.fromEntries(news.map((n) => [n.id, n])),
     syncedAt: new Date(),
-    firstSyncAt: at(d(-2), "12:00").getTime(),
+    firstSyncAt,
   };
 }

@@ -8,14 +8,14 @@
 import type { AppState } from "../data/store";
 import type { ItemTranslation, TranslationLanguage } from "../data/model";
 import { buildFeed } from "../data/feed";
-import { sourceHash, translationSource, translationTarget } from "../ai/translate";
+import { sampleFamilyTranslated, sourceHash, translationSource } from "../ai/translate";
 import { demoEnglish } from "./demo";
 
 const LANGUAGE: TranslationLanguage = "en";
 
 /** The sample family's items in English, by item key (those whose every text has its English). */
 export function demoTranslations(state: AppState): Record<string, ItemTranslation> {
-  if (state.snapshot?.account.via !== "demo" || translationTarget(state.settings) !== LANGUAGE) return {};
+  if (!state.snapshot || !sampleFamilyTranslated(state.settings)) return {};
   const english = demoEnglish();
   const out: Record<string, ItemTranslation> = {};
   for (const item of buildFeed(state)) {
