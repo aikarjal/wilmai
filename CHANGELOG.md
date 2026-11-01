@@ -2,11 +2,13 @@
 
 ## 2.3.1 (unreleased)
 
+_Releases: wilma-cli 2.3.1, wilma-client 1.8.0._
+
 **In short:** the summary works on a Wilma that doesn't show a guardian its bulletins, such as Helsinki's.
 
 ### Fixed
 
-- **A Wilma that refuses its bulletins page.** Helsinki's Wilma answers a guardian's bulletins page with 403, and the summary (`wilma summary`, `wilma_summary`) failed for that child. Bulletins are now optional there, as meeting invitations and lesson notes already were: the summary lists `news` under `unavailable` and reads the rest, and `wilma news` and `wilma_list_news` return no bulletins with `unavailable: ["news"]` ("This Wilma doesn't show bulletins to this account.") instead of an error. The client's new `news.listIfShown()` returns null there. Reported, with the same fix for WilmAI Home, by rockaholiciam in #22.
+- **A Wilma that refuses its bulletins page.** Helsinki's Wilma answers a guardian's bulletins page with 403, and the summary (`wilma summary`, `wilma_summary`) failed for that child. Bulletins are now optional there, as meeting invitations and lesson notes already were: the summary lists `news` under `unavailable` and reads the rest, and `wilma news` and `wilma_list_news` return no bulletins with `unavailable: ["news"]` ("This Wilma doesn't show bulletins to this account.") instead of an error. client 1.8.0: the new `news.listIfShown()` returns null there. Reported, with the same fix for WilmAI Home, by rockaholiciam in #22.
 
 ## 2.3.0 (2026-10-24)
 
