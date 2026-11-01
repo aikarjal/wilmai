@@ -46,6 +46,9 @@ const server = createServer((req, res) => {
     return res.end(PDF);
   }
   if (path === "/!1/news") return send(200, "text/html", fixture("news-list.html"));
+  // A Wilma that doesn't show a guardian its bulletins (Helsinki's answers 403), with the session alive.
+  if (path === "/!2/news") return send(403, "text/html", "Forbidden");
+  if (path === "/") return send(200, "text/html", '<form id="logout-form" action="/logout"><input name="formkey" value="fk"></form>');
   if (/^\/![12]\/overview$/.test(path)) return send(200, "application/json", fixture("overview.json"));
   if (path === "/!1/exams/calendar") return send(200, "text/html", fixture("exams-calendar.html"));
   if (path === "/!2/exams/calendar") return send(500, "text/plain", "");
@@ -116,6 +119,11 @@ try {
   // Bulletins: dated, pinned and older ones.
   const news = await kid.news.list();
   assert.equal(news.length, 42);
+  assert.equal((await kid.news.listIfShown()).length, 42);
+  // Not shown to this account: null, not an error (the other pages read as usual); list() still says why.
+  assert.equal(await older.news.listIfShown(), null);
+  await assert.rejects(older.news.list(), { status: 403 });
+  assert.ok((await older.overview.get()).upcomingExams, "the same Wilma's other pages still read");
 } finally {
   server.close();
 }

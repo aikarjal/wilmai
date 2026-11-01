@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -98,6 +99,23 @@ const server = createServer((req, res) => {
         <a href="http://127.0.0.1:${externalPort}/external/big.pdf">Iso liite</a>
       </div>
     `);
+    return;
+  }
+  // This Wilma doesn't show the account its bulletins (Helsinki's answers a guardian's /news with 403); the rest reads.
+  const path = req.url.split("?")[0];
+  if (req.method === "GET" && path === "/!123/news") {
+    res.writeHead(403, { "Content-Type": "text/html" });
+    res.end("Forbidden");
+    return;
+  }
+  if (req.method === "GET" && path === "/!123/overview") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(readFileSync(new URL("../../wilma-client/test/fixtures/real/overview.json", import.meta.url), "utf8"));
+    return;
+  }
+  if (req.method === "GET" && path.startsWith("/!123/messages/list")) {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end('{"Messages":[]}');
     return;
   }
   if (req.method === "GET" && req.url === "/!123/files/retkilupa.pdf") {
@@ -227,6 +245,20 @@ try {
   assert.equal(defaulted.output.status, "downloaded");
   assert.equal(basename(defaulted.output.path), "retkilupa.pdf");
   assert.equal(await readFile(join(defaultDir, "retkilupa.pdf"), "utf8"), "test-pdf-bytes");
+
+  // A Wilma that doesn't show this account its bulletins: none, said so, and the summary still reads the rest.
+  const refused = await runJson(["news", "--student", "123", "--json"]);
+  assert.equal(refused.exitCode, 0);
+  assert.deepEqual(refused.output.students[0].news, []);
+  assert.deepEqual(refused.output.students[0].unavailable, ["news"]);
+  const summary = await runJson(["summary", "--student", "123", "--json"]);
+  assert.equal(summary.exitCode, 0, JSON.stringify(summary.output));
+  assert.ok(summary.output.students[0].summary.unavailable.includes("news"));
+  assert.deepEqual(summary.output.students[0].summary.news, []);
+  const text = async (args) =>
+    (await execFileAsync(process.execPath, [cliPath, ...args, "--text"], { cwd: tempDirectory, encoding: "utf8", env: { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_NO_UPDATE_CHECK: "1" } })).stdout;
+  assert.match(await text(["news", "--student", "123"]), /This Wilma doesn't show bulletins to this account\./);
+  assert.match(await text(["summary", "--student", "123"]), /Not available from Wilma right now: .*\bnews\b/);
 
   console.log("cli-news-resources: all assertions passed");
 } finally {

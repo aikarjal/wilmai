@@ -65,12 +65,12 @@ function titled(title: string, result: { students: unknown[] }, body: string): s
 function perStudent<K extends string, T>(
   result: PerStudent<K, T>,
   key: K,
-  render: (value: T, student: StudentRef) => string[]
+  render: (value: T, student: StudentRef, entry: Record<string, unknown>) => string[]
 ): string {
   const several = result.students.length > 1;
   const lines: string[] = [];
   for (const entry of result.students) {
-    lines.push(...heading(entry.student, several), ...render(entry[key], entry.student));
+    lines.push(...heading(entry.student, several), ...render(entry[key], entry.student, entry as Record<string, unknown>));
   }
   for (const problem of result.problems ?? []) lines.push("", `Couldn't read ${problem.wilma}: ${problem.message}`);
   return lines.join("\n").replace(/^\n/, "");
@@ -231,9 +231,9 @@ export function formatText(command: string, action: string | null, result: any):
             : []),
         ].join("\n");
       }
-      return perStudent(result, "news", (items: NewsItem[]) => {
-        const lines = items.length ? items.map((n) => `  ${newsLine(n)}`) : ["  No bulletins."];
-        return lines;
+      return perStudent(result, "news", (items: NewsItem[], _student, entry) => {
+        if ((entry.unavailable as string[] | undefined)?.includes("news")) return ["  This Wilma doesn't show bulletins to this account."];
+        return items.length ? items.map((n) => `  ${newsLine(n)}`) : ["  No bulletins."];
       });
     }
     case "printouts":

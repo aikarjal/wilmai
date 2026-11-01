@@ -283,9 +283,10 @@ function selectNews(news: NewsItem[], opts: { limit?: number; includeOlder?: boo
 }
 
 /**
- * What a daily summary needs, fetched at once. The front page, bulletins and
- * inbox are required; meeting invitations, lesson notes and exam times are
- * extras — if Wilma can't give one, the summary says so in `unavailable`.
+ * What a daily summary needs, fetched at once. The front page and inbox are
+ * required; bulletins (some Wilmas don't show them to a guardian), meeting
+ * invitations, lesson notes and exam times aren't — if Wilma can't give one,
+ * the summary says so in `unavailable`.
  */
 async function fetchSummaryInputs(client: WilmaClient, opts: { notesFrom: string }): Promise<SummaryInputs> {
   const unavailable: string[] = [];
@@ -298,14 +299,15 @@ async function fetchSummaryInputs(client: WilmaClient, opts: { notesFrom: string
   const [overview, calendar, news, inbox, appointments, lessonNotes] = await Promise.all([
     client.overview.get(),
     client.exams.calendarOrEmpty(),
-    client.news.list(),
+    client.news.listIfShown(),
     client.messages.list("inbox"),
     optional("appointments", client.messages.list("appointments"), [] as Message[]),
     optional("lessonNotes", client.attendance.list({ from: opts.notesFrom, to: todayString() }), [] as LessonNote[]),
   ]);
+  if (news === null) unavailable.push("news");
   return {
     overview: { ...overview, upcomingExams: addExamTimes(overview.upcomingExams, calendar) },
-    news,
+    news: news ?? [],
     messages: [...inbox, ...appointments],
     lessonNotes,
     unavailable,
@@ -721,9 +723,11 @@ export class WilmaAccess {
   }
 
   async news(opts: { student?: string; limit?: number; includeOlder?: boolean } = {}) {
-    return this.perStudent(opts.student, async (client) => ({
-      news: selectNews(await client.news.list(), { limit: opts.limit, includeOlder: opts.includeOlder }),
-    }));
+    return this.perStudent(opts.student, async (client) => {
+      const list = await client.news.listIfShown();
+      // A Wilma that doesn't show this account its bulletins: none, and it says so (not the same as "no bulletins").
+      return { news: selectNews(list ?? [], { limit: opts.limit, includeOlder: opts.includeOlder }), ...(list === null ? { unavailable: ["news"] } : {}) };
+    });
   }
 
   async newsItem(opts: { id: number; student?: string }) {

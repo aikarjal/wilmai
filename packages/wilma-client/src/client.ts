@@ -303,6 +303,19 @@ export class WilmaClient {
       return parseNewsListHtml(text);
     },
 
+    /**
+     * The bulletins, or null when this Wilma doesn't show them to this account: it answers /news with 403 (Helsinki's
+     * does, for a guardian) or 404 while the session is alive. Its other pages read as usual.
+     */
+    listIfShown: async (): Promise<NewsItem[] | null> => {
+      try {
+        return await this.news.list();
+      } catch (err) {
+        if (err instanceof APIError && (err.status === 403 || err.status === 404)) return null;
+        throw err;
+      }
+    },
+
     get: async (newsId: number): Promise<NewsItem> => {
       const resp = await this.session.get(`/news/${newsId}`);
       const contentType = resp.headers.get("content-type")?.toLowerCase() ?? "";

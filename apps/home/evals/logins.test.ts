@@ -24,6 +24,8 @@ interface Fake {
   alive: string | null;
   sid: number;
   requests: string[];
+  /** Answers a guardian's bulletins page with 403, as Helsinki's Wilma does. */
+  refusesNews?: boolean;
 }
 
 /** A fake Wilma per host: one live session per account, a front page with Wilma's logout form, the fixtures' pages. */
@@ -65,7 +67,7 @@ function fakeWilmas(fakes: Record<string, Fake>) {
     if (page === "/messages/list/outbox") return answer(wire.url, 200, '{"Messages":[]}', { contentType: "application/json" });
     if (page === "/messages/list/appointments") return json("appointments-list.json");
     if (/^\/messages\/\d+$/.test(page)) return json("message-thread.json");
-    if (page === "/news") return answer(wire.url, 200, fixture("news-list.html"));
+    if (page === "/news") return fake.refusesNews ? answer(wire.url, 403, "Forbidden") : answer(wire.url, 200, fixture("news-list.html"));
     if (/^\/news\/\d+$/.test(page)) return answer(wire.url, 200, fixture("news-detail.html"));
     if (page === "/attendance/view") return answer(wire.url, 200, fixture("attendance.html"));
     if (page.startsWith("/exams/calendar")) return answer(wire.url, 200, fixture("exams-calendar.html"));
@@ -545,6 +547,28 @@ test("the app doesn't sign a Wilma in by itself while the parent is signing it i
     hold.release();
     assert.deepEqual(await parents, { 1: { ok: true } });
     assert.equal(getState().phase, "ready");
+  } finally {
+    overrideBridge(null);
+    await resetApp();
+  }
+});
+
+test("a Wilma that doesn't show a guardian its bulletins still has everything else read", async () => {
+  await resetApp();
+  updateSettings({ ...DEFAULT_SETTINGS });
+  const fakes = family();
+  fakes.south.refusesNews = true;
+  try {
+    await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian");
+    await addWilma(SOUTH, "parent", "fictional-south");
+    await syncNow();
+    const snap = getState().snapshot!;
+    assert.equal(getState().sync.error, null, "no 'Couldn't read' for the Wilma that refused /news");
+    const fromSouth = <T,>(items: Record<number, T>) => Object.keys(items).filter((id) => loginOfId(Number(id)) === 1).length;
+    assert.ok(fromSouth(snap.messages) > 0, "its messages are read");
+    assert.equal(fromSouth(snap.news), 0, "and it has no bulletins");
+    assert.ok(Object.keys(snap.news).length > 0, "the other Wilma's bulletins are there");
+    assert.ok(snap.perChild[familyChild(1, "1234")]?.overview, "its front page is read");
   } finally {
     overrideBridge(null);
     await resetApp();

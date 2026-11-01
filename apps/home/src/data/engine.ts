@@ -1245,7 +1245,8 @@ async function runSync() {
                 limit(() => c.messages.list("inbox")),
                 // What the family sent and nobody has answered yet is only in the Sent folder.
                 limit(() => c.messages.list("outbox")),
-                limit(() => c.news.list()),
+                // A Wilma that doesn't show a guardian its bulletins (Helsinki's answers 403): none, and the rest is read.
+                limit(async () => (await c.news.listIfShown()) ?? []),
                 // The weeks ahead too: a teacher may note a make-up exam on a coming lesson (for the calendar).
                 limit(() => c.attendance.list({ from: addDays(now, -20), to: addDays(now, 60) })),
                 // Start times are a bonus; upcoming exams themselves come with the overview.
