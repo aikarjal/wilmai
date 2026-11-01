@@ -11,6 +11,7 @@ import type { MessageForm } from "@wilma-client/src/write";
 import { accountStorageKey, useApp } from "../data/store";
 import { isDemo, isSessionEnded, loadContacts, messageApi, preparedAgain, signInAgain, SESSION_CHANGED_NOTE } from "../data/engine";
 import { draftTo, openDraft, readDrafts, saveDraft, writeDrafts, type Drafts } from "../data/drafts";
+import { OutgoingPane, OutgoingSwitch, goesIn, useOutgoing } from "./Outgoing";
 import { loginOfChild } from "../data/logins";
 import type { Contacts } from "../data/model";
 import { Icon, Tab } from "./bits";
@@ -115,6 +116,8 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
   const draftKey = accountStorageKey(`newmsg.${child}`);
   const [subject, setSubject] = useState("");
   const [text, setText] = useState("");
+  // Written in the parent's language, sent in Finnish or Swedish when they've chosen so (Settings).
+  const outgoing = useOutgoing(subject, text);
   // Until the parent writes, the words are what the app filled in (or a saved draft as it was): nothing to save.
   const [written, setWritten] = useState(false);
   // The saved draft the words opened from, so it moves with them if the parent sends them to someone else.
@@ -220,11 +223,15 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
   };
 
   const send = async (form: MessageForm) => {
+    // What's shown is what's sent: the translation of these words, or the parent's own (Send waits until there's one).
+    const words = outgoing.sent;
+    if (!words) return;
     setStage({ kind: "sending", form });
     try {
-      await messageApi(child).send(form, subject.trim(), text);
+      await messageApi(child).send(form, words.subject.trim(), words.text);
       setStage({ kind: "sent", to: form.recipients.join(", ") || recipient?.name || "" });
       forget();
+      outgoing.reset();
     } catch (err) {
       try {
         const fresh = recipient ? await preparedAgain(err, () => messageApi(child).prepare(recipient), loginOfChild(child)) : null;
@@ -333,7 +340,10 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
           aria-label={t("Subject")}
           disabled={stage.kind === "sending"}
         />
-        <textarea value={text} onChange={(e) => (setText(e.target.value), setWritten(true))} placeholder={t("Write your message")} aria-label={t("Your message")} disabled={stage.kind === "sending"} />
+        <div className={outgoing.translating ? "out-pair" : undefined}>
+          <textarea value={text} onChange={(e) => (setText(e.target.value), setWritten(true))} placeholder={t("Write your message")} aria-label={t("Your message")} disabled={stage.kind === "sending"} />
+          <OutgoingPane o={outgoing} subject />
+        </div>
         {stage.kind === "error" ? (
           <div className="notice err composer-error">
             <span>{stage.message}</span>
@@ -349,20 +359,22 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
             <span>
               {stage.kind === "confirm" && stage.note ? <>{t(stage.note)} </> : null}
               {tx(demo ? "Send “{subject}” to {to} in Wilma (sample family: nothing is really sent)?" : "Send “{subject}” to {to} in Wilma?", {
-                subject: subject.trim(),
+                subject: (outgoing.sent?.subject ?? subject).trim(),
                 to: <b>{to}</b>,
               })}
+              {goesIn(outgoing) ? <> {goesIn(outgoing)}</> : null}
             </span>
             <span style={{ flex: 1 }} />
             <button className="btn btn-sm" onClick={() => setStage({ kind: "ready", form: stage.form })} disabled={stage.kind === "sending"}>
               {t("Keep editing")}
             </button>
-            <button className="btn btn-primary btn-sm" onClick={() => void send(stage.form)} disabled={stage.kind === "sending"}>
+            <button className="btn btn-primary btn-sm" onClick={() => void send(stage.form)} disabled={stage.kind === "sending" || !outgoing.sent}>
               {stage.kind === "sending" ? t("Sending…") : t("Send now")}
             </button>
           </div>
         ) : (
           <div className="composer-foot">
+            <OutgoingSwitch o={outgoing} />
             <span className="hint">{saved ? t("Draft saved on this device") : t("Drafts stay on this device until you send")}</span>
             {saved ? (
               <button type="button" className="btn btn-quiet btn-sm" onClick={discard}>
@@ -371,7 +383,7 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
             ) : null}
             <button
               className="btn btn-primary btn-sm"
-              disabled={!form || !subject.trim() || !text.trim()}
+              disabled={!form || !subject.trim() || !text.trim() || !outgoing.sent}
               onClick={() => form && setStage({ kind: "confirm", form })}
             >
               {t("Send…")}

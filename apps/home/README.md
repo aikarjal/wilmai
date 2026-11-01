@@ -450,7 +450,7 @@ For OpenAI:
   ("Turn on"), and the usual cost, tens of cents a month for a family. Costs can rise
   with history size and re-reading. A key OpenAI refuses isn't kept.
 - With a key, kept short: one line with *this month* against the limit (a thin bar, and
-  what's being read), then *Translating messages* in the same card (it's OpenAI's), and
+  what's being read), then *Translating messages* and *Writing to the school* in the same card (they're OpenAI's), and
   one disclosure, *OpenAI key, limit and usage*, with the key, the usage table and a
   saved *monthly limit (USD)* slider from $0.50 to $3 in 50-cent steps, defaulting to
   $1 for both new and older installations (a higher limit saved before becomes $3). No call starts once
@@ -459,6 +459,13 @@ For OpenAI:
   tokens OpenAI reports. The key shows as "Saved (…abcd)" with Replace key
   and Turn off (removes the key). Choosing No AI or Local keeps a saved key
   without using it.
+- *Writing to the school* (`ai/outgoing.ts`, `ui/Outgoing.tsx`): As written, Suomi or Svenska, Finland's official
+  languages; off until chosen. With a language chosen, the new message page and the answer box show the parent's
+  words and what's sent side by side: the translation is made when they press Translate (always the most accurate
+  translator, about $0.003 a message: it goes to a teacher in their name), with a translation back into the language
+  they wrote in to check it. Only what's shown is sent: changed words mean translating again before Send, the
+  confirmation says it goes in Finnish (or Swedish), a message already written in the language goes as written, and a
+  switch by Send sends the parent's own words instead. After rockaholiciam's idea in #22.
 - Monthly cost guidance is an estimate; the pause budget is recorded in USD. Reading older items for the first time and rereading after changes
   can raise costs. The previous per-item monthly estimate assumed one read
   per item and understated observed usage (27 cents in a few days).

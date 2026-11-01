@@ -421,6 +421,25 @@ a { color: var(--pen); }
 .composer textarea { width: 100%; border: 0; outline: 0; resize: vertical; min-height: 120px; padding: 12px 14px; background: transparent; font-size: 15.5px; line-height: 1.55; }
 .composer-foot { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--rule); background: var(--paper); flex-wrap: wrap; }
 .composer-foot .hint { color: var(--ink-3); font-size: 13px; margin-right: auto; }
+/* Writing to the school in Finnish or Swedish (Outgoing.tsx): the parent's words and what's sent, side by side. */
+.out-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; }
+.out-pair textarea { min-height: 180px; }
+.out-pane { border-left: 1px solid var(--rule); background: var(--paper); padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.out-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.out-head .label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.out-words { font-size: 15.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.out-words.stale { opacity: 0.45; }
+.out-subject { display: block; font-weight: 600; margin-bottom: 6px; }
+.out-back { margin: 0; padding-top: 8px; border-top: 1px dashed var(--rule-2); font-size: 13px; line-height: 1.5; color: var(--ink-2); white-space: pre-wrap; }
+.out-back span { display: block; margin-bottom: 2px; font-weight: 700; color: var(--ink-3); }
+.out-pane .help { margin: 0; font-size: 13.5px; color: var(--ink-3); }
+.out-switch { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13.5px; }
+.out-switch label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; }
+.out-switch + .hint { margin-left: 4px; }
+@media (max-width: 760px) {
+  .out-pair { grid-template-columns: minmax(0, 1fr); }
+  .out-pane { border-left: 0; border-top: 1px solid var(--rule); }
+}
 .confirm { background: var(--marker-soft); padding: 12px 14px; border-top: 1px solid var(--rule); font-size: 14.5px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .confirm b { font-weight: 700; }
 .notice { border-radius: 10px; padding: 10px 12px; font-size: 14px; }

@@ -14,6 +14,7 @@ import { intelligenceOn, intelligenceProvider, type Settings as SettingsModel, t
 import { buildFeed } from "../data/feed";
 import { DEFAULT_TRANSLATOR, TRANSLATION_LANGUAGES, TRANSLATORS, itemsPerMonth, needsTranslation, translationAvailable, translationSource } from "../ai/translate";
 import { runTranslations } from "../data/translations";
+import { OUTGOING_PER_MESSAGE, WRITE_LANGUAGES, type WriteLanguage } from "../ai/outgoing";
 import { localPackStatus, stopLocalSetup } from "../ai/managed";
 import { LocalAISetup } from "./LocalAISetup";
 import { OpenAIBlocked } from "./OpenAIBlocked";
@@ -43,6 +44,35 @@ function marked(text: string, wrap: (part: string) => ReactNode): ReactNode {
 
 /** A fraction of a cent, in dollars as OpenAI bills them: "$0.0001", "$0.005". */
 const dollars = (n: number) => `$${n.toFixed(Math.max(2, -Math.floor(Math.log10(n))))}`;
+
+/**
+ * With OpenAI, in the AI card: what the parent writes to the school goes in, Finnish or Swedish (the official
+ * languages), or as written (ai/outgoing.ts). The composers then show the translation beside the parent's words.
+ */
+function WritingSettings({ settings }: { settings: SettingsModel }) {
+  const chosen = settings.writeIn ?? "off";
+  return (
+    <section className="ai-part" aria-labelledby="ai-write-title">
+      <h3 id="ai-write-title">
+        <Icon name="pen" /> {t("Writing to the school")}
+      </h3>
+      <p>{t("Write in your own language, and your messages and answers go to the school in Finnish or Swedish. The translation shows beside your words before you send, and only what's shown is sent.")}</p>
+      <div role="group" aria-label={t("Send in")} style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <button className="seg" aria-pressed={chosen === "off"} onClick={() => updateSettings({ writeIn: "off" })}>
+          {t("As written")}
+        </button>
+        {(Object.entries(WRITE_LANGUAGES) as [WriteLanguage, string][]).map(([id, name]) => (
+          <button key={id} className="seg" lang={id} aria-pressed={chosen === id} onClick={() => updateSettings({ writeIn: id })}>
+            {name}
+          </button>
+        ))}
+      </div>
+      {chosen !== "off" ? (
+        <p className="help-line">{t("Translated with the most accurate translator when you ask, about {cost} a message, within your monthly limit.", { cost: dollars(OUTGOING_PER_MESSAGE) })}</p>
+      ) : null}
+    </section>
+  );
+}
 
 /** With OpenAI, in the AI card: what messages are translated into as they come, or nothing, and which model translates (data/translations.ts). */
 function TranslationSettings({ settings }: { settings: SettingsModel }) {
@@ -387,6 +417,7 @@ export function AISettings() {
       )}
       {check ? <div className={`notice ${check.ok ? "ok" : "err"}`}>{check.text}</div> : null}
       {on && choice === "openai" && translationAvailable(settings) ? <TranslationSettings settings={settings} /> : null}
+      {on && choice === "openai" && translationAvailable(settings) ? <WritingSettings settings={settings} /> : null}
 
       {on && choice === "openai" ? (
         <details className="ai-details">

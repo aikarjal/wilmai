@@ -355,6 +355,8 @@ export interface Settings {
   translateTo?: TranslationLanguage | "off";
   /** Who translates with OpenAI (ai/translate.ts TRANSLATORS); unset: the default there. */
   translateModel?: "gpt-6-luna" | "gpt-6.1-sol";
+  /** What the parent writes to the school goes in, translated with OpenAI (ai/outgoing.ts); unset: as written. */
+  writeIn?: "fi" | "sv" | "off";
   /** Look for a newer version on wilm.ai now and then (desktop app). */
   updateChecks: boolean;
 }
