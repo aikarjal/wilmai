@@ -16,8 +16,8 @@
 import { useCallback, useState } from "react";
 import type { ScheduleLesson } from "@wilma-client/src/core";
 import type { HomeworkItem } from "@wilma-client/src/types";
-import { useApp } from "../data/store";
-import { absentWhenGiven, courseKey, dueHomework, isForChild, sameCourse, splitAbsentees } from "../data/homework";
+import { setHomework, useApp } from "../data/store";
+import { absentWhenGiven, courseKey, dueHomework, homeworkKey, homeworkParts, isForChild, sameCourse, useHomeworkJudged, type HomeworkJudged, type HomeworkParts } from "../data/homework";
 import { bringFor, knownLessons, lessonKey } from "../data/schedule";
 import { addDays, dayName, dayWithDate, minutes, mondayOf, nowMinutes, shortDate, today, weekday } from "../data/dates";
 import type { Child, ChildData } from "../data/model";
@@ -29,8 +29,16 @@ import { go, homeworkBySubject as bySubjectView, shortLabel, tSense, useChildFil
 import { plural, t } from "../i18n";
 import { useWilma } from "../data/phrases";
 
-/** One homework with what the app knows about it. */
-type Hw = { child: Child; item: HomeworkItem; due: ScheduleLesson | null };
+/** One homework with what the app knows about it: what its text says, and whether it's something this child has to do. */
+type Hw = { child: Child; item: HomeworkItem; due: ScheduleLesson | null; parts: HomeworkParts; task: boolean };
+
+const hwOf = (child: Child, data: ChildData | undefined, item: HomeworkItem, due: ScheduleLesson | null, judged: HomeworkJudged): Hw => ({
+  child,
+  item,
+  due,
+  parts: homeworkParts(item, judged),
+  task: isForChild(data, item, judged),
+});
 
 /** The ten school days of this week and next. */
 function twoWeeks(): string[] {
@@ -47,7 +55,7 @@ function firstDay(days: string[]): string {
 
 /** The task without instructions for pupils who were away; what's left when only those were given. */
 function shortTask(hw: Hw, data: ChildData | undefined): { text: string; folded: boolean } {
-  const { main, absentees } = splitAbsentees(hw.item.homework);
+  const { main, absentees } = hw.parts;
   if (!absentees || absentWhenGiven(data, hw.item)) return { text: hw.item.homework, folded: false };
   return { text: main || t("Only instructions for pupils who were away"), folded: true };
 }
@@ -67,19 +75,19 @@ export function Homework() {
     setFocus(null);
   }, []);
 
-  // Everything the app knows, with the lesson each is due (its course's next lesson after it was set).
+  const judged = useHomeworkJudged();
+  // Everything the app knows, with the lesson each is due (its course's next lesson after it was set). "No homework"
+  // stays here (given today, a subject's history), so a misreading shows and can be set right; it's due nowhere.
   const all: Hw[] = children.flatMap((child) => {
     const data = snap.perChild[child.number];
     const lessons = knownLessons(data).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
-    return (data?.overview?.homework ?? [])
-      .filter((item) => isForChild(data, item))
-      .map((item) => ({ child, item, due: lessons.find((l) => l.date > item.date && sameCourse(l, item)) ?? null }));
+    return (data?.overview?.homework ?? []).map((item) => hwOf(child, data, item, lessons.find((l) => l.date > item.date && sameCourse(l, item)) ?? null, judged));
   });
   const dueOn = new Map<string, Hw[]>();
   for (const child of children) {
     const data = snap.perChild[child.number];
-    for (const h of dueHomework(data, knownLessons(data), days).filter((h) => isForChild(data, h.item))) {
-      dueOn.set(h.lesson.date, [...(dueOn.get(h.lesson.date) ?? []), { child, item: h.item, due: h.lesson }]);
+    for (const h of dueHomework(data, knownLessons(data), days, judged)) {
+      dueOn.set(h.lesson.date, [...(dueOn.get(h.lesson.date) ?? []), hwOf(child, data, h.item, h.lesson, judged)]);
     }
   }
   const givenToday = all.filter((h) => h.item.date === today());
@@ -112,8 +120,9 @@ export function Homework() {
               {children.length > 1 ? <Tab child={child} /> : null}
               {mine.length ? (
                 mine.map((h, i) => (
-                  <button type="button" key={i} className="hw-chip" onClick={() => show(h)}>
+                  <button type="button" key={i} className={`hw-chip${h.task ? "" : " none"}`} onClick={() => show(h)}>
                     {w(h.item.subject)}
+                    {h.task ? null : <small> · {t("no homework")}</small>}
                   </button>
                 ))
               ) : (
@@ -411,7 +420,8 @@ function BySubject({
 function HomeworkPanel({ hw, history, onOpen, onShowDay, onClose }: { hw: Hw; history: Hw[]; onOpen: (hw: Hw) => void; onShowDay: (lesson: ScheduleLesson) => void; onClose: () => void }) {
   const w = useWilma();
   const data = useApp((s) => s.snapshot?.perChild[hw.child.number]);
-  const { main, absentees } = splitAbsentees(hw.item.homework);
+  // Read live, not from the list's copy: the parent's word below changes it.
+  const { main, absentees, forClass, from } = homeworkParts(hw.item, useHomeworkJudged());
   const away = absentWhenGiven(data, hw.item);
   const [showAbsentees, setShowAbsentees] = useState(false);
   const now = today();
@@ -442,6 +452,23 @@ function HomeworkPanel({ hw, history, onOpen, onShowDay, onClose }: { hw: Hw; hi
       ) : away && absentees ? (
         <p className="hw-away">{t("{name} was away from that lesson, so the instructions for pupils who were away apply too.", { name: hw.child.first })}</p>
       ) : null}
+      <label className="dp-counts hw-for-class">
+        <input type="checkbox" checked={forClass} onChange={(e) => setHomework(homeworkKey(hw.item), e.target.checked)} />
+        <span>
+          <b>{t("Homework for the class")}</b>
+          <small>
+            {from === "parent" ? t("You set this for this homework.") : from === "ai" ? t("The AI read this from the text; change it if it's wrong.") : t("Going by the text's words; change it if it's wrong.")}
+            {from === "parent" ? (
+              <>
+                {" "}
+                <button type="button" className="linkish" onClick={(e) => (e.preventDefault(), setHomework(homeworkKey(hw.item), null))}>
+                  {t("Undo")}
+                </button>
+              </>
+            ) : null}
+          </small>
+        </span>
+      </label>
       <div className="dp-actions">
         {hw.due ? (
           <button className="btn btn-sm" onClick={() => onShowDay(hw.due!)}>
@@ -465,7 +492,10 @@ function HomeworkPanel({ hw, history, onOpen, onShowDay, onClose }: { hw: Hw; hi
                     <span className="ov-day">{shortDate(h.item.date)}</span>
                     <span />
                     <span className="ov-text">
-                      <span className="ov-sub">{splitAbsentees(h.item.homework).main || h.item.homework}</span>
+                      <span className="ov-sub">
+                        {h.task ? null : <small className="hw-none">{t("no homework")} · </small>}
+                        {w(h.parts.main || h.item.homework)}
+                      </span>
                     </span>
                   </button>
                 </li>

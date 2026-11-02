@@ -13,6 +13,7 @@ import { calendarEvents, readExams, type CalEvent } from "../src/data/calendar.t
 import { examMark, markKey } from "../src/data/marks.ts";
 import { kindOf, resultKey } from "../src/data/grades.ts";
 import { bringOf, peOf } from "../src/data/schedule.ts";
+import { homeworkParts } from "../src/data/homework.ts";
 import { addDays } from "../src/data/dates.ts";
 import { labelKinds } from "../src/data/notes.ts";
 import type { PastExam } from "@wilma-client/src/core";
@@ -29,6 +30,8 @@ export type CaseItem =
   | { type: "note"; id: number; pupil: number; date: string; start: string | null; end: string | null; subject: string; kind: string; teacher: string; text?: string }
   | { type: "mark"; id: number; pupil: number; date: string; subject: string; name: string; grade: string; info?: string | null }
   | { type: "lesson"; id: number; pupil: number; date: string; start: string; end: string; subject: string; subjectCode: string }
+  /** Homework a teacher wrote after a lesson, as Wilma's overview lists it. */
+  | { type: "homework"; id: number; pupil: number; date: string; subject: string; subjectCode: string; text: string }
   /** A subject on the report card (the grade book), with its grade now. */
   | { type: "grade"; id: number; pupil: number; subject: string; grade: string }
   /** An exam in Wilma's own exam list (exact data, not read). */
@@ -74,6 +77,11 @@ export interface Case {
      * PE, packed for (the Bring line in Homework), its kind on the report card (the kinds a parent would accept).
      */
     subjects?: { subject: string; pe?: boolean; bring?: boolean; kind?: GradeKind | GradeKind[] }[];
+    /**
+     * What the AI reads a homework text as: whether it gives the whole class something to do, words the part folded
+     * away for pupils who were away must contain (null: nothing folded), and words the class's part must contain.
+     */
+    homework?: { item: number; forClass?: boolean; away?: string | null; main?: string }[];
     calendar?: {
       events?: ExpectedEvent[];
       /** Days that must have no event in the calendar, or none for this pupil (suggestions allowed unless `suggestions: false`). */
@@ -146,6 +154,10 @@ export function snapshotOf(c: Case): Snapshot {
       snap.perChild[num(item.pupil)].notes.push({ date: item.date, start: item.start, end: item.end, subject: item.subject, typeLabel: item.kind, typeClass: "", teacher: item.teacher, note: item.text ?? null });
     } else if (item.type === "lesson") {
       snap.perChild[num(item.pupil)].lessons.push({ date: item.date, start: item.start, end: item.end, subject: item.subject, subjectCode: item.subjectCode, dayOfWeek: ((at(item.date).getDay() + 6) % 7) + 1, teacher: "Opettaja Esimerkki", teacherCode: "OPE", groupId: 1 });
+    } else if (item.type === "homework") {
+      const data = snap.perChild[num(item.pupil)];
+      const hw = { date: item.date, subject: item.subject, subjectCode: item.subjectCode, homework: item.text, teacher: "Opettaja Esimerkki", teacherCode: "OPE" };
+      data.overview = { schedule: [], upcomingExams: [], grades: [], fetchedAt: at(c.today), ...data.overview, homework: [...(data.overview?.homework ?? []), hw] };
     } else if (item.type === "grade") {
       const data = snap.perChild[num(item.pupil)];
       const entry = { name: item.subject, code: null, grade: item.grade, credits: null, date: null, children: [] };
@@ -177,7 +189,7 @@ export function snapshotOf(c: Case): Snapshot {
 }
 
 export interface Check {
-  task: "triage" | "action" | "tone" | "marks" | "subjects" | "calendar";
+  task: "triage" | "action" | "tone" | "marks" | "subjects" | "homework" | "calendar";
   what: string;
   ok: boolean;
   got: string;
@@ -314,6 +326,25 @@ export function scoreCase(
       const { kind, from } = kindOf(want.subject, state.local.gradeKinds);
       checks.push({ task: "subjects", what: `"${want.subject}" on the report card → ${kinds(want.kind)!.join("/")}`, ok: from === "ai" && kinds(want.kind)!.includes(kind), got: said(from, kind) });
     }
+  }
+
+  // What the AI read each homework text as. Only its own reading counts: the words standing in for it is a miss.
+  for (const want of c.expect.homework ?? []) {
+    const item = c.items.find((i) => i.id === want.item);
+    if (item?.type !== "homework") continue;
+    const parts = homeworkParts({ date: item.date, subject: item.subject, subjectCode: item.subjectCode, homework: item.text, teacher: "", teacherCode: "" }, { jev: state.jev, set: undefined });
+    const short = (text: string | null) => (text === null ? "nothing" : `"${text.length > 70 ? `${text.slice(0, 70)}…` : text}"`);
+    if (want.forClass !== undefined)
+      checks.push({ task: "homework", what: `homework ${want.item}: ${want.forClass ? "something" : "nothing"} for the class`, ok: parts.from === "ai" && parts.forClass === want.forClass, got: parts.from === "ai" ? (parts.forClass ? "for the class" : "nothing for the class") : `no AI answer (the words say ${parts.forClass ? "for the class" : "nothing"})` });
+    if (want.away !== undefined)
+      checks.push({
+        task: "homework",
+        what: `homework ${want.item}: folded for pupils who were away: ${want.away === null ? "nothing" : `"${want.away}"`}`,
+        ok: parts.splitBy === "ai" && (want.away === null ? parts.absentees === null : Boolean(parts.absentees?.toLowerCase().includes(want.away.toLowerCase()))),
+        got: parts.splitBy === "ai" ? short(parts.absentees) : `no AI answer (the words fold ${short(parts.absentees)})`,
+      });
+    if (want.main !== undefined)
+      checks.push({ task: "homework", what: `homework ${want.item}: the class's part says "${want.main}"`, ok: parts.splitBy === "ai" && parts.main.toLowerCase().includes(want.main.toLowerCase()), got: short(parts.main) });
   }
 
   // The calendar as the app would draw it: the read events (no exact Wilma data in these cases).

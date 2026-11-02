@@ -21,7 +21,7 @@ import { markOpened, useApp, useViewer } from "../data/store";
 import { agenda, examsNeedingAttention, forChildren, isNeedsYou, needsYou, type AgendaEntry, type FeedItem } from "../data/feed";
 import { intelligenceOn, type Child, type Snapshot } from "../data/model";
 import type { ScheduleLesson, UpcomingExam } from "@wilma-client/src/core";
-import { dueHomework, type DueHomework } from "../data/homework";
+import { dueHomework, useHomeworkJudged, type DueHomework } from "../data/homework";
 import { dayLessons, dayTimes, examForLesson, formatMinutes, knownLessons, lessonKey, subjectNamer, unusualDays, type DayTimes, type UnusualDay } from "../data/schedule";
 import { addDays, dayNameLong, daysBetween, dayWithDate, isoWeek, longDate, minutes, mondayOf, nowMinutes, relativeDay, shortDate, today, weekday } from "../data/dates";
 import { noteKind, useNoteKinds } from "../data/notes";
@@ -308,6 +308,7 @@ function ChildDays({ child, snap, items, dates, focus, onOpen }: { child: Child;
   const data = snap.perChild[child.number];
   const lessons = knownLessons(data);
   const leftOut = useApp((s) => s.local.leftOut?.[child.number]);
+  const judged = useHomeworkJudged();
   const times = dayTimes(dayLessons(lessons, leftOut));
   const odd = unusualDays(data, dates, leftOut);
   // Reporting an absence is a guardian's (a student's own login has no such form).
@@ -331,7 +332,7 @@ function ChildDays({ child, snap, items, dates, focus, onOpen }: { child: Child;
             exams={(data?.exams ?? []).filter((e) => e.date === d).map((exam) => ({ exam, lesson: day.find((l) => examForLesson(data, l) === exam) ?? null }))}
             // A message about a change the timetable already flags that day is the same news (as in Glance).
             events={events.filter((e) => e.date === d && !(e.kind === "schedule" && odd.some((u) => u.date === d)))}
-            homework={i === 0 ? null : dueHomework(data, lessons, [d])}
+            homework={i === 0 ? null : dueHomework(data, lessons, [d], judged)}
             loaded={Boolean(data)}
             shown={shown}
             onOpen={(lesson) => onOpen({ child, date: d, lesson })}

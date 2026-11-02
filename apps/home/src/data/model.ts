@@ -194,6 +194,11 @@ export interface LocalState {
    * wins (data/grades.ts kindOf).
    */
   gradeKinds?: Record<string, { ai?: GradeKind; by?: string; set?: GradeKind }>;
+  /**
+   * The parent's word on whether a homework gives the class something to do, by its key (data/homework.ts
+   * homeworkKey); otherwise the AI's reading of its text decides, or its words (data/homework.ts homeworkParts).
+   */
+  homework?: Record<string, boolean>;
   /** Each child's colour, nickname and emoji, by child number (Settings → Children); only on this device. */
   looks?: Record<string, ChildLook>;
 }

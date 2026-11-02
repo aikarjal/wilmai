@@ -572,6 +572,16 @@ export function setBring(subject: string, value: boolean | null) {
   setState((s) => ({ local: { ...s.local, bring: withWord(s.local.bring, subject, value) } }));
 }
 
+/** Whether a homework gives the class something to do (by data/homework.ts homeworkKey), or null to go back to the AI's reading or the words. */
+export function setHomework(key: string, value: boolean | null) {
+  setState((s) => {
+    const homework = { ...s.local.homework };
+    if (value === null) delete homework[key];
+    else homework[key] = value;
+    return { local: { ...s.local, homework } };
+  });
+}
+
 /** What a report-card subject is (academic, another subject, behaviour), or null to go back to the AI's or the name's. */
 export function setGradeKind(subject: string, value: GradeKind | null) {
   setState((s) => ({ local: { ...s.local, gradeKinds: withWord(s.local.gradeKinds, subject, value) } }));

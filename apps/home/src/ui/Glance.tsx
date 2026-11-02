@@ -11,7 +11,7 @@ import type { ScheduleLesson } from "@wilma-client/src/core";
 import { useApp } from "../data/store";
 import { agenda, type FeedItem } from "../data/feed";
 import { readExamEntries } from "../data/calendar";
-import { dueHomework } from "../data/homework";
+import { dueHomework, useHomeworkJudged } from "../data/homework";
 import { formatMinutes, unusualDays } from "../data/schedule";
 import { dayName, shortDate, today } from "../data/dates";
 import type { Child } from "../data/model";
@@ -67,6 +67,7 @@ export function Glance({
   homework?: boolean;
 }) {
   const w = useWilma();
+  const judged = useHomeworkJudged();
   const snap = useApp((s) => s.snapshot)!;
   const [homeworkOpen, setHomeworkOpen] = useState(false);
   const now = today();
@@ -87,7 +88,7 @@ export function Glance({
   // A message about the timetable on a day whose change the timetable already shows is the same news: one line, linking the message.
   const messageFor = (child: Child, date: string) => entries.find((e) => e.kind === "schedule" && e.itemKey && e.child === child.number && e.date === date);
   const scheduleNotes = entries.filter((e) => e.kind === "schedule" && e.itemKey && !changes.some((u) => u.child.number === e.child && u.date === e.date));
-  const due = homework ? children.flatMap((c) => dueHomework(snap.perChild[c.number], lessonsOf(c), days).map((h) => ({ child: c, ...h }))) : [];
+  const due = homework ? children.flatMap((c) => dueHomework(snap.perChild[c.number], lessonsOf(c), days, judged).map((h) => ({ child: c, ...h }))) : [];
 
   const changeText = (u: (typeof changes)[number]) => {
     if (u.kind === "off") return t("No lessons");

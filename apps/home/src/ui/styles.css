@@ -1087,6 +1087,10 @@ a { color: var(--pen); }
 .hw-given .ov-none { padding: 0; }
 .hw-chip { border: 0; border-radius: 999px; padding: 2px 10px; background: var(--paper-2); font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer; }
 .hw-chip:hover { background: var(--pen-soft); }
+/* A homework read as "no homework": still listed, quieter, so a misreading shows. */
+.hw-chip.none { background: transparent; box-shadow: inset 0 0 0 1px var(--rule); font-weight: 500; color: var(--ink-2); }
+.hw-chip small, .hw-none { font-weight: 400; color: var(--ink-3); }
+.hw-for-class { margin: 4px 0 12px; }
 .hw-strip { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 5px; margin-bottom: 12px; }
 .hw-sday { display: grid; justify-items: center; gap: 1px; padding: 7px 2px 6px; border: 1.5px solid transparent; border-radius: 10px; background: var(--sheet); box-shadow: var(--shadow); font: inherit; color: var(--ink); cursor: pointer; min-width: 0; }
 .hw-sday.next-week { margin-left: 8px; }

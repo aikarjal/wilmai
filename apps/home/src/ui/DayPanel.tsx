@@ -12,7 +12,7 @@
 import { Fragment, type ReactNode } from "react";
 import type { ScheduleLesson, UpcomingExam } from "@wilma-client/src/core";
 import { setBring, setLeftOut, setPE, useApp } from "../data/store";
-import { dueHomework, sameCourse } from "../data/homework";
+import { dueHomework, sameCourse, useHomeworkJudged } from "../data/homework";
 import { bringOf, dayLessons, dayTimes, examForLesson, formatMinutes, knownLessons, lessonKey, peOf, unusualDays, type SaidBy } from "../data/schedule";
 import { addDays, dayWithDate, minutes, mondayOf, nowMinutes, shortDate, today } from "../data/dates";
 import type { Child } from "../data/model";
@@ -48,6 +48,7 @@ function withLinks(text: string) {
 
 export function DayPanel({ focus, onFocus, onClose }: { focus: DayFocus; onFocus: (focus: DayFocus) => void; onClose: () => void }) {
   const w = useWilma();
+  const judged = useHomeworkJudged();
   const snap = useApp((s) => s.snapshot);
   const jev = useApp((s) => s.jev);
   const luna = useApp((s) => s.luna);
@@ -59,7 +60,7 @@ export function DayPanel({ focus, onFocus, onClose }: { focus: DayFocus; onFocus
   const leftOut = local.leftOut?.[child.number];
   const times = dayTimes(dayLessons(lessons, leftOut)).get(date);
   const odd = unusualDays(data, [date], leftOut);
-  const due = dueHomework(data, all, [date]);
+  const due = dueHomework(data, all, [date], judged);
   const picked = lessons.find((l) => lessonKey(l) === focus.lesson) ?? null;
   // A day further out (from the Calendar): until its week is read, no lessons isn't "no lessons". The sync reads this week and next.
   const monday = mondayOf(date);
@@ -242,10 +243,11 @@ function ExamFacts({ exam, child }: { exam: UpcomingExam; child: Child }) {
 /** One lesson's details under the timeline. */
 function LessonFacts({ lesson, child }: { lesson: ScheduleLesson; child: Child }) {
   const w = useWilma();
+  const judged = useHomeworkJudged();
   const data = useApp((s) => s.snapshot?.perChild[child.number]);
   const all = knownLessons(data);
   const exam = examForLesson(data, lesson);
-  const homework = dueHomework(data, all, [lesson.date]).find((h) => lessonKey(h.lesson) === lessonKey(lesson))?.item ?? null;
+  const homework = dueHomework(data, all, [lesson.date], judged).find((h) => lessonKey(h.lesson) === lessonKey(lesson))?.item ?? null;
   const given = (data?.overview?.homework ?? []).find((hw) => hw.date === lesson.date && sameCourse(lesson, hw)) ?? null;
   // The teacher's notes on this lesson ("Rästikoe klo 15.20", an absence), from the sync's weeks or the year's list.
   const notes = [...(data?.notes ?? []), ...(data?.yearNotes?.notes ?? [])]

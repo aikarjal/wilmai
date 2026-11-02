@@ -21,15 +21,16 @@ import { accountScope, getState, setState } from "../data/store";
 import { awaitingReply, intelligenceOn, pupilName, viewerOf, type JevAnswer, type JevRecord, type Snapshot, type Viewer } from "../data/model";
 import { localDecisions, providerIdentity, usesLocalAI } from "../ai/config";
 import { prepareOllama } from "../ai/ollama";
-import { dateOf, dayNameLongEn as dayNameLong, longDateEn as longDate, today } from "../data/dates";
+import { dateOf, daysBetween, dayNameLongEn as dayNameLong, longDateEn as longDate, today } from "../data/dates";
 import { finnishParts } from "@wilma-client/src/finnish-time";
-import { MARK_QS, NOTE_LABEL_QS, TONE_PUPIL_QS, TONE_QS, TRIAGE_PUPIL_QS, TRIAGE_QS, markQuestions, noteLabelQuestions, toneQuestions, tonePupilQuestions, triagePupilQuestions, triageQuestions, type Entry, type Question } from "./questions";
+import { HOMEWORK_QS, MARK_QS, NOTE_LABEL_QS, TONE_PUPIL_QS, TONE_QS, TRIAGE_PUPIL_QS, TRIAGE_QS, homeworkQuestions, markQuestions, noteLabelQuestions, toneQuestions, tonePupilQuestions, triagePupilQuestions, triageQuestions, type Entry, type Question } from "./questions";
 import { examResults, resultKey } from "../data/grades";
 import { markKey } from "../data/marks";
 import { readMaximum } from "../luna/marks";
 import type { PastExam } from "@wilma-client/src/core";
 import { noteGroups } from "../data/feed";
 import { isUnexplained, labelKey } from "../data/notes";
+import { homeworkKey, homeworkSentences, MAX_SENTENCES } from "../data/homework";
 import { askDecisions } from "../luna/decisions";
 import { LunaError, openAIBlockedMessage, openAIReady } from "../luna/client";
 import { saveCompareReport } from "../luna/compare";
@@ -206,6 +207,31 @@ function jobs(snap: Snapshot, who: Viewer): Job[] {
         },
         pupil: child.first,
         at: Date.parse(exam.date),
+      });
+    }
+  }
+  // Homework: what each text gives the class to do, and which sentences are for pupils who were away, once per text
+  // (siblings in one class share it). The last three weeks: the Homework view's two weeks and what's due in them.
+  const homework = new Set<string>();
+  for (const child of snap.children) {
+    for (const hw of snap.perChild[child.number]?.overview?.homework ?? []) {
+      const key = homeworkKey(hw);
+      if (!hw.homework.trim() || !hw.date || daysBetween(hw.date, now) > 21 || homework.has(key)) continue;
+      homework.add(key);
+      const sentences = homeworkSentences(hw.homework);
+      const asked = sentences.length <= MAX_SENTENCES ? sentences : [];
+      list.push({
+        key,
+        qs: HOMEWORK_QS,
+        questions: homeworkQuestions(asked.length),
+        item: {
+          type: "Homework a teacher wrote in Wilma after a lesson",
+          subject: hw.subject,
+          set: hw.date,
+          text: asked.length ? asked.map((s, i) => `(${i + 1}) ${s.trim()}`).join("\n") : clip(hw.homework, 1500),
+        },
+        pupil: "",
+        at: Date.parse(hw.date),
       });
     }
   }

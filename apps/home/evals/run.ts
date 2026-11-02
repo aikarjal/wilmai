@@ -144,7 +144,7 @@ if (args.includes("--check")) {
     for (const i of c.items) {
       const pupils = i.type === "message" || i.type === "news" ? i.pupils : [i.pupil];
       for (const p of pupils) if (!c.pupils[p]) say(`item ${i.id}: no pupil ${p}`);
-      if (i.type === "note" || i.type === "mark" || i.type === "exam" || i.type === "lesson") if (!isDate(i.date)) say(`item ${i.id}: the date isn't a date`);
+      if (i.type === "note" || i.type === "mark" || i.type === "exam" || i.type === "lesson" || i.type === "homework") if (!isDate(i.date)) say(`item ${i.id}: the date isn't a date`);
     }
     for (const t of c.expect.triage ?? []) need(t.item, ["message", "news"], "triage");
     for (const t of c.expect.action ?? []) need(t.item, ["message", "news"], "action");
@@ -159,6 +159,7 @@ if (args.includes("--check")) {
       if (!["praise", "absence", "late", "forgot", "remark", "other"].includes(t.kind)) say(`noteKind: no kind ${t.kind}`);
     }
     for (const t of c.expect.marks ?? []) need(t.item, ["mark"], "marks");
+    for (const t of c.expect.homework ?? []) need(t.item, ["homework"], "homework");
     for (const t of c.expect.subjects ?? []) {
       const lesson = c.items.some((i) => i.type === "lesson" && i.subject === t.subject);
       const graded = c.items.some((i) => i.type === "grade" && i.subject === t.subject);
@@ -307,7 +308,7 @@ function alignChecks(runs: Check[][]): { check: Check; per: (Check | undefined)[
 const checkId = (caseId: string, x: Check) => `${caseId} · ${x.task}: ${x.what}`;
 const pct = ({ ok, n }: { ok: number; n: number }) => (n ? `${Math.round((100 * ok) / n)} %` : "–");
 const quantile = (xs: number[], q: number) => (xs.length ? [...xs].sort((a, b) => a - b)[Math.min(xs.length - 1, Math.floor(xs.length * q))] : 0);
-const TASKS = ["triage", "action", "tone", "marks", "subjects", "calendar"] as const;
+const TASKS = ["triage", "action", "tone", "marks", "subjects", "homework", "calendar"] as const;
 
 interface Summary {
   localRuntime?: typeof localStatus;

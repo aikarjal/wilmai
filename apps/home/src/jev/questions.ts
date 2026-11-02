@@ -143,6 +143,36 @@ export const noteLabelQuestions: Record<string, Question> = {
   },
 };
 
+/**
+ * A homework text, once per text: whether it gives the whole class something to do, and which of its sentences are
+ * only for pupils who missed the lesson (folded away for a child who was there). Without AI, its words decide
+ * (data/homework.ts).
+ */
+export const HOMEWORK_QS = "wilma-homework@1";
+
+export function homeworkQuestions(sentences: number): Record<string, Question> {
+  const questions: Record<string, Question> = {
+    for_class: {
+      type: "noul",
+      instructions: "This is homework a teacher wrote in Wilma after a lesson. Does it give the whole class something to do or prepare before a coming lesson?",
+      criteria: {
+        true: "Homework, reading, a task to finish, revising for a test, or something to bring; also when it has instructions for pupils who were away as well.",
+        false: "It says there's no homework, only tells what was done in the lesson, or gives work only to pupils who missed the lesson.",
+      },
+    },
+  };
+  for (let i = 1; i <= sentences; i += 1)
+    questions[`away_${i}`] = {
+      type: "noul",
+      instructions: `Sentence ${i} of the homework: is it meant only for pupils who missed the lesson (were away or ill), not for the whole class?`,
+      criteria: {
+        true: "Only for pupils who missed the lesson, or a heading for their instructions.",
+        false: "For the whole class, or about something else, such as missing a test.",
+      },
+    };
+  return questions;
+}
+
 export const MARK_QS = "wilma-exam-mark@4";
 
 /** What a Finnish parent knows about how schools mark, for reading a mark the note doesn't explain. The note wins when it says otherwise. */
