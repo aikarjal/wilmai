@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.3.2 (unreleased)
+## 2.3.2 (2026-11-02)
 
 _Releases: wilma-cli 2.3.2, wilma-client 1.9.0; the `wilma` skill and plugin 2.3.2; WilmAI in the MCP Registry as `ai.wilm/wilma`._
 
