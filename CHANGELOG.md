@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **Clearer tool descriptions.** Five MCP tools now say what they return, how far back they go and which tool to use instead: `wilma_grades` (single exam grades; course and report-card grades are in `wilma_gradebook`), `wilma_gradebook`, `wilma_schedule`, `wilma_homework` and `wilma_upcoming_exams`. Their `limit` says its default. Glama's tool-quality review rated these five lowest.
+
 ## 2.3.2 (2026-11-02)
 
 _Releases: wilma-cli 2.3.2, wilma-client 1.9.0; the `wilma` skill and plugin 2.3.2; WilmAI in the MCP Registry as `ai.wilm/wilma`._

@@ -116,7 +116,7 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     {
       title: "Lesson schedule",
       description:
-        "Lessons for today, the next school day, this week, a specific date, or the next occurrence of a weekday.",
+        "List each child's lessons for one day or a school week: today, the next school day, this or next week (Monday to Friday), a date, or the next given weekday. Lessons come in time order with the date, start and end time, subject, teacher and room (when Wilma gives one); a day without school has no lessons. Exams and homework are in wilma_upcoming_exams and wilma_homework.",
       inputSchema: {
         student: studentArg,
         when: z.enum(["today", "tomorrow", "week", "next-week"]).optional().describe("Default: week. 'tomorrow' means the next school day."),
@@ -136,8 +136,12 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     "wilma_homework",
     {
       title: "Homework",
-      description: "Recent homework entries by lesson, newest first.",
-      inputSchema: { student: studentArg, limit: z.number().int().min(1).max(100).optional() },
+      description:
+        "List the homework teachers have entered for each child, newest first: the date, subject, teacher and what to do. It reads the homework Wilma's front page lists (Wilma decides how far back that goes). wilma_summary already includes the last few days' homework.",
+      inputSchema: {
+        student: studentArg,
+        limit: z.number().int().min(1).max(100).optional().describe("How many entries per child, newest first (default 10)."),
+      },
       annotations: { title: "Homework", ...READ_ONLY },
     },
     async ({ student, limit }) => ctx.withAccess(async (a) => json(await a.homework({ student, limit })))
@@ -147,8 +151,12 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     "wilma_upcoming_exams",
     {
       title: "Upcoming exams",
-      description: "Upcoming exams with subject, date and topic (what to study).",
-      inputSchema: { student: studentArg, limit: z.number().int().min(1).max(100).optional() },
+      description:
+        "List each child's exams from today on that have no grade yet, soonest first: the date, start time (when the school gives one), exam name, subject, topic (what to study) and teacher. Graded exams are in wilma_grades.",
+      inputSchema: {
+        student: studentArg,
+        limit: z.number().int().min(1).max(100).optional().describe("How many exams per child, soonest first (default 20)."),
+      },
       annotations: { title: "Upcoming exams", ...READ_ONLY },
     },
     async ({ student, limit }) => ctx.withAccess(async (a) => json(await a.upcomingExams({ student, limit })))
@@ -158,8 +166,12 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     "wilma_grades",
     {
       title: "Exam grades",
-      description: "Recent exam grades.",
-      inputSchema: { student: studentArg, limit: z.number().int().min(1).max(100).optional() },
+      description:
+        "List each child's graded exams, newest first: the date, exam name, subject, grade as Wilma shows it (e.g. 8+, 9½, S), the teacher's notes and when a guardian marked it seen. It reads the exams Wilma's front page lists (Wilma decides how far back that goes). For course, term and report-card grades use wilma_gradebook.",
+      inputSchema: {
+        student: studentArg,
+        limit: z.number().int().min(1).max(100).optional().describe("How many grades per child, newest first (default 20)."),
+      },
       annotations: { title: "Exam grades", ...READ_ONLY },
     },
     async ({ student, limit }) => ctx.withAccess(async (a) => json(await a.grades({ student, limit })))
@@ -202,7 +214,7 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     {
       title: "Gradebook",
       description:
-        "Completed courses and grades (Suoritukset) by subject, including term and school-year (report card) grades, with completion dates.",
+        "Get each child's gradebook (Suoritukset): completed courses and their grades, grouped by subject (subject > syllabus > course), with course codes, credits and completion dates, plus term and school-year (report card) grades. Use it for course and report-card grades; single exam grades are in wilma_grades.",
       inputSchema: { student: studentArg },
       annotations: { title: "Gradebook", ...READ_ONLY },
     },
