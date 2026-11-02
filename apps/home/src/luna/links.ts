@@ -26,7 +26,7 @@ import { noteExamEvent } from "../data/note-exams";
 export const LUNA_LINKS = "luna-links@1";
 /** An event this many days after the later item was sent is too far to be about. */
 const HORIZON = 120;
-/** At most this many earlier events asked about a later item, the nearest first. */
+/** At most this many earlier events asked about a later item: those on the days of its own events first, then the nearest. */
 const MAX_ASKED = 12;
 const CONCURRENCY = 3;
 
@@ -39,7 +39,7 @@ interface Asked {
 }
 
 /** What to ask: for each later item, the earlier items' events still ahead when it was sent, for its pupils. */
-function linkJobs(): { later: LunaSource; asked: Asked[]; h: string }[] {
+export function linkJobs(): { later: LunaSource; asked: Asked[]; h: string }[] {
   const { snapshot, luna } = getState();
   if (!snapshot) return [];
   const sources = lunaSources(snapshot);
@@ -55,6 +55,10 @@ function linkJobs(): { later: LunaSource; asked: Asked[]; h: string }[] {
     const rec = luna[later.key];
     if (!rec || rec.error || !later.sent) continue;
     const sentDay = dateOf(new Date(later.sent));
+    // An earlier event on a day this item gives an event of its own is the likeliest to be the same one said again (a
+    // reminder with another title), so it's asked about even when many others come sooner.
+    const own = rec.events ?? [];
+    const onOwnDay = (k: Asked) => own.some((e) => k.e.date <= (e.endDate ?? e.date) && (k.e.endDate ?? k.e.date) >= e.date);
     const asked = kept
       .filter(
         (k) =>
@@ -64,7 +68,7 @@ function linkJobs(): { later: LunaSource; asked: Asked[]; h: string }[] {
           daysBetween(sentDay, k.e.date) <= HORIZON &&
           k.src.children.some((c) => later.children.includes(c))
       )
-      .sort((a, b) => a.e.date.localeCompare(b.e.date))
+      .sort((a, b) => Number(onOwnDay(b)) - Number(onOwnDay(a)) || a.e.date.localeCompare(b.e.date))
       .slice(0, MAX_ASKED);
     if (!asked.length) continue;
     const h = hash([LUNA_LINKS, providerIdentity(getState().settings), later.input, asked.map((a) => a.id)]);

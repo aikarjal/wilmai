@@ -116,7 +116,7 @@ export function Exams({ itemKey, feed }: { itemKey?: string | null; feed: FeedIt
           upcoming
             .filter((u) => u.exam.date === d)
             .map((u) => (
-              <i key={examKey(u.child.number, u.exam)} className={`c${u.child.color % 5}`}>
+              <i key={examKey(u.child.number, u.exam)} className={`c${u.child.color % 16}`}>
                 {children.length > 1 ? `${shortLabel(u.child)} ${subjectShort(u.exam)}` : subjectShort(u.exam)}
               </i>
             ))
@@ -190,7 +190,7 @@ function ExamCard({ item, shown, highlight, onShowDay }: { item: Upcoming; shown
   const teacher = exam.teacher || lesson?.teacher;
   const code = exam.teacherCode || lesson?.teacherCode;
   return (
-    <article className={`card exam-card c${child.color % 5}${days <= 1 ? " soon" : ""}${shown || highlight ? " shown" : ""}`} data-exam={examKey(child.number, exam)} data-exam-date={exam.date}>
+    <article className={`card exam-card c${child.color % 16}${days <= 1 ? " soon" : ""}${shown || highlight ? " shown" : ""}`} data-exam={examKey(child.number, exam)} data-exam-date={exam.date}>
       <div className="exam-when">
         <span className="exam-count">{countdown(exam.date)}</span>
         <span className="exam-day">{dayNameLong(exam.date)}</span>

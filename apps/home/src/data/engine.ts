@@ -1650,23 +1650,25 @@ export function messageApi(child: string) {
   return {
     prepare: async (recipient: MessageRecipient): Promise<write.MessageForm> => {
       if (isDemo()) {
-        return { kind: "message", recipients: [recipient.name], form: { action: "", fields: [], buttons: [], selects: [], textareas: [] }, subjectField: "Subject", bodyField: "BodyText" };
+        // Wilma's form as it comes: the "recipients see each other's replies" box there and not ticked.
+        return { kind: "message", recipients: [recipient.name], form: { action: "", fields: [], buttons: [], selects: [], textareas: [] }, subjectField: "Subject", bodyField: "BodyText", collatedReplies: false };
       }
       return write.prepareMessage(kid(child), recipient);
     },
-    send: async (form: write.MessageForm, subject: string, text: string): Promise<void> => {
+    /** `collatedReplies`: the recipients see each other's replies (when Wilma's form has the box). */
+    send: async (form: write.MessageForm, subject: string, text: string, collatedReplies?: boolean): Promise<void> => {
       if (isDemo()) {
         // Nothing is sent; the message shows as sent, as a real one does.
         patchSnapshot((s) => {
           const id = Math.max(0, ...Object.keys(s.messages).map(Number)) + 1;
           const now = new Date();
-          const thread = { content: text, sentAt: now, recipients: form.recipients, replies: [], collated: false, fetchedAt: now };
+          const thread = { content: text, sentAt: now, recipients: form.recipients, replies: [], collated: Boolean(collatedReplies), fetchedAt: now };
           return { ...s, messages: { ...s.messages, [id]: { id, subject, sender: null, sentAt: now, unreadInWilma: false, replyCount: 0, children: [child], thread, sent: true } } };
         });
         return;
       }
       try {
-        await write.sendMessage(kid(child), form, { subject, text });
+        await write.sendMessage(kid(child), form, { subject, text, collatedReplies });
         keep(loginOfChild(child));
         // Sent: it shows in the inbox now, not only once someone answers. A failure here doesn't undo the sending.
         void loadSent(child).catch(() => {});

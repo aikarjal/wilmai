@@ -14,7 +14,7 @@ import { useSyncExternalStore } from "react";
 import { clear, del, get, set } from "idb-keyval";
 import { oldKeychain } from "../wilma/transport";
 import { t } from "../i18n";
-import { DEFAULT_SETTINGS, keepsPassword, viewerOf, type AccountInfo, type ItemTranslation, type JevRecord, type LocalState, type LunaRecord, type Settings, type Snapshot, type UsageBucket, type Viewer } from "./model";
+import { DEFAULT_SETTINGS, keepsPassword, viewerOf, type AccountInfo, type Child, type ChildLook, type ItemTranslation, type JevRecord, type LocalState, type LunaRecord, type Settings, type Snapshot, type UsageBucket, type Viewer } from "./model";
 import { normalizeAIBudget } from "./ai-budget";
 import type { CalEvent } from "./calendar";
 
@@ -188,8 +188,37 @@ export function setState(patch: Partial<AppState> | ((s: AppState) => Partial<Ap
   const next = typeof patch === "function" ? patch(state) : patch;
   if ("snapshot" in next && accountKey(next.snapshot?.account) !== accountKey(state.snapshot?.account)) accountGeneration += 1;
   state = { ...state, ...next };
+  // Each child as the family set them up (Settings → Children), whenever the children or the settings change.
+  if (("snapshot" in next || "local" in next) && state.snapshot) {
+    const children = dressChildren(state.snapshot.children, state.local.looks);
+    if (children !== state.snapshot.children) state = { ...state, snapshot: { ...state.snapshot, children } };
+  }
   for (const listener of listeners) listener();
   schedulePersist(next);
+}
+
+/** The children with their chosen colour, nickname and emoji (the same list when nothing changes). */
+export function dressChildren(children: Child[], looks: LocalState["looks"]): Child[] {
+  let changed = false;
+  const dressed = children.map((c) => {
+    const look = looks?.[c.number];
+    const base = c.base ?? c.color;
+    const emoji = look?.emoji || undefined;
+    const next: Child = { ...c, base, color: look?.color ?? base, nick: look?.nickname?.trim() || undefined, emoji, emojiTabs: (emoji && look?.emojiTabs) || undefined };
+    if (next.color === c.color && next.base === c.base && next.nick === c.nick && next.emoji === c.emoji && next.emojiTabs === c.emojiTabs) return c;
+    changed = true;
+    return next;
+  });
+  return changed ? dressed : children;
+}
+
+/** Change how a child shows (a field undefined: back to the default). */
+export function setChildLook(child: string, look: Partial<ChildLook>) {
+  setState((s) => {
+    const merged: ChildLook = { ...s.local.looks?.[child], ...look };
+    for (const key of Object.keys(merged) as (keyof ChildLook)[]) if (merged[key] === undefined || merged[key] === "") delete merged[key];
+    return { local: { ...s.local, looks: { ...s.local.looks, [child]: merged } } };
+  });
 }
 
 /** Called after every change (outside React: notifications). */
@@ -510,6 +539,29 @@ export function setCalendarKind(kind: string, on: boolean) {
   setState((s) => {
     const calendar = s.local.calendar ?? { decisions: {}, kinds: {} };
     return { local: { ...s.local, calendar: { ...calendar, kinds: { ...calendar.kinds, [kind]: on } } } };
+  });
+}
+
+/** Count a subject in a child's school hours again, or leave it out (only in this app). */
+export function setLeftOut(child: string, subject: string, out: boolean) {
+  setState((s) => {
+    const leftOut = { ...s.local.leftOut };
+    const subjects = (leftOut[child] ?? []).filter((x) => x !== subject);
+    if (out) subjects.push(subject);
+    if (subjects.length) leftOut[child] = subjects;
+    else delete leftOut[child];
+    return { local: { ...s.local, leftOut } };
+  });
+}
+
+/** Whether a subject is PE, as the parent says (null: back to the AI's reading, or the name's). */
+export function setPE(subject: string, value: boolean | null) {
+  setState((s) => {
+    const pe = { ...s.local.pe };
+    const { set: _, ...rest } = pe[subject] ?? {};
+    if (value === null) pe[subject] = rest;
+    else pe[subject] = { ...rest, set: value };
+    return { local: { ...s.local, pe } };
   });
 }
 

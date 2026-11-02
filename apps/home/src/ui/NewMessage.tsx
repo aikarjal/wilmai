@@ -1,13 +1,14 @@
 /*
  * Writing a new message in Wilma: the child it's about (chosen once, then
- * fixed: recipients and the form are that child's), who it goes to, then the
+ * fixed: recipients and the form are that child's), who it goes to (one or
+ * several, in one compose link as Wilma's own group links are), then the
  * message. Recipients come from Wilma's own lists (the class teacher and
  * supervisors on the child's front page, and Wilma's recipient list), the
  * form is Wilma's, and the message is sent once, after a confirmation.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MessageRecipient } from "@wilma-client/src/core";
-import type { MessageForm } from "@wilma-client/src/write";
+import { composeToAll, type MessageForm } from "@wilma-client/src/write";
 import { accountStorageKey, useApp } from "../data/store";
 import { isDemo, isSessionEnded, loadContacts, messageApi, preparedAgain, signInAgain, SESSION_CHANGED_NOTE } from "../data/engine";
 import { draftTo, openDraft, readDrafts, saveDraft, writeDrafts, type Drafts } from "../data/drafts";
@@ -18,6 +19,8 @@ import { Icon, Tab } from "./bits";
 import { go, hrefFor, useChildFilter } from "./shared";
 import { showToast } from "./Toast";
 import { language, plural, t, tx } from "../i18n";
+import { useWilma } from "../data/phrases";
+import { subjectsByTeacher, teacherCodeFor } from "../data/schedule";
 
 /* Wilma's words in English (Wilma's own word when there's no match, and always in Finnish). */
 const GROUPS: [RegExp, string, string][] = [
@@ -45,6 +48,12 @@ function groupLinkLabel(name: string, first: string | null): string {
   if (/kaikille ohjaajille/i.test(name)) return sv ? "Alla handledare" : "All supervisors";
   if (/kaikille opettajille/i.test(name)) return first ? (sv ? `Alla lärare som ${first} har` : `All of ${first}'s teachers`) : sv ? "Alla ditt barns lärare" : "All of your child's teachers";
   return name;
+}
+
+/** Several recipients as one: their names, and one compose link to them all (as Wilma's own group links are made). */
+function toAll(list: MessageRecipient[]): MessageRecipient {
+  if (list.length === 1) return list[0];
+  return { name: list.map((r) => r.name).join(", "), group: "", school: null, kind: "group", composePath: composeToAll(list.map((r) => r.composePath)) };
 }
 
 /** "Korhonen Jussi (KOJ)" → "KOJ": the teacher code the timetable uses too. */
@@ -107,10 +116,30 @@ export function NewMessage({ initialChild, initialTeacher, initialSubject }: { i
 function Writer({ child, initialTeacher, initialSubject }: { child: string; initialTeacher: string | null; initialSubject: string | null }) {
   const snap = useApp((s) => s.snapshot)!;
   const kid = snap.children.find((c) => c.number === child);
-  const lessons = useApp((s) => s.snapshot?.perChild[child]?.lessons);
+  const w = useWilma();
+  const data = useApp((s) => s.snapshot?.perChild[child]);
   const [contacts, setContacts] = useState<Contacts | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [recipient, setRecipient] = useState<MessageRecipient | null>(null);
+  // Who it goes to: people and groups as Wilma lists them, picked one by one ("Add a recipient").
+  const [chosen, setChosen] = useState<MessageRecipient[]>([]);
+  const [adding, setAdding] = useState(false);
+  // Ticked in the list (by compose link), to write to them all at once; a click on a name writes to that one straight away.
+  const [ticked, setTicked] = useState<Map<string, MessageRecipient>>(new Map());
+  const recipient = useMemo(() => (chosen.length ? toAll(chosen) : null), [chosen]);
+  const tick = (r: MessageRecipient) =>
+    setTicked((was) => {
+      const next = new Map(was);
+      if (next.has(r.composePath)) next.delete(r.composePath);
+      else next.set(r.composePath, r);
+      return next;
+    });
+  /** The list again, to add people: those written to already are ticked there. */
+  const addMore = () => {
+    setTicked(new Map(chosen.map((r) => [r.composePath, r])));
+    setAdding(true);
+  };
+  // Several people get it (picked, or a group): only then does it matter whether they see each other's replies.
+  const several = chosen.length > 1 || chosen.some((r) => r.kind === "group");
   const [query, setQuery] = useState("");
   const [stage, setStage] = useState<Stage>({ kind: "choosing" });
   const draftKey = accountStorageKey(`newmsg.${child}`);
@@ -120,6 +149,9 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
   const outgoing = useOutgoing(subject, text);
   // Until the parent writes, the words are what the app filled in (or a saved draft as it was): nothing to save.
   const [written, setWritten] = useState(false);
+  // Recipients see each other's replies unless the parent unticks it (Wilma's own form has it off): with several
+  // teachers on a message, each sees whether another has already answered.
+  const [collated, setCollated] = useState(true);
   // The saved draft the words opened from, so it moves with them if the parent sends them to someone else.
   const draftFrom = useRef<string | null>(null);
   const subjectRef = useRef<HTMLInputElement>(null);
@@ -160,16 +192,7 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
   };
 
   // What each teacher teaches this child, from the timetable's teacher codes.
-  const subjects = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    for (const l of lessons ?? []) {
-      if (!l.teacherCode) continue;
-      const code = l.teacherCode.toUpperCase();
-      if (!map.has(code)) map.set(code, new Set());
-      map.get(code)!.add(l.subject);
-    }
-    return map;
-  }, [lessons]);
+  const subjects = useMemo(() => subjectsByTeacher(data), [data]);
   // The front page names supervisors without a code; the recipient list has it, under the same teacher id.
   const codeById = useMemo(() => {
     const map = new Map<string, string>();
@@ -181,10 +204,12 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
     return map;
   }, [contacts]);
   const teaches = (r: MessageRecipient) => {
+    if (r.kind === "group" || r.kind === "guardian") return null;
     const id = teacherIdOf(r.composePath);
-    const code = codeOf(r.name) ?? (id ? codeById.get(id) : undefined);
-    const list = code ? subjects.get(code) : undefined;
-    return list ? [...list].join(", ") : null;
+    // By the code in the name or the list's, else by the name as the timetable writes it.
+    const code = codeOf(r.name) ?? (id ? codeById.get(id) : undefined) ?? teacherCodeFor(data, r.name);
+    const list = code ? subjects.get(code.toUpperCase()) : undefined;
+    return list?.length ? list.map(w).join(", ") : null;
   };
 
   // Opened for one teacher (from a lesson in the week): pick them once the lists are in; otherwise search for them.
@@ -203,24 +228,35 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
     else setQuery(words.length > 1 ? words[words.length - 1] : initialTeacher);
   }, [contacts, initialTeacher]);
 
-  const choose = async (r: MessageRecipient) => {
-    setRecipient(r);
-    if (!written) {
-      // Nothing written yet: the draft to this person, if there is one, else the subject the parent came with.
-      const opened = openDraft(stored(), draftTo(r.composePath), initialSubject, !initialTeacher);
+  /** Write to these (none: back to choosing), with Wilma's form for them. */
+  const pick = async (next: MessageRecipient[]) => {
+    const fresh = !chosen.length;
+    setChosen(next);
+    setAdding(false);
+    setTicked(new Map());
+    if (!next.length) {
+      setStage({ kind: "choosing" });
+      return;
+    }
+    const to = toAll(next);
+    if (!written && fresh) {
+      // Nothing written yet: the draft to them, if there is one, else the subject the parent came with.
+      const opened = openDraft(stored(), draftTo(to.composePath), initialSubject, !initialTeacher);
       draftFrom.current = opened.from;
       setSubject(opened.words.subject);
       setText(opened.words.text);
     }
     setStage({ kind: "preparing" });
     try {
-      const form = await messageApi(child).prepare(r);
+      const form = await messageApi(child).prepare(to);
       setStage({ kind: "ready", form });
       setTimeout(() => subjectRef.current?.focus(), 0);
     } catch (err) {
       setStage(errorStage(err));
     }
   };
+  // From the list: that one alone, or (adding to the message) with those ticked, the ones written to already among them.
+  const choose = (r: MessageRecipient) => pick(adding ? [...[...ticked.values()].filter((x) => x.composePath !== r.composePath), r] : [r]);
 
   const send = async (form: MessageForm) => {
     // What's shown is what's sent: the translation of these words, or the parent's own (Send waits until there's one).
@@ -228,7 +264,7 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
     if (!words) return;
     setStage({ kind: "sending", form });
     try {
-      await messageApi(child).send(form, words.subject.trim(), words.text);
+      await messageApi(child).send(form, words.subject.trim(), words.text, several && form.collatedReplies != null ? collated : undefined);
       setStage({ kind: "sent", to: form.recipients.join(", ") || recipient?.name || "" });
       forget();
       outgoing.reset();
@@ -281,7 +317,7 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
             : tx("Sent to {to}. It's in your sent messages in Wilma.", { to: <b>{stage.to}</b> })}
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-          <button className="btn" onClick={() => (setRecipient(null), setStage({ kind: "choosing" }))}>
+          <button className="btn" onClick={() => (setChosen([]), setStage({ kind: "choosing" }))}>
             {t("Write another")}
           </button>
           <a className="btn btn-quiet" href={hrefFor("inbox")} style={{ textDecoration: "none" }}>
@@ -292,12 +328,22 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
     );
   }
 
-  if (!recipient) {
+  if (!recipient || adding) {
     const drafted = new Set(Object.keys(stored()));
     return (
       <div className="reader compose-page">
         {head}
+        {adding ? (
+          <div className="to-line">
+            <span className="help">{t("Add a recipient")}</span>
+            <button className="btn btn-quiet btn-sm" onClick={() => setAdding(false)}>
+              {t("Back to the message")}
+            </button>
+          </div>
+        ) : null}
         <Picker
+          ticked={ticked}
+          onTick={tick}
           contacts={contacts}
           error={loadError}
           first={kid?.first ?? null}
@@ -307,6 +353,14 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
           drafted={(r) => drafted.has(draftTo(r.composePath))}
           onPick={(r) => void choose(r)}
         />
+        {ticked.size ? (
+          <div className="picker-bar">
+            <span>{[...ticked.values()].map((r) => r.name.replace(/\s*\([^)]*\)\s*$/, "")).join(", ")}</span>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => void pick([...ticked.values()])}>
+              <Icon name="pen" /> {plural(ticked.size, "Write to {n} recipient", "Write to {n} recipients")}
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -314,16 +368,31 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
   const form = "form" in stage ? stage.form : undefined;
   const to = form?.recipients.length ? form.recipients.join(", ") : recipient.name;
   const saved = (written || draftFrom.current !== null) && Boolean(subject || text);
+  const sending = stage.kind === "sending";
   return (
     <div className="reader compose-page">
       {head}
       <div className="to-line">
         <span className="help">{t("To")}</span>
-        <b>{to}</b>
-        {teaches(recipient) ? <span className="chip">{teaches(recipient)}</span> : null}
-        <button className="btn btn-quiet btn-sm" onClick={() => (setRecipient(null), setStage({ kind: "choosing" }))} disabled={stage.kind === "sending"}>
-          {t("Change")}
+        {chosen.map((r) => (
+          <span key={r.composePath} className="to-person">
+            <b>{r.name}</b>
+            {teaches(r) ? <span className="chip">{teaches(r)}</span> : null}
+            {chosen.length > 1 ? (
+              <button type="button" className="to-remove" onClick={() => void pick(chosen.filter((x) => x !== r))} disabled={sending} aria-label={t("Remove {name}", { name: r.name })}>
+                <Icon name="close" />
+              </button>
+            ) : null}
+          </span>
+        ))}
+        <button className="btn btn-quiet btn-sm" onClick={addMore} disabled={sending}>
+          + {t("Add a recipient")}
         </button>
+        {chosen.length === 1 ? (
+          <button className="btn btn-quiet btn-sm" onClick={() => (setChosen([]), setStage({ kind: "choosing" }))} disabled={sending}>
+            {t("Change")}
+          </button>
+        ) : null}
       </div>
       <div className="composer" style={{ marginTop: 0 }}>
         {stage.kind === "preparing" ? (
@@ -375,12 +444,19 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
         ) : (
           <div className="composer-foot">
             <OutgoingSwitch o={outgoing} />
-            <span className="hint">{saved ? t("Draft saved on this device") : t("Drafts stay on this device until you send")}</span>
-            {saved ? (
-              <button type="button" className="btn btn-quiet btn-sm" onClick={discard}>
-                {t("Discard draft")}
-              </button>
+            {form && several && form.collatedReplies != null ? (
+              <span className="out-switch">
+                <label title={t("Teachers see whether someone has already answered.")}>
+                  <input type="checkbox" checked={collated} onChange={(e) => setCollated(e.target.checked)} />
+                  {t("Recipients see each other's replies")}
+                </label>
+              </span>
             ) : null}
+            <span className="hint">{saved ? t("Draft saved on this device") : t("Drafts stay on this device until you send")}</span>
+            {/* Always a way out: throw the draft away (with Undo), or leave when nothing is written. */}
+            <button type="button" className="btn btn-sm" onClick={saved ? discard : () => go("inbox")}>
+              {saved ? t("Discard draft") : t("Close")}
+            </button>
             <button
               className="btn btn-primary btn-sm"
               disabled={!form || !subject.trim() || !text.trim() || !outgoing.sent}
@@ -396,6 +472,8 @@ function Writer({ child, initialTeacher, initialSubject }: { child: string; init
 }
 
 function Picker({
+  ticked,
+  onTick,
   contacts,
   error,
   first,
@@ -405,6 +483,9 @@ function Picker({
   drafted,
   onPick,
 }: {
+  /** Those ticked to write to at once (by compose link), and ticking one. */
+  ticked: Map<string, MessageRecipient>;
+  onTick: (r: MessageRecipient) => void;
   contacts: Contacts | null;
   error: string | null;
   first: string | null;
@@ -434,13 +515,17 @@ function Picker({
     : [];
 
   // A draft to someone opens only when writing to them, so the list says who has one.
+  // The box ticks them for writing to several at once; the name writes to them alone.
   const person = (r: MessageRecipient, note: string | null) => {
     const shown = drafted(r) ? [t("Draft"), note].filter(Boolean).join(" · ") : note;
     return (
-      <button key={`${r.group}|${r.composePath}`} className="person" onClick={() => onPick(r)}>
-        <span>{r.name}</span>
-        {shown ? <small>{shown}</small> : null}
-      </button>
+      <div key={`${r.group}|${r.composePath}`} className={`person-row${ticked.has(r.composePath) ? " is-ticked" : ""}`}>
+        <input type="checkbox" checked={ticked.has(r.composePath)} onChange={() => onTick(r)} aria-label={t("Choose {name}", { name: r.name })} />
+        <button type="button" className="person" onClick={() => onPick(r)}>
+          <span>{r.name}</span>
+          {shown ? <small>{shown}</small> : null}
+        </button>
+      </div>
     );
   };
 

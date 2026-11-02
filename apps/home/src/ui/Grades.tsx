@@ -310,7 +310,7 @@ function ExamCard({
   const values = graded.map((e) => markOf(e).value).filter((v): v is number => v !== null);
 
   return (
-    <section className={`card grade-card c${child.color % 5}`}>
+    <section className={`card grade-card c${child.color % 16}`}>
       <div className="grade-head">
         <div className="grade-who">
           <Tab child={child} full />
@@ -453,7 +453,7 @@ function ReportCard({
   const rows = [...subjects.filter((s) => !isConduct(s.name)), ...subjects.filter((s) => isConduct(s.name))];
 
   return (
-    <section className={`card grade-card c${child.color % 5}`}>
+    <section className={`card grade-card c${child.color % 16}`}>
       <div className="grade-head">
         <div className="grade-who">
           <Tab child={child} full />

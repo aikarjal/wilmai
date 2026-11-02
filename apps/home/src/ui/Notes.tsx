@@ -301,7 +301,7 @@ function NoteMatrix({ matrix, kinds, filter, many, onPick }: { matrix: Matrix; k
   const max = Object.fromEntries(kinds.map((k) => [k, Math.max(1, ...subjects.map((s) => s.counts[k]))])) as Record<NoteKind, number>;
   const mine = filter.child === child.number || !filter.child;
   return (
-    <section className={`card note-matrix c${child.color % 5}`} style={{ ["--kinds" as string]: kinds.length }} aria-label={t("Notes by subject and kind")}>
+    <section className={`card note-matrix c${child.color % 16}`} style={{ ["--kinds" as string]: kinds.length }} aria-label={t("Notes by subject and kind")}>
       <div className="nm-head">
         {many ? <Tab child={child} full /> : null}
         <span className="nm-total">{plural(total, "{n} note", "{n} notes")}</span>

@@ -11,9 +11,9 @@
  */
 import { Fragment } from "react";
 import type { ScheduleLesson, UpcomingExam } from "@wilma-client/src/core";
-import { useApp } from "../data/store";
+import { setLeftOut, setPE, useApp } from "../data/store";
 import { dueHomework, sameCourse } from "../data/homework";
-import { dayTimes, examForLesson, formatMinutes, knownLessons, lessonKey, unusualDays } from "../data/schedule";
+import { dayLessons, dayTimes, examForLesson, formatMinutes, knownLessons, lessonKey, peOf, unusualDays } from "../data/schedule";
 import { addDays, dayWithDate, minutes, mondayOf, nowMinutes, shortDate, today } from "../data/dates";
 import type { Child } from "../data/model";
 import { buildFeed } from "../data/feed";
@@ -56,8 +56,9 @@ export function DayPanel({ focus, onFocus, onClose }: { focus: DayFocus; onFocus
   const { child, date } = focus;
   const all = knownLessons(data);
   const lessons = all.filter((l) => l.date === date).sort((a, b) => minutes(a.start) - minutes(b.start));
-  const times = dayTimes(lessons).get(date);
-  const odd = unusualDays(data, [date]);
+  const leftOut = local.leftOut?.[child.number];
+  const times = dayTimes(dayLessons(lessons, leftOut)).get(date);
+  const odd = unusualDays(data, [date], leftOut);
   const due = dueHomework(data, all, [date]);
   const picked = lessons.find((l) => lessonKey(l) === focus.lesson) ?? null;
   // A day further out (from the Calendar): until its week is read, no lessons isn't "no lessons". The sync reads this week and next.
@@ -125,7 +126,7 @@ export function DayPanel({ focus, onFocus, onClose }: { focus: DayFocus; onFocus
                 <button
                   type="button"
                   key={key}
-                  className={`dp-les c${child.color % 5}${exam ? " exam" : ""}${height < 40 ? " short" : ""}`}
+                  className={`dp-les c${child.color % 16}${exam ? " exam" : ""}${height < 40 ? " short" : ""}${leftOut?.includes(l.subject) ? " out" : ""}`}
                   aria-pressed={focus.lesson === key}
                   style={{ top: y(l.start) + 6 + 1, height }}
                   onClick={() => onFocus({ ...focus, lesson: focus.lesson === key ? null : key })}
@@ -321,6 +322,58 @@ function LessonFacts({ lesson, child }: { lesson: ScheduleLesson; child: Child }
           <Icon name="pen" /> {teacher ? t("Message {name}", { name: teacher.split(" ")[0] }) : t("Message the teacher")}
         </button>
       </div>
+      <SchoolDaySwitch lesson={lesson} child={child} />
+      <PESwitch lesson={lesson} />
     </section>
+  );
+}
+
+/**
+ * Whether the lesson's subject counts in the child's school hours. An optional lesson (remedial teaching, a club)
+ * can be left out: it stays in the timetable, and the day's start and finish, the usual week and the times the
+ * children start or finish together go by the other lessons.
+ */
+function SchoolDaySwitch({ lesson, child }: { lesson: ScheduleLesson; child: Child }) {
+  const w = useWilma();
+  const out = useApp((s) => Boolean(s.local.leftOut?.[child.number]?.includes(lesson.subject)));
+  return (
+    <label className="dp-counts">
+      <input type="checkbox" checked={!out} onChange={(e) => setLeftOut(child.number, lesson.subject, !e.target.checked)} />
+      <span>
+        <b>{t("Counts in the school day")}</b>
+        <small>{t("Untick it for an optional lesson, such as remedial teaching or a club: the day's start and finish then leave {subject} out, here and in the usual week.", { subject: w(lesson.subject) })}</small>
+      </span>
+    </label>
+  );
+}
+
+/**
+ * Whether the subject is PE (a shirt on its days in the week and on the fridge sheet), and who said so: the AI, which
+ * reads each subject's name; without the AI, the name's usual words; the parent, whose word wins and can be undone.
+ */
+function PESwitch({ lesson }: { lesson: ScheduleLesson }) {
+  const w = useWilma();
+  const { pe, from } = peOf(lesson, useApp((s) => s.local.pe));
+  const said = from === "parent" ? t("You set this for every {subject} lesson.", { subject: w(lesson.subject) }) : from === "ai" ? t("The AI read this from the subject's name; change it if it's wrong.") : t("Going by the subject's name; change it if it's wrong.");
+  return (
+    <label className="dp-counts">
+      <input type="checkbox" checked={pe} onChange={(e) => setPE(lesson.subject, e.target.checked)} />
+      <span>
+        <b>
+          <Icon name="shirt" className="icon dp-shirt" /> {t("PE: pack the gym kit")}
+        </b>
+        <small>
+          {said}
+          {from === "parent" ? (
+            <>
+              {" "}
+              <button type="button" className="linkish" onClick={(e) => (e.preventDefault(), setPE(lesson.subject, null))}>
+                {t("Undo")}
+              </button>
+            </>
+          ) : null}
+        </small>
+      </span>
+    </label>
   );
 }

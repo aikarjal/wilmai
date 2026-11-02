@@ -1,3 +1,4 @@
+import { ChildLooks } from "./ChildLooks";
 import { updateSettings, useApp } from "../data/store";
 import { UpdatesCard } from "./Update";
 import { APP_VERSION } from "../data/edition";
@@ -68,6 +69,8 @@ export function Settings() {
       <h1>{t("Settings")}</h1>
 
       <AISettings />
+
+      <ChildLooks />
 
       <section className="card">
         <h2>{t("App language")}</h2>

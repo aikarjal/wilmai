@@ -186,4 +186,6 @@ export const SV_INBOX: Record<string, string> = {
   "The AI saw this item with your children's first names and classes, nothing else. It keeps only the school's own words and says how sure it is of each.":
     "AI:n såg bara detta samt dina barns förnamn och klasser. Den plockar bara ut skolans egna ord och anger hur säker den är på varje del.",
   "The school's own words": "Skolans egna ord",
+  // Beside a teacher's name in a message
+  "What they teach, from the timetable": "Vad läraren undervisar, enligt schemat",
 };

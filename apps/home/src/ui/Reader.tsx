@@ -15,6 +15,8 @@ import { TranslationNote, TranslationSwitch, useTranslation } from "./Translated
 import { OutgoingPane, OutgoingSwitch, goesIn, useOutgoing } from "./Outgoing";
 import { go, jevReadingOpen } from "./shared";
 import { language, plural, t, tx } from "../i18n";
+import { useWilma } from "../data/phrases";
+import { teacherSubjects } from "../data/schedule";
 
 /** "61%" / "61 %" */
 function percent(share: number): string {
@@ -153,6 +155,7 @@ export function Reader({
       <div className="meta">
         <Tabs snap={snap} numbers={item.children} />
         {item.from ? <span className="from">{item.from}</span> : null}
+        {item.from && item.kind !== "note" ? <Teaches snap={snap} children={item.children} name={item.from} /> : null}
         <span className="sep">·</span>
         <span>{whenLong(item.at)}</span>
         {item.note ? (
@@ -214,6 +217,7 @@ export function Reader({
           // The AI's line is quoted from the original, so it marks only the original.
           highlight={translated ? null : inPanel ? highlight : needs ? item.actionLine : null}
           why={inPanel ? t("The calendar's date is read from this line") : undefined}
+          teaches={(name) => <Teaches snap={snap} children={item.children} name={name} />}
         />
       ) : item.text !== null ? (
         <RichText
@@ -287,6 +291,7 @@ function Thread({
   anchor,
   highlight,
   why,
+  teaches,
 }: {
   opening: ThreadMessage;
   replies: { sentAt: Date; senderName: string | null; content: string }[];
@@ -294,6 +299,8 @@ function Thread({
   anchor: string;
   highlight: string | null;
   why?: string;
+  /** What a writer teaches the children, shown beside their name. */
+  teaches?: (name: string) => ReactNode;
 }) {
   const messages: ThreadMessage[] = [opening, ...replies.map((r) => ({ who: r.senderName ?? t("Someone"), at: r.sentAt, text: r.content }))];
   const last = messages.length - 1;
@@ -324,6 +331,7 @@ function Thread({
           <div className={`msg${i === last ? " msg-last" : ""}`} key={i}>
             <div className="msg-who">
               <b>{m.who}</b>
+              {teaches?.(m.who)}
               {m.at ? <span>{whenLong(m.at)}</span> : null}
               {i === last ? <em className="msg-latest">{t("Latest")}</em> : null}
             </div>
@@ -340,6 +348,21 @@ function Thread({
         )
       )}
     </section>
+  );
+}
+
+/** What a teacher teaches the item's children, from the timetable: "Matematiikka", or "Kiia: Matematiikka · Eetu: Englanti". */
+function Teaches({ snap, children, name }: { snap: Snapshot; children: string[]; name: string }) {
+  const w = useWilma();
+  const found = children
+    .map((n) => ({ child: snap.children.find((c) => c.number === n), subjects: teacherSubjects(snap.perChild[n], name) }))
+    .filter((f) => f.child && f.subjects.length);
+  if (!found.length) return null;
+  const list = (subjects: string[]) => subjects.map(w).join(", ");
+  return (
+    <span className="teaches" title={t("What they teach, from the timetable")}>
+      {found.length === 1 ? list(found[0].subjects) : found.map((f) => `${f.child!.first}: ${list(f.subjects)}`).join(" · ")}
+    </span>
   );
 }
 

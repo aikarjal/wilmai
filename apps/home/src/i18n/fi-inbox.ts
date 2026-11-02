@@ -186,4 +186,6 @@ export const FI_INBOX: Record<string, string> = {
   "The AI saw this item with your children's first names and classes, nothing else. It keeps only the school's own words and says how sure it is of each.":
     "Tekoäly näki vain tämän asian sekä lastesi etunimet ja luokat. Se poimii vain koulun omia sanoja ja kertoo, kuinka varma se kustakin on.",
   "The school's own words": "Koulun omat sanat",
+  // Beside a teacher's name in a message
+  "What they teach, from the timetable": "Mitä opettaa, lukujärjestyksen mukaan",
 };

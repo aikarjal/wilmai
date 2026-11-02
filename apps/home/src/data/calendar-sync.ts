@@ -71,7 +71,7 @@ export function wantedEntries(state: Pick<AppState, "snapshot" | "local" | "jev"
   const snap = state.snapshot;
   if (!snap) return [];
   const local = state.local.calendar;
-  return calendarEvents(snap, buildFeed(state), local, { ...window, children: [] }, state.luna)
+  return calendarEvents(snap, buildFeed(state), local, { ...window, children: [], leftOut: state.local.leftOut }, state.luna)
     .filter((e) => goesToCalendar(e, local))
     .map((e) => syncEntry(e, snap.children));
 }

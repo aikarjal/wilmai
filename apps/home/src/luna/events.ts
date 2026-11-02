@@ -24,6 +24,7 @@ import { addDays, dateOf, dayNameLongEn, longDateEn, today } from "../data/dates
 import { LUNA, LunaError, READING_EFFORT, countItem, decide, openAIBlockedMessage, openAIReach, openAIReady, readingModel, respond, type DecisionQuestion } from "./client";
 import { saveCompareReport } from "./compare";
 import { runLinks } from "./links";
+import { runSubjects } from "./subjects";
 import { localReading, providerIdentity, usesLocalAI } from "../ai/config";
 import { releaseLocalModels } from "../ai/ollama";
 import { runJev } from "../jev/runner";
@@ -682,6 +683,12 @@ export function lunaBacklog(): { src: LunaSource; h: string }[] {
 
 let running: Promise<void> | null = null;
 
+/** After the items are read: the items together (what later ones say about earlier events), then the subjects' PE. */
+async function afterReading() {
+  await runLinks();
+  await runSubjects();
+}
+
 /** Read what's waiting, a few at a time, when there's a key. */
 export function runLuna(): Promise<void> {
   const { settings } = getState();
@@ -707,7 +714,7 @@ export function runLuna(): Promise<void> {
     if (!current()) return;
     const waiting = lunaBacklog();
     // Nothing new to read: the links may still be waiting (an item read before the experiment was on).
-    if (!waiting.length) return void (await runLinks());
+    if (!waiting.length) return void (await afterReading());
     setState({ lunaStatus: { running: true, done: 0, total: waiting.length * (local ? 2 : 1), error: null } });
     if (local) {
       // Extract every item with Qwen, then verify every reading with Clef.
@@ -727,7 +734,7 @@ export function runLuna(): Promise<void> {
           countItem();
           setState((s) => ({ luna: { ...s.luna, [src.key]: { v: LUNA_EVENTS, hash: h, at: Date.now(), model: readingModel(), ...read } }, lunaStatus: { ...s.lunaStatus, done: s.lunaStatus.done + 1 } }));
         }
-        if (current()) await runLinks();
+        if (current()) await afterReading();
       } catch (err) {
         if (!current()) return;
         setState((s) => ({ lunaStatus: { ...s.lunaStatus, error: err instanceof Error ? err.message : String(err) } }));
@@ -760,7 +767,7 @@ export function runLuna(): Promise<void> {
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
     // Then the items together (lunaChecks.crossItem): what later items say about earlier items' events.
     if (!current()) return;
-    if (!stop) await runLinks();
+    if (!stop) await afterReading();
     if (!current()) return;
     setState((s) => ({ lunaStatus: { ...s.lunaStatus, running: false, error: s.lunaStatus.error ?? stop } }));
     await saveCompareReport();

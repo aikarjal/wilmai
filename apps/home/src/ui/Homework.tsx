@@ -145,7 +145,7 @@ export function Homework() {
             rows={1}
             chips={(d) =>
               (dueOn.get(d) ?? []).map((h, i) => (
-                <i key={i} className={`c${h.child.color % 5}`}>
+                <i key={i} className={`c${h.child.color % 16}`}>
                   {children.length > 1 ? `${shortLabel(h.child)} ${subjectShort(h)}` : subjectShort(h)}
                 </i>
               ))
@@ -328,7 +328,7 @@ function BySubject({
         const list = [...rows.values()].sort((a, b) => a.name.localeCompare(b.name, "fi"));
         const ahead = due.filter((h) => h.due!.date >= now).length;
         return (
-          <section className={`card hwm c${child.color % 5}`} key={child.number}>
+          <section className={`card hwm c${child.color % 16}`} key={child.number}>
             <div className="hwm-head">
               <Tab child={child} full />
               <span className="ov-none">{ahead ? t("{n} coming up", { n: plural(ahead, "{n} homework task", "{n} homework tasks") }) : t("No homework due.")}</span>

@@ -27,6 +27,9 @@
   --c2: #179467;
   --c3: #a8740a;
   --c4: #8a4fd6;
+  --c5: #d6487f;
+  --c6: #128a9b;
+  --c7: #5d6b8a;
   --shadow: 0 1px 2px rgb(23 32 58 / 6%), 0 4px 16px rgb(23 32 58 / 5%);
   --radius: 14px;
   --display: "Bricolage Grotesque Variable", "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
@@ -58,7 +61,7 @@
     --c1: #ff8166;
     --c2: #4cc794;
     --c3: #e0a93a;
-    --c4: #b48cff;
+    --c4: #b48cff; --c5: #f27fae; --c6: #4ec3d3; --c7: #a3afcb;
     --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 20px rgb(0 0 0 / 25%);
     color-scheme: dark;
   }
@@ -88,7 +91,7 @@
   --c1: #ff8166;
   --c2: #4cc794;
   --c3: #e0a93a;
-  --c4: #b48cff;
+  --c4: #b48cff; --c5: #f27fae; --c6: #4ec3d3; --c7: #a3afcb;
   --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 20px rgb(0 0 0 / 25%);
   color-scheme: dark;
 }
@@ -154,11 +157,19 @@ a { color: var(--pen); }
   --c: var(--c0);
   display: inline-grid; place-items: center;
   min-width: 22px; height: 22px; padding: 0 6px; border-radius: 6px;
-  background: var(--c); color: var(--on-pen); font-size: 12px; font-weight: 700; line-height: 1;
+  background: var(--c-fill, var(--c)); color: var(--c-text, var(--on-pen)); box-shadow: inset 0 0 0 1px var(--c-edge, transparent); font-size: 12px; font-weight: 700; line-height: 1;
 }
 .tab-name { padding: 0 9px; height: 26px; font-size: 13px; border-radius: 8px; }
+.tab-name:has(.tab-emoji) { display: inline-flex; align-items: center; gap: 4px; padding-left: 6px; }
 .tabs { display: inline-flex; gap: 4px; }
 .c0 { --c: var(--c0); } .c1 { --c: var(--c1); } .c2 { --c: var(--c2); } .c3 { --c: var(--c3); } .c4 { --c: var(--c4); }
+.c5 { --c: var(--c5); } .c6 { --c: var(--c6); } .c7 { --c: var(--c7); }
+/* The light ones: the same hues, filled pale with the text in the hue and a thin edge (the tinted places stay as they are). */
+.c8 { --c: var(--c0); } .c9 { --c: var(--c1); } .c10 { --c: var(--c2); } .c11 { --c: var(--c3); }
+.c12 { --c: var(--c4); } .c13 { --c: var(--c5); } .c14 { --c: var(--c6); } .c15 { --c: var(--c7); }
+.c8, .c9, .c10, .c11, .c12, .c13, .c14, .c15 {
+  --c-fill: color-mix(in srgb, var(--c) 20%, var(--sheet)); --c-text: color-mix(in srgb, var(--c) 72%, var(--ink)); --c-edge: color-mix(in srgb, var(--c) 45%, var(--sheet));
+}
 
 /* ---------- The highlighter (Jev's mark) ---------- */
 
@@ -233,24 +244,29 @@ a { color: var(--pen); }
 
 .main { min-width: 0; display: flex; flex-direction: column; }
 .topbar {
-  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 14px;
+  position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; container: topbar / inline-size;
   padding: 10px 28px; min-height: 58px;
   background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--rule);
 }
 /* Kids: one segmented control. Everyone, or one kid in their colour; ⌘-click combines. */
 .kids { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--paper-2); border: 1px solid var(--rule); }
-.kid-seg { border: 0; background: transparent; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink-2); padding: 5px 12px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px; transition: background 120ms, color 120ms; }
+.kid-seg { border: 0; background: transparent; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink-2); padding: 5px 12px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: background 120ms, color 120ms; }
 .kid-seg:not(.all)::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+/* The dot stays with an emoji too: it's what ties the child to their colour in the calendar and the week. */
+.kid-emoji { font-size: 15px; margin-right: -2px; }
 .kid-seg:hover { background: var(--sheet); color: var(--ink); }
 .kid-seg.all[aria-pressed="true"] { background: var(--sheet); color: var(--ink); box-shadow: var(--shadow); }
-.kid-seg:not(.all)[aria-pressed="true"] { background: var(--c); color: #fff; box-shadow: var(--shadow); }
-.kid-seg:not(.all)[aria-pressed="true"]::before { background: #fff; }
+.kid-seg:not(.all)[aria-pressed="true"] { background: var(--c-fill, var(--c)); color: var(--c-text, #fff); box-shadow: var(--shadow), inset 0 0 0 1px var(--c-edge, transparent); }
+.kid-seg:not(.all)[aria-pressed="true"]::before { background: var(--c-text, #fff); }
 .kid-seg:focus-visible { outline: 2px solid var(--pen); outline-offset: 1px; }
+/* Search takes the room left, up to 320px; below 180px it goes to a row of its own (five or six children) rather than shrink. */
 .search {
   margin-left: auto; display: flex; align-items: center; gap: 8px; background: var(--sheet);
-  border: 1px solid var(--rule); border-radius: 10px; padding: 6px 10px; width: min(320px, 34vw); color: var(--ink-3);
+  border: 1px solid var(--rule); border-radius: 10px; padding: 6px 10px; flex: 1 1 180px; max-width: 320px; color: var(--ink-3);
 }
+/* With three or more children in a narrow window the time since the last check is on the refresh button's tooltip. */
+@container topbar (max-width: 980px) { .topbar.many-kids .syncer .txt { display: none; } }
 .search input { border: 0; outline: 0; background: transparent; width: 100%; color: var(--ink); }
 .search kbd { font-family: var(--body); font-size: 11.5px; border: 1px solid var(--rule-2); border-radius: 5px; padding: 0 5px; color: var(--ink-3); }
 .syncer { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); white-space: nowrap; }
@@ -384,6 +400,8 @@ a { color: var(--pen); }
 .reader h2 { font-family: var(--display); font-size: clamp(26px, 3vw, 34px); line-height: 1.12; letter-spacing: -0.025em; margin: 0 0 12px; font-variation-settings: "wdth" 90; }
 .meta { display: flex; gap: 10px; align-items: center; color: var(--ink-2); font-size: 14.5px; flex-wrap: wrap; margin-bottom: 22px; }
 .meta .from { font-weight: 700; color: var(--ink); }
+/* What a teacher teaches the children (from the timetable), beside their name. */
+.meta .teaches, .msg-who .teaches { font-size: 12.5px; color: var(--ink-2); background: var(--paper-2); border: 1px solid var(--rule); border-radius: 999px; padding: 0 8px; line-height: 20px; }
 .meta .sep { color: var(--rule-2); }
 .body { font-size: 16.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .body time { background: var(--pen-soft); color: var(--pen); border-radius: 5px; padding: 0 4px; font-weight: 600; white-space: nowrap; }
@@ -467,6 +485,7 @@ a { color: var(--pen); }
 .week-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
 .week-head h1 { font-family: var(--display); font-size: 34px; letter-spacing: -0.03em; margin: 0; }
 .week-head .sub { color: var(--ink-2); }
+.week-head .week-nav { display: inline-flex; gap: 12px; }
 .week { display: grid; grid-template-columns: 46px repeat(5, minmax(0, 1fr)); background: var(--sheet); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
 .week .colhead { padding: 10px 8px; border-bottom: 1px solid var(--rule); font-weight: 700; font-size: 14px; text-align: center; }
 .week .colhead.is-today { color: var(--pen); }
@@ -483,6 +502,9 @@ a { color: var(--pen); }
 .week .les span { color: var(--ink-2); white-space: nowrap; }
 .week .les.exam { background: var(--marker); color: var(--on-marker); }
 .week .les.exam span { color: var(--on-marker); }
+/* A lesson left out of the school day (an optional one): still there, dashed and faint (an exam keeps its colour). */
+.week .les.out:not(.exam), .dp-les.out:not(.exam) { background: transparent; border: 1px dashed color-mix(in srgb, var(--c) 55%, var(--rule-2)); border-left: 3px solid color-mix(in srgb, var(--c) 55%, transparent); opacity: 0.8; }
+.dp-les.out { border-left-width: 4px; }
 .week .nowline { position: absolute; left: 0; right: 0; height: 2px; background: var(--warn); z-index: 2; }
 
 /* ---------- Settings ---------- */
@@ -557,7 +579,6 @@ a { color: var(--pen); }
   .inbox .reader-wrap { display: none; }
   .inbox.reading .inbox-list { display: none; }
   .inbox.reading .reader-wrap { display: block; min-height: calc(100vh - 58px); }
-  .search { width: auto; flex: 1; }
   .signin { grid-template-columns: 1fr; }
   .signin-panel { border-left: 0; border-top: 1px solid var(--rule); padding: 32px 22px; }
 }
@@ -670,8 +691,20 @@ a { color: var(--pen); }
 .person { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; width: 100%; padding: 9px 12px; border: 0; border-radius: 10px; background: transparent; text-align: left; cursor: pointer; font-size: 15px; color: var(--ink); }
 .person:hover, .person:focus-visible { background: var(--paper-2); }
 .person small { color: var(--ink-3); font-size: 13px; text-align: right; }
+.person-row { display: flex; align-items: center; gap: 2px; border-radius: 10px; }
+.person-row > input { flex: none; width: 17px; height: 17px; margin: 0 2px 0 10px; cursor: pointer; accent-color: var(--pen); }
+.person-row.is-ticked { background: var(--pen-soft); }
+.person-row.is-ticked .person:hover { background: transparent; }
+/* Ticked recipients and writing to them all, kept in view at the bottom of the list. */
+.picker-bar { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 12px; background: var(--sheet); box-shadow: var(--shadow); }
+.picker-bar > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--ink-2); }
 .hint-line { color: var(--ink-3); font-size: 13.5px; margin-top: 18px; }
 .to-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 12px; font-size: 15px; }
+.to-person { display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px 2px 10px; border: 1px solid var(--rule); border-radius: 999px; background: var(--sheet); }
+.to-person:not(:has(.to-remove)) { padding-right: 10px; }
+.to-remove { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink-2); cursor: pointer; }
+.to-remove:hover { background: var(--rule); color: var(--ink); }
+.to-remove .icon { width: 12px; height: 12px; }
 .composer .subject { width: 100%; border: 0; border-bottom: 1px solid var(--rule); outline: 0; padding: 12px 14px; background: transparent; font-size: 15.5px; font-weight: 600; color: var(--ink); }
 @media (max-width: 980px) {
   .back-link { display: inline-flex; }
@@ -822,6 +855,11 @@ a { color: var(--pen); }
 .week .colhead .dt { display: inline-flex; align-items: center; gap: 4px; font-family: var(--display); font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
 .week .colhead .dt .tab { transform: scale(0.85); }
 .week .colhead .dt.odd { color: var(--warn); }
+/* A start or finish a sibling shares (within a quarter of an hour), and the day's summary when all of them do. */
+.week .colhead .dt .with { text-decoration: underline; text-decoration-color: var(--pen); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.week .colhead .together { margin-top: 2px; max-width: 100%; font-size: 11px; font-weight: 700; color: var(--pen); background: var(--pen-soft); border-radius: 999px; padding: 0 7px; line-height: 18px; text-align: center; }
+/* PE that day: the gym kit goes along. */
+.week .colhead .dt .pe { width: 13px; height: 13px; color: var(--ink-3); flex: none; }
 @media (max-width: 760px) { .week .colhead .dt { font-size: 10.5px; } .week .colhead .dt .tab { display: none; } }
 /* The calendar's events at the top of a day (as a calendar's all-day row): read from messages, bulletins and notes */
 .week .colhead .wk-events { display: grid; gap: 2px; margin-top: 6px; text-align: left; }
@@ -832,6 +870,13 @@ a { color: var(--pen); }
 .wk-ev.shared { --c: var(--ink-2); }
 .wk-ev.k-holiday { --c: var(--good); }
 .wk-ev.suggested { background: none; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 45%, transparent); }
+/* Events over several days: a row of their own under the days, each across its days. */
+.week .wk-spans { grid-column: 1 / -1; display: grid; grid-template-columns: 46px repeat(5, minmax(0, 1fr)); grid-auto-flow: row dense; gap: 3px 0; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+.week .wk-spans .wk-ev { margin: 0 8px; }
+/* The event an opened message is about, with removing it from the calendar. */
+.event-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 14px; border-radius: 10px; background: var(--paper-2); border: 1px solid var(--rule); }
+.event-bar-text { display: grid; gap: 2px; flex: 1; min-width: 180px; }
+.event-bar-text small { color: var(--ink-3); font-size: 12.5px; }
 
 /* ---------- Today: school days, needs you, this week and next ---------- */
 .school-days { padding: 6px 22px 10px; margin-bottom: 26px; }
@@ -916,6 +961,13 @@ a { color: var(--pen); }
 .dp-facts h3 { margin: 0; display: flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 20px; letter-spacing: -0.01em; }
 .dp-facts .lesson-sub { margin: -6px 0 0; }
 .dp-facts .lesson-facts { margin: 0; grid-template-columns: 84px minmax(0, 1fr); font-size: 14px; width: 100%; }
+.dp-counts { display: flex; gap: 10px; align-items: flex-start; width: 100%; border-top: 1px solid var(--rule); padding-top: 12px; cursor: pointer; font-size: 14px; }
+.dp-counts input { margin-top: 3px; flex: none; }
+.dp-counts span { display: grid; gap: 3px; }
+.dp-counts small { color: var(--ink-3); font-size: 12.5px; line-height: 1.4; }
+.dp-counts + .dp-counts { border-top: 0; padding-top: 0; }
+.dp-counts .dp-shirt { width: 15px; height: 15px; vertical-align: -2px; }
+
 
 /* ---------- Exams ---------- */
 .exams-page { max-width: 980px; }
@@ -1039,7 +1091,8 @@ a { color: var(--pen); }
 .hw-sday.today .wd { color: var(--pen); }
 .hw-sday.past { opacity: 0.55; box-shadow: none; background: var(--paper-2); }
 .hw-sday[aria-selected="true"] { background: var(--pen-soft); border-color: var(--pen); opacity: 1; }
-.hw-counts { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 18px; margin-top: 2px; }
+/* Chips keep their own height, however tall the day's card grows beside a busier day. */
+.hw-counts { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; align-items: flex-start; align-content: flex-start; align-self: start; min-height: 18px; margin-top: 2px; }
 /* Exams: the coming school days, two weeks to a row */
 .ex-strip { display: grid; gap: 6px; margin-bottom: 18px; }
 .ex-strip-weeks { display: block; margin: 0 0 4px 2px; font-size: 11.5px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -1053,7 +1106,7 @@ a { color: var(--pen); }
 .ex-open { --open-bg: color-mix(in srgb, var(--pen) 16%, var(--paper)); position: relative; margin: 14px 0 6px; padding: 12px; border-radius: 14px; background: var(--open-bg); }
 .ex-open-arrow { position: absolute; top: -9px; left: calc(var(--x) - 10px); width: 20px; height: 20px; background: var(--open-bg); transform: rotate(45deg); border-radius: 3px; }
 .ex-open .exam-cards { position: relative; gap: 10px; }
-.hw-counts i { font-style: normal; font-size: 11.5px; font-weight: 700; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--c) 18%, var(--sheet)); color: var(--c); white-space: nowrap; }
+.hw-counts i { font-style: normal; font-size: 11.5px; font-weight: 700; line-height: 18px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--c) 18%, var(--sheet)); color: var(--c); white-space: nowrap; }
 .hw-day { padding: 14px 18px 10px; }
 .hw-day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .hw-day-head h2 { margin: 0; font-family: var(--display); font-size: 20px; letter-spacing: -0.01em; }
@@ -1104,7 +1157,7 @@ button.hwm-cell.lesson:focus-visible { outline: none; }
 button.hwm-cell.lesson:focus-visible::after { box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3.5px var(--c); }
 .hwm-cell.lesson::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--rule-2); }
 .hwm-cell.due { cursor: pointer; }
-.hwm-cell.due i { width: 22px; height: 20px; border-radius: 6px; display: grid; place-items: center; background: var(--c); color: #fff; font-style: normal; font-size: 11.5px; font-weight: 700; }
+.hwm-cell.due i { width: 22px; height: 20px; border-radius: 6px; display: grid; place-items: center; background: var(--c-fill, var(--c)); color: var(--c-text, #fff); font-style: normal; font-size: 11.5px; font-weight: 700; }
 .hwm-cell.past.due i { opacity: 0.4; }
 .hwm-cell.past.lesson::after { opacity: 0.5; }
 .hwm-cell.due:hover i, .hwm-cell.due:focus-visible i { box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3.5px var(--c); }
@@ -1585,4 +1638,159 @@ button.gt-term[aria-pressed="true"], button.gt-now[aria-pressed="true"] { color:
   .nav-ai-label, .rail .nav-ai-label { position: absolute; top: 1px; right: 2px; margin: 0; padding: 0; }
   .nav-ai-label > span { display: none; }
   .nav-ai-label .icon { width: 11px; height: 11px; }
+}
+
+/* ---------- Usual week: the chart (and the fridge sheet printed from it) ---------- */
+.usual-week { padding: 16px 20px 14px; max-width: 1080px; }
+.uw-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.uw-kids { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; }
+.uw-chart { --n: 1; --lane-h: 28px; --lane-gap: 6px; --day-w: 104px; --same-w: 112px; }
+.uw-chart.lanes-2 { --n: 2; --lane-h: 24px; }
+.uw-chart.lanes-3 { --n: 3; --lane-h: 21px; --lane-gap: 5px; }
+.uw-chart.lanes-4 { --n: 4; --lane-h: 18px; --lane-gap: 4px; }
+.uw-axis, .uw-row { display: grid; grid-template-columns: var(--day-w) minmax(0, 1fr); gap: 0 16px; align-items: center; }
+.uw-chart.several .uw-axis, .uw-chart.several .uw-row { grid-template-columns: var(--day-w) minmax(0, 1fr) var(--same-w); }
+.uw-track { position: relative; height: calc(var(--n) * var(--lane-h) + (var(--n) - 1) * var(--lane-gap)); }
+.uw-axis .uw-track { height: 20px; }
+.uw-hour { position: absolute; top: 0; transform: translateX(-50%); font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.uw-row { padding: 11px 0; border-top: 1px solid var(--rule); }
+.uw-line { position: absolute; top: -11px; bottom: -11px; width: 1px; background: var(--rule); opacity: 0.7; }
+/* Where all the children start or finish together: a band across their bars. */
+.uw-band { position: absolute; top: -7px; bottom: -7px; border-radius: 7px; background: color-mix(in srgb, var(--marker) 55%, transparent); }
+.uw-bar {
+  position: absolute; z-index: 1; top: calc(var(--lane) * (var(--lane-h) + var(--lane-gap))); height: var(--lane-h);
+  display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 9px; border-radius: 999px; overflow: hidden; white-space: nowrap;
+  background: var(--c-fill, var(--c)); color: var(--c-text, var(--sheet)); font-family: var(--display); font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 0 0 1.5px var(--c-edge, transparent), inset 0 -2px 0 rgb(0 0 0 / 12%);
+}
+.uw-time { flex: none; }
+/* A time only some of the children share (three or more of them): marked as the band is. */
+.uw-time.shared { margin: 0 -4px; padding: 0 4px; border-radius: 5px; background: var(--marker); color: var(--on-marker); }
+.uw-end { margin-left: auto; }
+.uw-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: var(--body); font-size: 11.5px; font-weight: 600; opacity: 0.9; }
+.uw-pe { flex: none; width: 15px; height: 15px; stroke-width: 2.2; }
+.uw-off { position: absolute; left: 0; top: calc(var(--lane) * (var(--lane-h) + var(--lane-gap))); height: var(--lane-h); display: flex; align-items: center; font-size: 12.5px; color: var(--ink-3); font-style: italic; white-space: nowrap; }
+.uw-day { display: flex; flex-direction: column; }
+.uw-day-short { display: none; }
+.uw-day-long { font-weight: 700; }
+.uw-same { font-weight: 700; color: var(--pen); font-size: 13.5px; }
+.uw-note { margin: 10px 0 0; color: var(--ink-3); font-size: 13px; line-height: 1.45; }
+.uw-chart + .uw-note { margin-top: 16px; }
+.uw-chart.lanes-3 .uw-bar, .uw-chart.lanes-4 .uw-bar { font-size: 11.5px; padding: 0 7px; }
+.uw-chart.lanes-4 .uw-pe { width: 13px; height: 13px; }
+@media (max-width: 760px) {
+  .uw-chart { --day-w: 34px; --same-w: 0px; }
+  .uw-day-short { display: block; font-weight: 700; }
+  .uw-day-long, .uw-same { display: none; }
+  .uw-chart.several .uw-axis, .uw-chart.several .uw-row { grid-template-columns: var(--day-w) minmax(0, 1fr); }
+  .uw-who { display: none; }
+}
+
+/* The fridge sheet: only in print, on A4, in the light colours whatever the app's theme. */
+.print-sheet { display: none; }
+@media print {
+  @page { size: A4 portrait; margin: 11mm; }
+  body:has(> .print-sheet) { background: #fff !important; }
+  body:has(> .print-sheet) > *:not(.print-sheet) { display: none !important; }
+  .print-sheet { display: block; }
+}
+.fridge {
+  --paper-2: #e6eaf2; --sheet: #ffffff; --ink: #17203a; --ink-2: #47506b; --ink-3: #7a839c; --rule: #d8deea; --pen: #2340a0; --pen-soft: #e3e9fb; --marker: #ffd84d;
+  --c0: #2f6feb; --c1: #e2553d; --c2: #179467; --c3: #a8740a; --c4: #8a4fd6; --c5: #d6487f; --c6: #128a9b; --c7: #5d6b8a;
+  /* The season's colours (summer here; spring and autumn below): light, so little ink goes on paper. */
+  --accent: #ffd84d; --day-bg: #e3e9fb; --day-ink: #2340a0; --band: #ffe68f; --mark: #ffd84d;
+  position: relative; display: flex; flex-direction: column; height: 274mm; padding: 4mm 3mm 0; box-sizing: border-box; overflow: hidden;
+  background: #fff; color: var(--ink); font-family: var(--body); -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.fridge.theme-spring { --accent: #9fd89a; --day-bg: #e4f4e2; --day-ink: #2f7a38; --band: #cdeec7; --mark: #b6e6ad; }
+.fridge.theme-autumn { --accent: #f4b26a; --day-bg: #fdeddf; --day-ink: #a14d17; --band: #ffdcbd; --mark: #ffcb94; }
+.fridge.theme-winter { --accent: #9cc6ef; --day-bg: #e6f1fc; --day-ink: #2b5d94; --band: #d6e9fb; --mark: #c2ddf6; }
+.fridge header { position: relative; z-index: 1; margin-bottom: 5mm; }
+.fridge h1 { margin: 0; font-family: var(--display); font-size: 48pt; line-height: 1; letter-spacing: -0.035em; }
+.fridge-squiggle { display: block; width: 78mm; height: 6mm; margin: 2mm 0 5.5mm; overflow: visible; }
+.fridge-squiggle path { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; }
+.fridge-kids { display: flex; flex-wrap: wrap; gap: 3mm 4mm; }
+.fridge-kid { padding: 1.6mm 5.5mm; border-radius: 999px; background: var(--c-fill, var(--c)); color: var(--c-text, #fff); outline: 0.35mm solid var(--c-edge, transparent); outline-offset: -0.35mm; font-family: var(--display); font-size: 17pt; font-weight: 700; transform: rotate(-2.5deg); box-shadow: 0 0.8mm 0 rgb(0 0 0 / 14%); }
+.fridge-kid:nth-child(even) { transform: rotate(2deg); }
+.fridge-decor { position: absolute; top: 0; right: 0; width: 116mm; height: 44.8mm; }
+.fridge-ground { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: auto; }
+/* The chart fills the page: the weekdays share the height, their bars in the middle. */
+.fridge .uw-chart { --day-w: 31mm; --same-w: 30mm; --lane-h: 17mm; --lane-gap: 2.5mm; flex: 1; display: flex; flex-direction: column; }
+.fridge .uw-chart .uw-row { flex: 1; }
+.fridge .uw-chart.lanes-2 { --lane-h: 11.5mm; }
+.fridge .uw-chart.lanes-3 { --lane-h: 8.4mm; --lane-gap: 1.8mm; }
+.fridge .uw-chart.lanes-4 { --lane-h: 6.2mm; --lane-gap: 1.4mm; }
+.fridge .uw-time.shared { margin: 0 -1.5mm; padding: 0 1.5mm; border-radius: 1.5mm; background: var(--mark); color: var(--ink); }
+.fridge .uw-axis, .fridge .uw-row { gap: 0 4mm; }
+.fridge .uw-axis .uw-track { height: 7mm; }
+.fridge .uw-hour { font-size: 10.5pt; font-weight: 600; }
+.fridge .uw-row { padding: 4.5mm 0; border-top: 0.35mm dashed var(--rule); }
+.fridge .uw-chart.lanes-3 .uw-row, .fridge .uw-chart.lanes-4 .uw-row { padding: 2.5mm 0; }
+.fridge .uw-line { top: -4.5mm; bottom: -4.5mm; width: 0.3mm; opacity: 0.55; }
+.fridge .uw-band { top: -2.5mm; bottom: -2.5mm; border-radius: 2.5mm; background: var(--band); }
+.fridge .uw-day-short { display: none; }
+.fridge .uw-day-long { display: inline-block; align-self: flex-start; padding: 1.4mm 3.2mm; border-radius: 2.5mm; background: var(--day-bg); color: var(--day-ink); font-family: var(--display); font-size: 15pt; transform: rotate(var(--tilt)); }
+.fridge .uw-bar { padding: 0 4mm; gap: 2.5mm; font-size: 15pt; box-shadow: inset 0 0 0 0.4mm var(--c-edge, transparent), inset 0 -0.8mm 0 rgb(0 0 0 / 12%); }
+.fridge .uw-chart.lanes-2 .uw-bar { font-size: 13pt; }
+.fridge .uw-chart.lanes-3 .uw-bar { font-size: 12pt; padding: 0 3mm; }
+.fridge .uw-chart.lanes-4 .uw-bar { font-size: 10pt; padding: 0 2.5mm; }
+.fridge .uw-who { font-size: 0.82em; }
+.fridge .uw-pe { width: 1.25em; height: 1.25em; }
+.fridge .uw-off { font-size: 10.5pt; }
+.fridge .uw-same { font-family: var(--display); font-size: 12pt; color: var(--day-ink); }
+.fridge footer { display: grid; gap: 2mm; padding: 4mm 0 15mm; }
+.fridge-key { display: flex; flex-wrap: wrap; gap: 3mm 9mm; font-size: 11pt; font-weight: 600; color: var(--ink-2); }
+.fridge-key .icon { width: 5.5mm; height: 5.5mm; vertical-align: -1.3mm; }
+.fridge-band { display: inline-block; width: 7mm; height: 4.5mm; border-radius: 1.2mm; background: var(--band); vertical-align: -0.8mm; }
+.fridge footer small { font-size: 8.5pt; color: var(--ink-3); }
+
+/* The print preview: the A4 sheet scaled to the window, the looks to pick from beside it. */
+.print-dialog { width: min(1060px, calc(100vw - 32px)); max-height: calc(100vh - 24px); }
+.pp { display: grid; grid-template-columns: auto minmax(240px, 1fr); gap: 26px; padding: 20px 22px; align-items: start; }
+.pp-frame { overflow: hidden; border-radius: 4px; background: #fff; box-shadow: 0 1px 3px rgb(15 23 42 / 18%), 0 10px 30px rgb(15 23 42 / 14%); }
+.pp-page { width: 210mm; height: 297mm; padding: 11mm; box-sizing: border-box; background: #fff; transform-origin: top left; }
+.pp-side { display: grid; gap: 14px; }
+.pp-help { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.45; }
+.pp-themes { display: grid; gap: 8px; }
+.pp-theme { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1.5px solid var(--rule); border-radius: 12px; background: var(--sheet); color: var(--ink); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.pp-theme:hover { border-color: var(--rule-2); }
+.pp-theme[aria-checked="true"] { border-color: var(--pen); box-shadow: 0 0 0 3px var(--pen-soft); }
+.pp-swatch { flex: none; width: 84px; height: 50px; border-radius: 8px; background: #fff; border: 1px solid var(--rule); }
+.pp-actions { display: flex; gap: 8px; margin-top: 4px; }
+@media (max-width: 760px) {
+  .pp { grid-template-columns: 1fr; }
+}
+
+/* ---------- Settings → Children: each child's colour, nickname and emoji ---------- */
+.looks { display: grid; gap: 10px; margin-top: 12px; }
+.look-row { display: grid; grid-template-columns: 132px minmax(110px, 1fr) auto auto; align-items: center; gap: 12px 14px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.look-row:first-child { border-top: 0; }
+.look-preview { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.look-preview small { color: var(--ink-3); font-size: 12px; }
+.look-name { width: 100%; padding: 7px 10px; border: 1px solid var(--rule-2); border-radius: 9px; background: var(--sheet); color: var(--ink); font: inherit; font-size: 14.5px; }
+.look-swatches { display: grid; grid-template-columns: repeat(8, 22px); gap: 6px 5px; }
+.look-swatch { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: var(--c-fill, var(--c)); cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--c-edge, rgb(255 255 255 / 35%)); }
+.look-swatch[aria-checked="true"] { box-shadow: inset 0 0 0 1.5px var(--c-edge, transparent), 0 0 0 2px var(--sheet), 0 0 0 4px var(--c); }
+.look-emoji { position: relative; }
+.look-emoji > button { min-width: 44px; height: 36px; padding: 0 10px; border: 1px dashed var(--rule-2); border-radius: 10px; background: var(--sheet); color: var(--ink-2); font: inherit; font-size: 20px; cursor: pointer; }
+.look-emoji > button.set { border-style: solid; }
+.emoji-pop { position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; width: 312px; padding: 10px; border: 1px solid var(--rule); border-radius: 14px; background: var(--sheet); box-shadow: 0 18px 50px rgb(15 23 42 / 22%); }
+.emoji-kinds { display: flex; gap: 2px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+.emoji-kinds button { flex: 1; height: 30px; border: 0; border-radius: 8px; background: transparent; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-size: 17px; cursor: pointer; opacity: 0.55; }
+.emoji-kinds button[aria-selected="true"] { background: var(--paper-2); opacity: 1; }
+.emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+.emoji-tabs { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--ink-2); line-height: 1.35; cursor: pointer; }
+.emoji-tabs input { margin-top: 2px; flex: none; }
+.emoji-own { display: flex; gap: 6px; margin-top: 10px; }
+.emoji-own input { flex: 1; min-width: 0; padding: 6px 9px; border: 1px solid var(--rule-2); border-radius: 8px; background: var(--sheet); color: var(--ink); font: inherit; font-size: 13.5px; }
+.emoji-grid button { height: 34px; border: 0; border-radius: 8px; background: transparent; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-size: 21px; cursor: pointer; }
+.emoji-grid button:hover, .emoji-grid button[aria-checked="true"] { background: var(--paper-2); }
+.emoji-pop .linkish { display: block; margin-top: 8px; font-size: 13px; }
+/* An emoji in the emoji font itself, so its box is where it's drawn (the text font's line box isn't): centred in tabs. */
+.tab-emoji, .kid-emoji { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-weight: 400; line-height: 1; }
+.tab .tab-emoji { display: block; font-size: 13px; }
+.tab:not(.tab-name):has(> .tab-emoji) { padding: 0; width: 22px; }
+.tab-name .tab-emoji { font-size: 14px; }
+@media (max-width: 760px) {
+  .look-row { grid-template-columns: 1fr; }
 }

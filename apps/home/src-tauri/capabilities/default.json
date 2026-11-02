@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the app window may do: its own commands, moving the window, and opening https links in the browser.",
+  "description": "What the app window may do: its own commands, moving the window, printing (the usual week; window.print on macOS goes through it), and opening https links in the browser.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -9,6 +9,7 @@
     "core:window:allow-start-dragging",
     "core:window:allow-toggle-maximize",
     "core:window:allow-set-theme",
+    "core:webview:allow-print",
     {
       "identifier": "opener:allow-open-url",
       "allow": [{ "url": "https://*" }]

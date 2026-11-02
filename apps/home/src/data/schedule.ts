@@ -6,7 +6,7 @@
  * one nearest the child's most common time overall.
  */
 import type { ScheduleLesson, UpcomingExam } from "@wilma-client/src/core";
-import type { ChildData } from "./model";
+import type { ChildData, LocalState } from "./model";
 import { addDays, dateOf, minutes, mondayOf, weekday } from "./dates";
 
 /** Preserve the previous sync's weeks when they leave the two-week window, including an empty known week. */
@@ -57,6 +57,15 @@ export function knownLessons(data: ChildData | undefined): ScheduleLesson[] {
   return out;
 }
 
+/**
+ * The lessons that make the child's school day: all but the subjects the parent left out (Week → a lesson →
+ * "Counts in the school day"), such as an optional remedial lesson or a club. Those still show; they just don't
+ * move the day's start and finish.
+ */
+export function dayLessons(lessons: ScheduleLesson[], leftOut: readonly string[] | undefined): ScheduleLesson[] {
+  return leftOut?.length ? lessons.filter((l) => !leftOut.includes(l.subject)) : lessons;
+}
+
 /** Each school day's first start and last end. */
 export function dayTimes(lessons: ScheduleLesson[]): Map<string, DayTimes> {
   const days = new Map<string, DayTimes>();
@@ -97,8 +106,8 @@ export function usualTimes(lessons: ScheduleLesson[]): { byWeekday: Map<number, 
 }
 
 /** How the given school days (Mon–Fri) differ from the usual: 30 minutes or more either way, or no lessons at all. */
-export function unusualDays(data: ChildData | undefined, days: string[]): UnusualDay[] {
-  const lessons = knownLessons(data);
+export function unusualDays(data: ChildData | undefined, days: string[], leftOut?: readonly string[]): UnusualDay[] {
+  const lessons = dayLessons(knownLessons(data), leftOut);
   const times = dayTimes(lessons);
   const { byWeekday } = usualTimes(lessons);
   // A week without any lessons isn't known (yet), or is a holiday the messages tell about: not a list of days off.
@@ -119,6 +128,76 @@ export function unusualDays(data: ChildData | undefined, days: string[]): Unusua
     if (Math.abs(end) >= 30) out.push({ date, kind: "end", time: day.end, usual: usual.end, by: end });
   }
   return out;
+}
+
+/** Children start or finish "together" within a quarter of an hour of each other: near enough to walk to or from school together. */
+export const TOGETHER_MIN = 15;
+
+/**
+ * For each child's day (undefined: no lessons), the other children (their indexes) who start, and who finish,
+ * within TOGETHER_MIN of them.
+ */
+export function together(days: (Pick<DayTimes, "start" | "end"> | undefined)[]): { start: number[]; end: number[] }[] {
+  const near = (a: string, b: string) => Math.abs(minutes(a) - minutes(b)) <= TOGETHER_MIN;
+  return days.map((day, i) => ({
+    start: day ? days.flatMap((other, j) => (j !== i && other && near(day.start, other.start) ? [j] : [])) : [],
+    end: day ? days.flatMap((other, j) => (j !== i && other && near(day.end, other.end) ? [j] : [])) : [],
+  }));
+}
+
+/** Whether all the children at school that day (two or more) start together, and finish together. */
+export function allTogether(days: (Pick<DayTimes, "start" | "end"> | undefined)[]): { start: boolean; end: boolean } {
+  const near = together(days);
+  const at = days.filter(Boolean).length;
+  if (at < 2) return { start: false, end: false };
+  return { start: near.every((n, i) => !days[i] || n.start.length === at - 1), end: near.every((n, i) => !days[i] || n.end.length === at - 1) };
+}
+
+/**
+ * Without the AI: whether a subject's name is PE's usual name (liikunta, idrott, gymnastik; the course code LI). A
+ * school that calls it something else is set right by the parent at a lesson (LocalState.pe).
+ */
+export const nameSaysPE = (l: Pick<ScheduleLesson, "subject" | "subjectCode">): boolean =>
+  /liikunta|idrott|gymnastik|physical education/i.test(l.subject) || courseOf(l.subjectCode) === "LI";
+
+/** Where a subject's PE comes from: the parent's word, the AI's reading of the name, or the name's usual words. */
+export function peOf(l: Pick<ScheduleLesson, "subject" | "subjectCode">, pe: LocalState["pe"]): { pe: boolean; from: "parent" | "ai" | "name" } {
+  const known = pe?.[l.subject];
+  if (known?.set !== undefined) return { pe: known.set, from: "parent" };
+  if (known?.ai !== undefined) return { pe: known.ai >= 0.5, from: "ai" };
+  return { pe: nameSaysPE(l), from: "name" };
+}
+
+/** A PE lesson: the day the gym kit goes along. */
+export const isPE = (l: Pick<ScheduleLesson, "subject" | "subjectCode">, pe: LocalState["pe"]): boolean => peOf(l, pe).pe;
+
+/** One weekday of the child's usual week (0 = Monday): the usual start and finish, and whether PE is usual that day. */
+export interface UsualDay {
+  weekday: number;
+  start: string;
+  end: string;
+  pe: boolean;
+}
+
+/**
+ * The child's usual week, Monday to Friday, from every week of the timetable the app knows (left-out lessons
+ * not counted): per weekday the most common start and finish, and PE when it's on that weekday in at least half
+ * of those weeks. A weekday without lessons in any known week is missing. `weeks` is how many weeks it's read from.
+ */
+export function usualWeek(data: ChildData | undefined, leftOut?: readonly string[], pe?: LocalState["pe"]): { days: UsualDay[]; weeks: number } {
+  const all = knownLessons(data);
+  const counted = dayLessons(all, leftOut);
+  const { byWeekday } = usualTimes(counted);
+  const weeks = new Set(counted.map((l) => mondayOf(l.date))).size;
+  const days: UsualDay[] = [];
+  for (let w = 0; w < 5; w += 1) {
+    const usual = byWeekday.get(w);
+    if (!usual) continue;
+    const dates = new Set(counted.filter((l) => weekday(l.date) === w).map((l) => l.date));
+    const peDays = new Set(all.filter((l) => weekday(l.date) === w && isPE(l, pe)).map((l) => l.date));
+    days.push({ weekday: w, ...usual, pe: peDays.size > 0 && peDays.size * 2 >= dates.size });
+  }
+  return { days, weeks };
 }
 
 /** "1 h 45 min", "40 min" (of the size, either way). */
@@ -162,6 +241,31 @@ export function subjectNamer(data: ChildData | undefined): (code: string) => str
     if (!/^[A-ZÅÄÖ0-9]+_[A-Z0-9]*$/i.test(code.trim())) return code;
     return exact.get(key) ?? byCourse.get(key.split("_")[0]) ?? code;
   };
+}
+
+/** What each teacher teaches the child, by teacher code ("KOJ" → ["Matematiikka"]), from every week of the timetable the app knows. */
+export function subjectsByTeacher(data: ChildData | undefined): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const l of knownLessons(data)) {
+    // A lesson can have several teachers ("KOJ, MÄL"): each teaches it.
+    for (const code of (l.teacherCode ?? "").split(/,\s*/)) {
+      const key = code.trim().toUpperCase();
+      if (!key || !l.subject) continue;
+      const list = map.get(key) ?? [];
+      if (!list.includes(l.subject)) map.set(key, [...list, l.subject]);
+    }
+  }
+  return map;
+}
+
+/** The code at the end of a name as Wilma's messages write it: "Korhonen Jussi (KOJ)" → "KOJ", "(Jau)" → "Jau"; not "(rehtori)" or "(huoltaja)". */
+export const codeInName = (name: string): string | null => /\(([A-ZÅÄÖ][A-Za-zÅÄÖåäö0-9]{1,5})\)\s*$/.exec(name)?.[1] ?? null;
+
+/** What a teacher teaches the child, by a name as Wilma writes it ("Korhonen Jussi (KOJ)", "Jussi Korhonen"); empty when not a teacher of theirs. */
+export function teacherSubjects(data: ChildData | undefined, name: string | null | undefined): string[] {
+  if (!name) return [];
+  const code = codeInName(name) ?? teacherCodeFor(data, name.replace(/\s*\([^)]*\)\s*$/, ""));
+  return code ? (subjectsByTeacher(data).get(code.toUpperCase()) ?? []) : [];
 }
 
 /** A teacher's code ("KOJ") from the timetable, by name in either order ("Jussi Korhonen" / "Korhonen Jussi"). */

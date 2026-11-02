@@ -159,9 +159,10 @@ export const useChildFilter = () => useContext(ChildFilter);
 let shortLabels = new Map<string, string>();
 export function setFamily(children: Child[]) {
   const labels = new Map<string, string>();
+  const shown = (c: Child) => c.nick ?? c.first;
   for (const c of children) {
-    const clash = children.some((o) => o !== c && o.first[0]?.toUpperCase() === c.first[0]?.toUpperCase());
-    labels.set(c.number, clash ? c.first.slice(0, 2) : c.first.slice(0, 1));
+    const clash = children.some((o) => o !== c && shown(o)[0]?.toUpperCase() === shown(c)[0]?.toUpperCase());
+    labels.set(c.number, clash ? shown(c).slice(0, 2) : shown(c).slice(0, 1));
   }
   shortLabels = labels;
 }

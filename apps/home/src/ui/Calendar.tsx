@@ -24,6 +24,7 @@ import { Section } from "./Glance";
 import { Reader } from "./Reader";
 import { Icon, Tab, Tabs } from "./bits";
 import { DOCK_QUERY, tSense, useChildFilter, useMedia } from "./shared";
+import { showToast } from "./Toast";
 import { locale, t } from "../i18n";
 import { useWilma } from "../data/phrases";
 
@@ -70,8 +71,9 @@ export function Calendar({ feed }: { feed: FeedItem[] }) {
   const gridStart = mondayOf(`${month}-01`);
   const gridEnd = addDays(mondayOf(lastOfMonth(month)), 6);
   const luna = useApp((s) => s.luna);
-  const events = useMemo(() => calendarEvents(snap, items, local, { from: gridStart, until: gridEnd, children: selected }, luna), [snap, items, jev, local, gridStart, gridEnd, selected, luna]);
-  const ahead = useMemo(() => calendarEvents(snap, items, local, { from: now, until: addDays(now, 56), children: selected }, luna), [snap, items, jev, local, now, selected, luna]);
+  const leftOut = useApp((s) => s.local.leftOut);
+  const events = useMemo(() => calendarEvents(snap, items, local, { from: gridStart, until: gridEnd, children: selected, leftOut }, luna), [snap, items, jev, local, gridStart, gridEnd, selected, luna, leftOut]);
+  const ahead = useMemo(() => calendarEvents(snap, items, local, { from: now, until: addDays(now, 56), children: selected, leftOut }, luna), [snap, items, jev, local, now, selected, luna, leftOut]);
   const kindOn = (e: CalEvent) => local?.kinds[e.kind] ?? DEFAULT_KINDS[e.kind];
   // The grid is the family calendar as it will be: the kinds that go there, and suggestions (outlined) of those.
   const shown = events.filter(kindOn);
@@ -113,7 +115,10 @@ export function Calendar({ feed }: { feed: FeedItem[] }) {
         />
       );
     }
-    if (opened?.kind === "item") return <ItemSide itemKey={opened.key} line={opened.line} feed={feed} snap={snap} onClose={() => setOpened(null)} />;
+    if (opened?.kind === "item") {
+      const event = [...events, ...ahead].find((e) => e.key === opened.event);
+      return <ItemSide itemKey={opened.key} line={opened.line} event={event} feed={feed} snap={snap} onClose={() => setOpened(null)} />;
+    }
     if (day) {
       const on = events.filter((e) => e.date <= day && (e.endDate ?? e.date) >= day);
       return (
@@ -289,7 +294,7 @@ function MonthGrid({
 }) {
   const w = useWilma();
   const now = today();
-  const colorOf = (e: CalEvent) => (e.children.length === 1 ? `c${(snap.children.find((c) => c.number === e.children[0])?.color ?? 0) % 5}` : "shared");
+  const colorOf = (e: CalEvent) => (e.children.length === 1 ? `c${(snap.children.find((c) => c.number === e.children[0])?.color ?? 0) % 16}` : "shared");
   const onDay = (d: string) => shown.filter((e) => e.date <= d && (e.endDate ?? e.date) >= d);
 
   return (
@@ -416,8 +421,11 @@ function EventLine({ e, snap, onOpen, withDate = false }: { e: CalEvent; snap: S
   );
 }
 
-/** A message or bulletin beside the calendar (or the week), as the Inbox shows it, with the line the date was read from marked. */
-export function ItemSide({ itemKey, line, feed, snap, onClose }: { itemKey: string; line: string | null; feed: FeedItem[]; snap: Snapshot; onClose: () => void }) {
+/**
+ * A message or bulletin beside the calendar (or the week), as the Inbox shows it, with the line the date was read from
+ * marked. Opened from an event, the event is on top, and can be removed from the calendar.
+ */
+export function ItemSide({ itemKey, line, event, feed, snap, onClose }: { itemKey: string; line: string | null; event?: CalEvent; feed: FeedItem[]; snap: Snapshot; onClose: () => void }) {
   const item = feed.find((i) => i.key === itemKey);
   return (
     <DetailsPanel
@@ -429,7 +437,36 @@ export function ItemSide({ itemKey, line, feed, snap, onClose }: { itemKey: stri
       }
       onClose={onClose}
     >
+      {event ? <EventBar e={event} snap={snap} onRemoved={onClose} /> : null}
       {item ? <Reader key={item.key} item={item} snap={snap} inPanel highlight={line} /> : <p className="ov-none">{t("It isn't in Wilma any more.")}</p>}
     </DetailsPanel>
+  );
+}
+
+/**
+ * The event read from the message, with "Remove from the calendar" for one that isn't the family's (a vaccination
+ * for the other child's class, say): it leaves the week, the calendar and the family calendar; the message stays.
+ */
+function EventBar({ e, snap, onRemoved }: { e: CalEvent; snap: Snapshot; onRemoved: () => void }) {
+  const w = useWilma();
+  const local = useApp((s) => s.local.calendar);
+  const kids = e.children.map((n) => snap.children.find((c) => c.number === n)?.first).filter(Boolean);
+  const when = e.endDate ? `${shortDate(e.date)}–${shortDate(e.endDate)}` : `${shortDate(e.date)}${e.start ? ` ${e.start}${e.end ? `–${e.end}` : ""}` : ""}`;
+  const remove = () => {
+    const before = calendarDecision(e, local) ?? null;
+    setCalendarDecision(e, "no");
+    onRemoved();
+    showToast(t("Removed from the calendar: {title}", { title: w(e.title) }), () => setCalendarDecision(e, before));
+  };
+  return (
+    <div className="event-bar">
+      <span className="event-bar-text">
+        <b>{w(e.title)}</b>
+        <small>{[when, kindOne(e.kind), kids.length > 1 ? kids.join(", ") : null].filter(Boolean).join(" · ")}</small>
+      </span>
+      <button type="button" className="btn btn-sm" onClick={remove} title={t("The message stays; only the event leaves the week and the calendar.")}>
+        {t("Remove from the calendar")}
+      </button>
+    </div>
   );
 }

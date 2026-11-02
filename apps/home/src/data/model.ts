@@ -5,11 +5,33 @@ import { DEFAULT_AI_BUDGET } from "./ai-budget.ts";
 export interface Child {
   number: string;
   name: string;
-  /** First name, for tabs and sentences. */
+  /** First name, for tabs and sentences (and what the AI is told: always the real one). */
   first: string;
-  /** Index into the child palette (stable per family). */
+  /** Index into the child palette (stable per family), or the colour the family chose (LocalState.looks). */
   color: number;
+  /** The colour by the child's place in the family, before a choice (store.ts dresses the children). */
+  base?: number;
+  /** A nickname and an emoji the family chose (never told to the AI): the emoji shows beside the child filter's dot, and on tabs when `emojiTabs`. */
+  nick?: string;
+  emoji?: string;
+  emojiTabs?: boolean;
 }
+
+/** How a child shows in the app, as the family set it (Settings → Children). */
+export interface ChildLook {
+  color?: number;
+  nickname?: string;
+  emoji?: string;
+  /** The emoji in place of the initials on tabs across the app (else only in the child filter and the printout). */
+  emojiTabs?: boolean;
+}
+
+/**
+ * The child palette: eight hues (blue, red, green, amber, violet, pink, teal, slate: styles.css --c0 … --c7), each
+ * strong (0–7: filled with the colour) or light (8–15: filled pale, the text in the hue).
+ */
+export const PALETTE = 8;
+export const COLORS = PALETTE * 2;
 
 export interface AccountInfo {
   baseUrl: string;
@@ -146,6 +168,19 @@ export interface LocalState {
   pinned?: Record<string, number>;
   /** When a Windows user was told, once, that closing the window leaves the app by the clock. */
   trayTold?: number;
+  /**
+   * Subjects left out of a child's school hours (child → subjects as Wilma names them), such as an optional
+   * remedial lesson or a club: still in the timetable, not in the day's start and finish (data/schedule.ts dayLessons).
+   */
+  leftOut?: Record<string, string[]>;
+  /**
+   * Which subjects are PE (the gym kit goes along), by subject name as Wilma writes it: the AI's reading of the name
+   * (`ai`: how surely it's PE; `by`: who read it, so another AI reads it again) and the parent's own word (`set`), which
+   * wins (data/schedule.ts isPE).
+   */
+  pe?: Record<string, { ai?: number; by?: string; set?: boolean }>;
+  /** Each child's colour, nickname and emoji, by child number (Settings → Children); only on this device. */
+  looks?: Record<string, ChildLook>;
 }
 
 export interface CalendarLocal {

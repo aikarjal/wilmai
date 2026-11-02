@@ -56,6 +56,8 @@ const paths: Record<string, ReactNode> = {
   pen: <><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z" /><path d="M14.5 6.5l3 3" /></>,
   translate: <><path d="M4 5h7" /><path d="M9 3v2c0 4.4-2.2 8-5 8" /><path d="M5 9c0 2.1 3 3.9 6.7 4" /><path d="M12 20l4-9 4 9" /><path d="M19.1 18h-6.2" /></>,
   close: <path d="M6 6l12 12M18 6L6 18" />,
+  print: <><path d="M7 8.5V3.5h10v5" /><rect x="3.5" y="8.5" width="17" height="8" rx="2" /><path d="M7 13.5h10v7H7z" /></>,
+  shirt: <path d="M8.5 3.5L3.5 6l1.6 4.2 2.4-1v11.3h9V9.2l2.4 1L20.5 6l-5-2.5c-.5 1.5-1.9 2.4-3.5 2.4s-3-.9-3.5-2.4z" />,
   grades: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>,
   exam: <><rect x="5" y="4" width="14" height="17" rx="2.5" /><path d="M9 4V3h6v1M8.5 11l2 2 4-4M8.5 16.5h7" /></>,
   user: <><circle cx="12" cy="8" r="4" /><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" /></>,
@@ -75,11 +77,25 @@ export function Icon({ name, className = "icon", label }: { name: keyof typeof p
 
 /* ---------- Children ---------- */
 
-export function Tab({ child, full = false }: { child: Child | undefined; full?: boolean }) {
+/**
+ * A child's tab in their colour: their name (or nickname), or short, their initials. The emoji only where it's asked
+ * for (`emoji`: Settings' preview), or everywhere when the family chose it for that child (Settings → Children).
+ */
+export function Tab({ child, full = false, emoji = false }: { child: Child | undefined; full?: boolean; emoji?: boolean }) {
   if (!child) return null;
+  const withEmoji = Boolean(child.emoji && (emoji || child.emojiTabs));
   return (
-    <span className={`tab c${child.color % 5}${full ? " tab-name" : ""}`} title={child.name}>
-      {full ? child.first : shortLabel(child)}
+    <span className={`tab c${child.color % 16}${full ? " tab-name" : ""}`} title={child.name}>
+      {full ? (
+        <>
+          {withEmoji ? <span className="tab-emoji">{child.emoji}</span> : null}
+          {child.nick ?? child.first}
+        </>
+      ) : withEmoji ? (
+        <span className="tab-emoji">{child.emoji}</span>
+      ) : (
+        shortLabel(child)
+      )}
     </span>
   );
 }

@@ -149,7 +149,8 @@ export function calendarEvents(
   snap: Snapshot,
   items: FeedItem[],
   local: CalendarLocal | undefined,
-  range: { from: string; until: string; children: string[] },
+  /** `leftOut`: subjects left out of each child's school hours (LocalState.leftOut), for the days off their usual hours. */
+  range: { from: string; until: string; children: string[]; leftOut?: Record<string, string[]> },
   /** Luna's reading of each message, bulletin and note (luna/events.ts). */
   luna: Record<string, LunaRecord>,
   /** Where the probabilities put an event (the eval suite tries others). */
@@ -188,7 +189,7 @@ export function calendarEvents(
         sure: true,
       });
     }
-    const odd = unusualDays(data, schoolDays(from, until));
+    const odd = unusualDays(data, schoolDays(from, until), range.leftOut?.[child.number]);
     for (const date of [...new Set(odd.map((u) => u.date))]) {
       const day = odd.filter((u) => u.date === date);
       oddDay.set(`${child.number}|${date}`, day.some((u) => u.kind === "off") ? "off" : "changed");
@@ -284,9 +285,12 @@ export function calendarEvents(
     }
   }
   const links = linkVerdicts(luna, T.superseded);
-  /** Luna's events by id, as they went in (an event a later item repeats takes in its pupils instead). */
-  const byId = new Map<string, CalEvent>();
-  const repeated: { e: CalEvent; of: string }[] = [];
+  /**
+   * Luna's events by id, as they went in (an event a later item repeats takes in its pupils instead). One id can be
+   * several events: the same title on one day at two times (a concert at 17 and at 19).
+   */
+  const byId = new Map<string, CalEvent[]>();
+  const repeated: { e: CalEvent; of: string[] }[] = [];
   for (const src of read) {
     const first = events.length;
     const record = luna[src.key];
@@ -348,21 +352,29 @@ export function calendarEvents(
         origin: { key: src.key, quote: ev.quote },
       });
       const added = events[events.length - 1];
-      byId.set(id, added);
-      // The same event as an earlier item's, on the same day: shown once (below).
-      const of = links.repeats.get(src.key)?.find((r) => r.date === date && r.id !== id);
-      if (of) repeated.push({ e: added, of: of.id });
+      byId.set(id, [...(byId.get(id) ?? []), added]);
+      // The same event as earlier items' (as this item's reading said), on the same day: shown once (below).
+      const of = (links.repeats.get(src.key) ?? []).filter((r) => r.date === date && r.id !== id).map((r) => r.id);
+      if (of.length) repeated.push({ e: added, of });
     }
     distinguish(events.slice(first));
   }
   // A later item's event that repeats an earlier one: the earlier one stays, for both items' pupils, sure if either is.
-  for (const { e, of } of repeated) {
-    const earlier = byId.get(of);
-    if (!earlier || earlier === e) continue;
-    earlier.children = order([...new Set([...earlier.children, ...e.children])]);
-    earlier.sure ||= e.sure;
-    earlier.aliases = [...(earlier.aliases ?? []), e.key];
+  // It's the one at the same time, else one with a time. The earlier events it repeats are one event too: one of them
+  // without a time (a bulletin's "concerts on 5.11.") goes into the timed one, which says more. Its key isn't taken
+  // along, so the parent's word on it stays its own.
+  const into = (keeper: CalEvent, e: CalEvent) => {
+    keeper.children = order([...new Set([...keeper.children, ...e.children])]);
+    keeper.sure ||= e.sure;
     events.splice(events.indexOf(e), 1);
+  };
+  for (const { e, of } of repeated) {
+    const earlier = of.flatMap((id) => byId.get(id) ?? []).filter((x) => x !== e && events.includes(x));
+    if (!earlier.length || !events.includes(e)) continue;
+    const keeper = earlier.find((x) => x.start === e.start) ?? earlier.find((x) => x.start) ?? earlier[0];
+    into(keeper, e);
+    keeper.aliases = [...(keeper.aliases ?? []), e.key];
+    if (keeper.start) for (const x of earlier) if (!x.start && !x.endDate && events.includes(x)) into(keeper, x);
   }
 
   // A holiday Luna is sure of says more than the timetable's "No lessons" on its days.

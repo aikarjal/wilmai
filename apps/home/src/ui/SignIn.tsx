@@ -5,7 +5,7 @@ import { TENANTS, searchTenants, type Tenant } from "../data/tenants";
 import { isDesktopApp } from "../wilma/transport";
 import { t } from "../i18n";
 
-/** A sentence translated whole, with the part between asterisks wrapped in markup: "School, *sorted.*" */
+/** A sentence translated whole, with the part between asterisks wrapped in markup: "Wilma, *reimagined.*" */
 function marked(text: string, wrap: (part: string) => ReactNode): ReactNode {
   const [before, part, after = ""] = text.split("*");
   return part === undefined ? text : (
@@ -101,7 +101,7 @@ export function Intro() {
   return (
     <section className="signin-side">
       <Brand style={{ padding: 0 }} />
-      <h1>{marked(t("School, *sorted.*"), (part) => <span className="mark on">{part}</span>)}</h1>
+      <h1>{marked(t("Wilma, *reimagined.*"), (part) => <span className="mark on">{part}</span>)}</h1>
       <p className="lede">
         {t("Today's lessons, the messages that need you, and what's coming up, for a student or the whole family.")}{" "}
         {isDesktopApp ? t("It reads the same Wilma you already use, and it runs on this computer.") : t("It reads the same Wilma you already use, and it runs in this browser.")}

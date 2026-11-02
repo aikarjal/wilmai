@@ -22,7 +22,7 @@ import { agenda, examsNeedingAttention, forChildren, isNeedsYou, needsYou, type 
 import { intelligenceOn, type Child, type Snapshot } from "../data/model";
 import type { ScheduleLesson, UpcomingExam } from "@wilma-client/src/core";
 import { dueHomework, type DueHomework } from "../data/homework";
-import { dayTimes, examForLesson, formatMinutes, knownLessons, lessonKey, subjectNamer, unusualDays, type DayTimes, type UnusualDay } from "../data/schedule";
+import { dayLessons, dayTimes, examForLesson, formatMinutes, knownLessons, lessonKey, subjectNamer, unusualDays, type DayTimes, type UnusualDay } from "../data/schedule";
 import { addDays, dayNameLong, daysBetween, dayWithDate, isoWeek, longDate, minutes, mondayOf, nowMinutes, relativeDay, shortDate, today, weekday } from "../data/dates";
 import { noteKind, useNoteKinds } from "../data/notes";
 import { readExamEntries } from "../data/calendar";
@@ -218,7 +218,7 @@ function RecentNotes({ items, snap }: { items: FeedItem[]; snap: Snapshot }) {
               <button
                 type="button"
                 key={item.key}
-                className={`rr-line rn-line c${(child?.color ?? 0) % 5}`}
+                className={`rr-line rn-line c${(child?.color ?? 0) % 16}`}
                 onClick={() => {
                   markOpened(item.key);
                   go("notes", item.key);
@@ -276,7 +276,7 @@ function RecentResults({ children, snap }: { children: Child[]; snap: Snapshot }
             const key = resultKey(child.number, exam);
             const mark = examMark(exam, jev[markKey(key)]);
             return (
-              <button type="button" key={key} className={`rr-line c${child.color % 5}`} onClick={() => go("grades", key)}>
+              <button type="button" key={key} className={`rr-line c${child.color % 16}`} onClick={() => go("grades", key)}>
                 <span className="ov-day">{shortDate(exam.date)}</span>
                 <Tab child={child} />
                 <span className="rr-what">
@@ -307,8 +307,9 @@ function RecentResults({ children, snap }: { children: Child[]; snap: Snapshot }
 function ChildDays({ child, snap, items, dates, focus, onOpen }: { child: Child; snap: Snapshot; items: FeedItem[]; dates: string[]; focus: DayFocus | null; onOpen: (focus: DayFocus) => void }) {
   const data = snap.perChild[child.number];
   const lessons = knownLessons(data);
-  const times = dayTimes(lessons);
-  const odd = unusualDays(data, dates);
+  const leftOut = useApp((s) => s.local.leftOut?.[child.number]);
+  const times = dayTimes(dayLessons(lessons, leftOut));
+  const odd = unusualDays(data, dates, leftOut);
   // Reporting an absence is a guardian's (a student's own login has no such form).
   const student = useViewer() === "student";
   const events = agenda(snap, items, [child.number], { from: dates[0], until: dates[dates.length - 1] }).filter((e) => e.kind !== "exam" && e.itemKey);

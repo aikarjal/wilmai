@@ -82,7 +82,8 @@ export function Glance({
   );
   const exams = entries.filter((e) => e.kind === "exam");
   const events = entries.filter((e) => (e.kind === "event" || e.kind === "deadline") && e.itemKey);
-  const changes = children.flatMap((c) => unusualDays(snap.perChild[c.number], ahead).map((u) => ({ child: c, ...u })));
+  const leftOut = useApp((s) => s.local.leftOut);
+  const changes = children.flatMap((c) => unusualDays(snap.perChild[c.number], ahead, leftOut?.[c.number]).map((u) => ({ child: c, ...u })));
   // A message about the timetable on a day whose change the timetable already shows is the same news: one line, linking the message.
   const messageFor = (child: Child, date: string) => entries.find((e) => e.kind === "schedule" && e.itemKey && e.child === child.number && e.date === date);
   const scheduleNotes = entries.filter((e) => e.kind === "schedule" && e.itemKey && !changes.some((u) => u.child.number === e.child && u.date === e.date));
