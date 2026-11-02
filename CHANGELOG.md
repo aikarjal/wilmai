@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.3.2 (unreleased)
+
+_Releases: wilma-cli 2.3.2, wilma-client 1.9.0; the `wilma` skill and plugin 2.3.2; WilmAI in the MCP Registry as `ai.wilm/wilma`._
+
+**In short:** WilmAI is in the official MCP Registry, and students can use it with their own Wilma login.
+
+### Added
+
+- **The MCP Registry.** The CLI's MCP server (`npx @wilm-ai/wilma-cli mcp`) is listed in the official MCP Registry as `ai.wilm/wilma`, so assistants and apps that look there find it. wilm.ai proves the name (`/.well-known/mcp-registry-auth`), and the CLI's `package.json` names it (`mcpName`).
+- client 1.9.0: **a message to several recipients.** `composeToAll()` joins recipients' compose links into one, as Wilma's own "message all teachers" links are made. `prepareMessage()` says whether Wilma's form has its "recipients see each other's replies" box (`collatedReplies`) and how it's set, and `sendMessage()` can tick or clear it. A form's checkboxes, ticked or not, are in `WilmaForm.checkboxes`. WilmAI Home 0.3.0 uses these.
+
+### Changed
+
+- **Students can use WilmAI too.** The npm, Claude Desktop, plugin and marketplace descriptions, the READMEs, `wilma login` help and the `wilma` skill say a student can use their own Wilma login; parents stay first. The MCP instructions tell the assistant a login may be a student's own, and the login page lists "Found on this login" instead of "Children found".
+
 ## 2.3.1 (2026-11-01)
 
 _Releases: wilma-cli 2.3.1, wilma-client 1.8.0._
