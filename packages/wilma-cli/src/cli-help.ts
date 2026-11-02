@@ -24,10 +24,14 @@ const COMMAND_HELP: Record<string, CommandHelp> = {
       "{ generatedAt, students: [{ student, summary: { today, tomorrow, todaySchedule, tomorrowSchedule, upcomingExams, homework, lessonNotes, news, messages, unreadMessages } }] }. --since <date> keeps only what is from that day on (for daily runs); messages carry unread and replyCount.",
   },
   schedule: {
-    usage: [`wilma schedule [today|tomorrow|week|next-week|<YYYY-MM-DD>|<weekday>] [${STUDENT}]`],
-    about: "Lessons with times, teachers and rooms. Default: this week. 'tomorrow' is the next school day; a weekday (mon…sun, or ma…su) is its next occurrence.",
-    examples: ["wilma schedule tomorrow", "wilma schedule next-week", "wilma schedule 2026-10-07", "wilma schedule thu --student Kiia"],
-    output: "{ when, date | weekStart+weekEnd, students: [{ student, lessons: [{ date, start, end, subject, teacher, room }] }] }",
+    usage: [
+      `wilma schedule [today|tomorrow|week|next-week|<YYYY-MM-DD>|<weekday>] [${STUDENT}]`,
+      `wilma schedule --from <date> [--to <date>] [${STUDENT}]`,
+    ],
+    about:
+      "Lessons with times, teachers and rooms. Default: this week. 'tomorrow' is the next school day; a weekday (mon…sun, or ma…su) is its next occurrence. --from reads any other week or period (to the Friday of that week unless --to is given; at most 31 days).",
+    examples: ["wilma schedule tomorrow", "wilma schedule next-week", "wilma schedule 2026-10-07", "wilma schedule thu --student Kiia", "wilma schedule --from 2026-11-16"],
+    output: "{ when, date | weekStart+weekEnd | from+to, students: [{ student, lessons: [{ date, start, end, subject, teacher, room }] }] }",
   },
   homework: {
     usage: [`wilma homework [--limit 10] [${STUDENT}]`],
@@ -41,9 +45,18 @@ const COMMAND_HELP: Record<string, CommandHelp> = {
     output: "{ students: [{ student, exams: [{ date, time, subject, name, topic, teacher }] }] }",
   },
   grades: {
-    usage: [`wilma grades [--limit 20] [${STUDENT}]`],
-    about: "Recent exam grades. For course and report-card grades, see `wilma gradebook`.",
-    examples: ["wilma grades"],
+    usage: [`wilma grades [--limit 20] [${STUDENT}]`, `wilma grades --from <date> [--to <date>] [--limit N] [${STUDENT}]`],
+    about:
+      "Recent exam grades from Wilma's front page. --from reads Wilma's list of past exams for a period instead (as far back as the school keeps them), including exams still waiting for a grade (grade: null). For course and report-card grades, see `wilma gradebook`.",
+    examples: ["wilma grades", "wilma grades --from 2026-08-01 --student Kiia"],
+    output: "{ [from, to,] students: [{ student, grades: [{ date, subject, name, grade, verbalGrade, info, teacher, seen }] }] }",
+  },
+  contacts: {
+    usage: [`wilma contacts [${STUDENT}]`],
+    about:
+      "The child's class, class teacher and other supervisors (with their role as Wilma names it), and their own teachers with the subjects each teaches them in this and next week's timetable.",
+    examples: ["wilma contacts", "wilma contacts --student Kiia"],
+    output: "{ students: [{ student, contacts: { className, supervisors: [{ name, role }], teachers: [{ name, subjects }], unavailable? } }] }",
   },
   gradebook: {
     usage: [`wilma gradebook [${STUDENT}]`],
@@ -76,18 +89,20 @@ const COMMAND_HELP: Record<string, CommandHelp> = {
   },
   students: {
     usage: ["wilma students"],
-    about: "The children on the saved logins (number, name, and their Wilma when there are several).",
+    about:
+      "The children on the saved logins (number, name, their Wilma when there are several, and role: whether a guardian's login or the student's own reads them).",
     examples: ["wilma students"],
   },
   login: {
     usage: ["wilma login [--no-browser]", "wilma login --tenant <url|city> --username <name> [--password-stdin] [--totp-secret <key>]"],
     about:
-      "Log in to Wilma, with a parent's account or a student's own. Opens a one-time login page in the browser where the user picks their school's Wilma; logins are saved on this computer. Families with children on different Wilmas add each one there. Without a browser, pass --tenant and --username with the password on stdin or in WILMA_PASSWORD.",
+      "Log in to Wilma, with a parent's account or a student's own. Opens a one-time login page in the browser where the user picks their school's Wilma; logins are saved on this computer. The page shows every saved Wilma with its children: families with children on different Wilmas add each one there, untick a child Wilma lists twice, log in again or remove a Wilma. Without a browser, pass --tenant and --username with the password on stdin or in WILMA_PASSWORD.",
     examples: ["wilma login"],
   },
   accounts: {
     usage: ["wilma accounts", "wilma accounts remove <number|Wilma name|username>"],
-    about: "Saved Wilma logins, numbered (one per Wilma the children use). `remove` deletes one and ends its Wilma session; the other logins keep theirs.",
+    about:
+      "Saved Wilma logins, numbered (one per Wilma the children use), with role \"student\" for a student's own login, and under hidden the children unticked on the login page (not read). `remove` deletes one and ends its Wilma session; the other logins keep theirs. When a parent's and a child's own login on the same Wilma are both saved, commands read that child through the parent's.",
     examples: ["wilma accounts", "wilma accounts remove 2"],
   },
   logout: {
@@ -121,14 +136,15 @@ const COMMAND_HELP: Record<string, CommandHelp> = {
 
 const OVERVIEW: [string, string][] = [
   ["summary", "daily briefing for every child (start here)"],
-  ["schedule [when]", "lessons: today, tomorrow, week, next-week, a date or a weekday"],
+  ["schedule [when]", "lessons: today, tomorrow, week, next-week, a date, a weekday, or --from <date>"],
   ["exams", "upcoming exams with topics and start times"],
   ["homework", "recent homework"],
   ["notes [summary]", "lesson notes: absences and teachers' feedback; summary counts them"],
   ["messages [id]", "messages, or one with its replies"],
   ["news [id [download r]]", "bulletins, one bulletin, or a linked file"],
-  ["grades", "recent exam grades"],
+  ["grades", "exam grades: recent, or --from <date> for a period"],
   ["gradebook", "course and report-card grades"],
+  ["contacts", "class, class teacher and teachers"],
   ["printouts [id]", "PDFs such as report cards"],
   ["students", "the children"],
   ["login", "log in (opens a page in the browser)"],

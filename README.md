@@ -123,7 +123,7 @@ wilma login
 
 Opens a one-time page on `127.0.0.1` in your browser. Pick your school's Wilma, log in, and the verified login is saved to `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`; override with `WILMAI_CONFIG_PATH`). The password is entered on that page — never in an agent's chat.
 
-Children on different Wilmas (say, a city school and a private school or lukio)? Press **Add another Wilma** on the same page, or run `wilma login` again. Every saved login is used together: every command covers all your children. `wilma accounts` lists the saved logins and `wilma accounts remove <number>` removes one.
+Children on different Wilmas (say, a city school and a private school or lukio)? Press **Add another school's Wilma** on the same page, or run `wilma login` again. The page works like WilmAI Home's: one row per Wilma with its children, where you can untick a child Wilma lists twice, log in again or remove a Wilma. Every saved login is used together: every command covers all your children. `wilma accounts` lists the saved logins and `wilma accounts remove <number>` removes one. If a parent's login and a child's own login on the same Wilma are both saved (with `wilma login --tenant`), that child is read through the parent's.
 
 Wilma allows one session per account: when WilmAI logs in, Wilma logs you out in your browser, and the other way round. WilmAI keeps its session and logs in again only when Wilma has ended it. To use Wilma in the browser, run `wilma logout` or ask your assistant to log out of Wilma (`wilma_logout`). That ends WilmAI's session and keeps the login; the next command or question logs in again.
 
@@ -157,7 +157,7 @@ Running `wilma` without arguments in a terminal opens an interactive menu.
 wilma mcp
 ```
 
-A stdio MCP server with these tools: `wilma_summary`, `wilma_schedule`, `wilma_homework`, `wilma_upcoming_exams`, `wilma_grades`, `wilma_gradebook`, `wilma_lesson_notes`, `wilma_lesson_notes_summary`, `wilma_list_messages`, `wilma_read_message`, `wilma_list_news`, `wilma_read_news`, `wilma_get_news_attachment`, `wilma_list_printouts`, `wilma_get_printout`, `wilma_account`, `wilma_find_school`, `wilma_login`, `wilma_logout`. They only read from Wilma, except that `wilma_logout` ends WilmAI's Wilma session. Every tool covers all children unless `student` is given, and the JSON is the same as the CLI's. If nobody is logged in, tools open the browser login and tell the assistant what to relay.
+A stdio MCP server with these tools: `wilma_summary`, `wilma_schedule`, `wilma_homework`, `wilma_upcoming_exams`, `wilma_grades`, `wilma_gradebook`, `wilma_contacts`, `wilma_lesson_notes`, `wilma_lesson_notes_summary`, `wilma_list_messages`, `wilma_read_message`, `wilma_list_news`, `wilma_read_news`, `wilma_get_news_attachment`, `wilma_list_printouts`, `wilma_get_printout`, `wilma_account`, `wilma_find_school`, `wilma_login`, `wilma_logout`. They only read from Wilma, except that `wilma_logout` ends WilmAI's Wilma session. Every tool covers all children unless `student` is given, and the JSON is the same as the CLI's. If nobody is logged in, tools open the browser login and tell the assistant what to relay.
 
 Any MCP client can run it with `npx -y @wilm-ai/wilma-cli@2 mcp`. For Claude Code: `claude mcp add --scope user wilma -- npx -y @wilm-ai/wilma-cli@2 mcp` (`--scope user` makes it available in every project).
 

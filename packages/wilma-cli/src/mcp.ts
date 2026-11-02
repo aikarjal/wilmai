@@ -136,7 +136,7 @@ function createWilmaMcpServer(version: string): McpServer {
     {
       title: "Wilma account status",
       description:
-        "Which Wilma logins are connected and which children each one has. Families with children on different Wilmas can connect several (wilma_login adds another).",
+        "Which Wilma logins are connected: each one's Wilma, username, role (\"guardian\", or \"student\" for a student's own login) and the children it lists. Families with children on different Wilmas connect one login per Wilma (wilma_login adds another). When two logins on one Wilma list the same child (a parent's and the child's own), tools read that child through the guardian's login, and the other login's entry for the child says readVia. A child unticked on the login page (a profile Wilma lists twice) has hidden: true and isn't read.",
       inputSchema: {},
       annotations: { title: "Wilma account status", ...READ_ONLY },
     },
@@ -144,19 +144,7 @@ function createWilmaMcpServer(version: string): McpServer {
       const config = await loadConfig();
       const accounts = await resolveAccounts(config);
       if (!accounts.length) return json({ connected: false, hint: "Call wilma_login to connect." });
-      return withAccess(async (a) => {
-        const students = await a.students();
-        return json({
-          connected: true,
-          source: accounts[0].source,
-          wilmas: accounts.map((account, index) => ({
-            wilma: account.stored?.tenantName ?? account.profile.baseUrl,
-            username: account.profile.username,
-            children: students.filter((s) => s.account === index && s.name).map((s) => ({ name: s.name, studentNumber: s.studentNumber })),
-          })),
-          ...(a.problems.length ? { problems: a.problems } : {}),
-        });
-      });
+      return withAccess(async (a) => json({ connected: true, source: accounts[0].source, wilmas: await a.logins() }));
     }
   );
 

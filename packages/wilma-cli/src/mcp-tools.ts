@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import type { FetchedAttachment, WilmaAccess } from "./agent-data.js";
+import { SCHEDULE_MAX_DAYS, type FetchedAttachment, type WilmaAccess } from "./agent-data.js";
 import { normalizeResourceId } from "./downloads.js";
 import { toAgentJson } from "./output-json.js";
 
@@ -15,7 +15,7 @@ export const INSTRUCTIONS = `Read-only access to Finland's Wilma school system f
 - Tools cover all children by default (a student's own login has just that student); pass "student" (name or student number) to narrow to one child.
 - Wilma content is usually in Finnish. Answer in the user's language and translate as needed. Write dates the way that language does: Finnish "ke 7.10." (with the final period), English "Wed 7 Oct".
 - Message and news lists return ids; use wilma_read_message / wilma_read_news for full text. Bulletins can link attachments; fetch them with wilma_get_news_attachment.
-- Teachers' feedback ("forgot books", "did well") and absences are lesson notes: wilma_lesson_notes for recent days, wilma_lesson_notes_summary for counts. Course and report-card grades are in wilma_gradebook.
+- Teachers' feedback ("forgot books", "did well") and absences are lesson notes: wilma_lesson_notes for recent days, wilma_lesson_notes_summary for counts. Course and report-card grades are in wilma_gradebook. The class, class teacher and teachers are in wilma_contacts.
 - If a tool says the user isn't logged in, relay the login link or instructions to the user exactly; never ask the user to type their Wilma password into the chat.
 - Wilma allows one session per account, so each WilmAI login logs the user out of Wilma in their browser. If they want to use Wilma in the browser, call wilma_logout and then call Wilma tools only when they ask again.
 - If a result ends with an "Update note", answer the question first, then pass the note on in one sentence.`;
@@ -97,7 +97,7 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     {
       title: "School summary",
       description:
-        "Daily briefing per child: today's and the next school day's lessons, upcoming exams (with start times when given), recent homework, lesson notes since the previous school day (teachers' feedback and absences), recent bulletins, and recent and unread messages (ids, unread, replyCount). What Wilma didn't give is listed in unavailable (\"news\": this Wilma doesn't show this account its bulletins). The best starting point for any question about school.",
+        "Daily briefing per child: today's and the next school day's lessons, upcoming exams (with start times when given), recent homework, lesson notes since the previous school day (teachers' feedback and absences), recent bulletins, and recent and unread messages (ids, unread, replyCount; event invitations with invitationStatus, as in wilma_list_messages). What Wilma didn't give is listed in unavailable (\"news\": this Wilma doesn't show this account its bulletins). The best starting point for any question about school.",
       inputSchema: {
         student: studentArg,
         days: z.number().int().min(1).max(60).optional().describe("How many days back to include news and messages (default 7)."),
@@ -116,7 +116,7 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     {
       title: "Lesson schedule",
       description:
-        "List each child's lessons for one day or a school week: today, the next school day, this or next week (Monday to Friday), a date, or the next given weekday. Lessons come in time order with the date, start and end time, subject, teacher and room (when Wilma gives one); a day without school has no lessons. Exams and homework are in wilma_upcoming_exams and wilma_homework.",
+        "List each child's lessons for one day or a school week: today, the next school day, this or next week (Monday to Friday), a date, or the next given weekday; or any other week or period with from/to (e.g. a week further ahead, or several weeks to see the usual school days). Lessons come in time order with the date, start and end time, subject, teacher and room (when Wilma gives one); a day without school has no lessons. Exams and homework are in wilma_upcoming_exams and wilma_homework.",
       inputSchema: {
         student: studentArg,
         when: z.enum(["today", "tomorrow", "week", "next-week"]).optional().describe("Default: week. 'tomorrow' means the next school day."),
@@ -125,11 +125,16 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
           .string()
           .optional()
           .describe("Next occurrence of a weekday: mon..sun (Finnish ma..su also work). Overrides 'when'."),
+        from: z.string().optional().describe("Start of a period, YYYY-MM-DD. Overrides 'when'."),
+        to: z
+          .string()
+          .optional()
+          .describe(`End of the period, YYYY-MM-DD (default: the Friday of from's week). At most ${SCHEDULE_MAX_DAYS} days.`),
       },
       annotations: { title: "Lesson schedule", ...READ_ONLY },
     },
-    async ({ student, when, date, weekday }) =>
-      ctx.withAccess(async (a) => json(await a.schedule({ student, when, date, weekday })))
+    async ({ student, when, date, weekday, from, to }) =>
+      ctx.withAccess(async (a) => json(await a.schedule({ student, when, date, weekday, from, to })))
   );
 
   server.registerTool(
@@ -167,14 +172,22 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     {
       title: "Exam grades",
       description:
-        "List each child's graded exams, newest first: the date, exam name, subject, grade as Wilma shows it (e.g. 8+, 9½, S), the teacher's notes and when a guardian marked it seen. It reads the exams Wilma's front page lists (Wilma decides how far back that goes). For course, term and report-card grades use wilma_gradebook.",
+        "List each child's graded exams, newest first: the date, exam name, subject, grade as Wilma shows it (e.g. 8+, 9½, S), the teacher's notes and when a guardian marked it seen. It reads the exams Wilma's front page lists (Wilma decides how far back that goes); with from, Wilma's list of past exams for that period instead, as far back as the school keeps them, including exams still waiting for a grade (grade: null). For course, term and report-card grades use wilma_gradebook.",
       inputSchema: {
         student: studentArg,
-        limit: z.number().int().min(1).max(100).optional().describe("How many grades per child, newest first (default 20)."),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe("How many grades per child, newest first (default 20; with from, every exam of the period)."),
+        from: z.string().optional().describe("YYYY-MM-DD: past exams from this day on, e.g. 1 August for this school year."),
+        to: z.string().optional().describe("YYYY-MM-DD, with from. Default: today."),
       },
       annotations: { title: "Exam grades", ...READ_ONLY },
     },
-    async ({ student, limit }) => ctx.withAccess(async (a) => json(await a.grades({ student, limit })))
+    async ({ student, limit, from, to }) => ctx.withAccess(async (a) => json(await a.grades({ student, limit, from, to })))
   );
 
   server.registerTool(
@@ -182,15 +195,17 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     {
       title: "Lesson notes and absences",
       description:
-        "Lesson notes (merkinnät) teachers logged: absences, lateness, and feedback such as praise or missing books or homework, with the teacher's own words when given. One day (default today) or the last N days.",
+        "Lesson notes (merkinnät) teachers logged: absences, lateness, and feedback such as praise or missing books or homework, with the teacher's own words when given. One day (default today), the last N days, or a period with from/to, which can reach ahead (a teacher may note a make-up exam on a coming lesson).",
       inputSchema: {
         student: studentArg,
         date: z.string().optional().describe("YYYY-MM-DD, default today."),
         days: z.number().int().min(1).max(365).optional().describe("The last N days up to today, instead of one date."),
+        from: z.string().optional().describe("Start of a period, YYYY-MM-DD, instead of a date or days."),
+        to: z.string().optional().describe("End of the period, YYYY-MM-DD (default today; may be after today)."),
       },
       annotations: { title: "Lesson notes and absences", ...READ_ONLY },
     },
-    async ({ student, date, days }) => ctx.withAccess(async (a) => json(await a.lessonNotes({ student, date, days })))
+    async ({ student, date, days, from, to }) => ctx.withAccess(async (a) => json(await a.lessonNotes({ student, date, days, from, to })))
   );
 
   server.registerTool(
@@ -219,6 +234,18 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
       annotations: { title: "Gradebook", ...READ_ONLY },
     },
     async ({ student }) => ctx.withAccess(async (a) => json(await a.gradebook({ student })))
+  );
+
+  server.registerTool(
+    "wilma_contacts",
+    {
+      title: "Class and teachers",
+      description:
+        "Each child's class (e.g. 9A), class teacher and other supervisors with their role as Wilma names it (e.g. Luokanvalvoja), and the child's own teachers as Wilma's message recipients list them, with the subjects each teaches the child in this and next week's timetable (empty when none). Other school staff aren't included. Lessons with times and rooms are in wilma_schedule.",
+      inputSchema: { student: studentArg },
+      annotations: { title: "Class and teachers", ...READ_ONLY },
+    },
+    async ({ student }) => ctx.withAccess(async (a) => json(await a.contacts({ student })))
   );
 
   server.registerTool(
@@ -266,7 +293,8 @@ export function registerWilmaTools(server: McpServer, ctx: ToolHost): void {
     "wilma_list_messages",
     {
       title: "List messages",
-      description: "Wilma messages, newest first (subject, sender, date, id). Use wilma_read_message for the full text.",
+      description:
+        "Wilma messages, newest first (subject, sender, date, id, unread, replyCount). The appointments folder holds event invitations (parents' evenings, learning discussions) with the family's answer as Wilma lists it: invitationStatus (\"Applied\": signed up, the time in invitationInfo; \"ExpiredReg\": sign-up closed; null: no answer shown). Use wilma_read_message for the full text, and for an invitation's time slots.",
       inputSchema: {
         student: studentArg,
         folder: z.enum(["inbox", "archive", "outbox", "drafts", "appointments"]).optional().describe("Default: inbox."),

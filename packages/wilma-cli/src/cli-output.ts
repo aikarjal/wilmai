@@ -7,6 +7,7 @@ import type {
   LessonNoteSummary,
   Message,
   NewsItem,
+  PastExam,
   Printout,
   ScheduleLesson,
   UpcomingExam,
@@ -94,10 +95,14 @@ export function newsLine(item: Pick<NewsItem, "wilmaId" | "title" | "published" 
   return `${date}${compactText(item.title)}${mark} (id ${item.wilmaId})`;
 }
 
-export function messageLine(msg: Pick<Message, "wilmaId" | "subject" | "sentAt" | "senderName" | "unread" | "replyCount">): string {
+export function messageLine(
+  msg: Pick<Message, "wilmaId" | "subject" | "sentAt" | "senderName" | "unread" | "replyCount"> & { invitationStatus?: string | null; invitationInfo?: string | null }
+): string {
   const sender = msg.senderName ? ` — ${compactText(msg.senderName)}` : "";
   const replies = msg.replyCount ? ` [${msg.replyCount} ${msg.replyCount === 1 ? "reply" : "replies"}]` : "";
-  return `${finnishDay(msg.sentAt)} ${compactText(msg.subject)}${sender}${msg.unread ? " [new]" : ""}${replies} (id ${msg.wilmaId})`;
+  // An invitation's answer in Wilma's own word ("Applied 29.05.2026 13:00").
+  const answer = msg.invitationStatus ? ` [${compactText([msg.invitationStatus, msg.invitationInfo].filter(Boolean).join(" "))}]` : "";
+  return `${finnishDay(msg.sentAt)} ${compactText(msg.subject)}${sender}${msg.unread ? " [new]" : ""}${replies}${answer} (id ${msg.wilmaId})`;
 }
 
 function lessonNoteLine(note: LessonNote, withDate: boolean): string {
@@ -134,6 +139,13 @@ function gradebookLines(entries: GradebookEntry[], depth = 0): string[] {
   });
 }
 
+type Contacts = {
+  className: string | null;
+  supervisors: { name: string; role: string }[];
+  teachers: { name: string; subjects: string[] }[];
+  unavailable?: string[];
+};
+
 type SummaryData = {
   today: string;
   tomorrow: string;
@@ -143,7 +155,7 @@ type SummaryData = {
   homework: HomeworkItem[];
   lessonNotes: LessonNote[];
   news: { wilmaId: number; title: string; published: Date | null | undefined; pinned: boolean }[];
-  messages: { wilmaId: number; subject: string; sentAt: Date; senderName: string | null; unread: boolean; replyCount: number }[];
+  messages: { wilmaId: number; subject: string; sentAt: Date; senderName: string | null; unread: boolean; replyCount: number; invitationStatus?: string | null; invitationInfo?: string | null }[];
   unreadMessages: number;
   unavailable?: string[];
 };
@@ -169,7 +181,7 @@ export function formatText(command: string, action: string | null, result: any):
     case "summary":
       return perStudent(result, "summary", (s: SummaryData) => summaryLines(s));
     case "schedule": {
-      const period = result.weekStart ? `${result.weekStart} – ${result.weekEnd}` : result.date;
+      const period = result.from ? `${result.from} – ${result.to}` : result.weekStart ? `${result.weekStart} – ${result.weekEnd}` : result.date;
       return titled(`Schedule ${period}`, result, perStudent(result, "lessons", scheduleLines));
     }
     case "homework":
@@ -178,10 +190,21 @@ export function formatText(command: string, action: string | null, result: any):
       );
     case "exams":
       return perStudent(result, "exams", (items: UpcomingExam[]) => (items.length ? items.map((e) => `  ${examLine(e)}`) : ["  No upcoming exams."]));
-    case "grades":
-      return perStudent(result, "grades", (items: ExamGrade[]) =>
-        items.length ? items.map((g) => `  ${g.date}  ${g.subject}: ${g.name} — ${g.grade}`) : ["  No exam grades."]
-      );
+    case "grades": {
+      const lines = (items: (ExamGrade | PastExam)[]) =>
+        items.length
+          ? items.map((g) => `  ${g.date}  ${g.subject}: ${g.name} — ${g.grade ?? "no grade yet"}${g.verbalGrade ? ` (${compactText(g.verbalGrade)})` : ""}`)
+          : [result.from ? "  No exams in this period." : "  No exam grades."];
+      const grades = perStudent(result, "grades", lines);
+      return result.from ? titled(`Exams ${result.from} – ${result.to}`, result, grades) : grades;
+    }
+    case "contacts":
+      return perStudent(result, "contacts", (c: Contacts) => [
+        `  Class: ${c.className ?? "not shown"}`,
+        ...c.supervisors.map((s) => `  ${compactText(s.role)}: ${s.name}`),
+        ...(c.teachers.length ? ["  Teachers:", ...c.teachers.map((t) => `    ${t.name}${t.subjects.length ? ` — ${t.subjects.join(", ")}` : ""}`)] : []),
+        ...(c.unavailable?.length ? [`  (Not available from Wilma right now: ${c.unavailable.join(", ")})`] : []),
+      ]);
     case "gradebook":
       return perStudent(result, "gradebook", (entries: GradebookEntry[]) => gradebookLines(entries));
     case "notes": {
@@ -241,8 +264,8 @@ export function formatText(command: string, action: string | null, result: any):
         items.length ? [...items.map((p) => `  ${compactText(p.title)} (id ${p.id})`)] : ["  No printouts."]
       );
     case "students":
-      return (result.students as StudentRef[])
-        .map((s) => `${s.studentNumber}  ${s.name}${s.wilma ? `  (${s.wilma})` : ""}`)
+      return (result.students as (StudentRef & { role?: string })[])
+        .map((s) => `${s.studentNumber}  ${s.name}${s.wilma ? `  (${s.wilma})` : ""}${s.role === "student" ? "  [own login]" : ""}`)
         .join("\n");
     default:
       return JSON.stringify(result, null, 2);

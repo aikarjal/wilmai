@@ -45,12 +45,13 @@ Both cover **every child by default**; pass `student` / `--student <number|name>
 | MCP tool | CLI command |
 |---|---|
 | `wilma_summary` | `wilma summary [--since <date>]` |
-| `wilma_schedule` | `wilma schedule [today\|tomorrow\|week\|next-week\|<date>\|<weekday>]` |
+| `wilma_schedule` | `wilma schedule [today\|tomorrow\|week\|next-week\|<date>\|<weekday>]`, `wilma schedule --from <date> [--to <date>]` |
 | `wilma_homework` | `wilma homework` |
 | `wilma_upcoming_exams` | `wilma exams` |
-| `wilma_grades` | `wilma grades` |
+| `wilma_grades` | `wilma grades [--from <date> [--to <date>]]` |
 | `wilma_gradebook` | `wilma gradebook` |
-| `wilma_lesson_notes` | `wilma notes [--date <date> \| --days N]` |
+| `wilma_contacts` | `wilma contacts` |
+| `wilma_lesson_notes` | `wilma notes [--date <date> \| --days N \| --from <date> [--to <date>]]` |
 | `wilma_lesson_notes_summary` | `wilma notes summary` |
 | `wilma_list_messages` / `wilma_read_message` | `wilma messages` / `wilma messages <id>` |
 | `wilma_list_news` / `wilma_read_news` | `wilma news` / `wilma news <id>` |
@@ -74,7 +75,7 @@ The user logs in once; the login is saved on their computer.
   2. Ask the user to add `WILMA_USERNAME` and `WILMA_PASSWORD` to your secret or environment settings, plus `WILMA_TOTP_SECRET` if the account uses two-step verification, and set `WILMA_TENANT` to the Wilma address they picked. Every command then works without a saved login. Alternatively: `wilma login --tenant <url> --username <name> --password-stdin`.
 - Don't run `wilma` without arguments to look things up: in a terminal it opens a menu for people (from a program it prints the help).
 - **Never ask the user to type their Wilma password into the chat.**
-- **Children on different Wilmas** (e.g. a city school and a private school): the user adds each login on the login page ("Add another Wilma") or with another `wilma login`. All saved logins are used together; children then carry a `wilma` field naming their Wilma. `wilma accounts` lists the logins.
+- **Children on different Wilmas** (e.g. a city school and a private school): the user adds each login on the login page ("Add another school's Wilma") or with another `wilma login`. All saved logins are used together; children then carry a `wilma` field naming their Wilma. `wilma accounts` lists the logins, with `role: "student"` for a student's own login. A child the user unticked on the login page (a profile Wilma lists twice) isn't read, and `wilma accounts` lists it under `hidden`. When a parent's and a child's own login on the same Wilma are both saved, the child is read through the parent's (wilma-cli 2.4+).
 
 Commands continue the last Wilma session instead of logging in each time (each login would log the parent out of Wilma in their own browser), so running several commands in a row is fine.
 
@@ -102,7 +103,7 @@ wilma schedule next-week
 wilma schedule 2026-03-10
 wilma schedule thu --student <number|name>
 ```
-Default: this week. `tomorrow` is the next school day; a weekday (`mon`…`sun`, or Finnish `ma`…`su`) is its next occurrence. Lessons include the teacher(s) and, when Wilma gives one, the `room`.
+Default: this week. `tomorrow` is the next school day; a weekday (`mon`…`sun`, or Finnish `ma`…`su`) is its next occurrence. Lessons include the teacher(s) and, when Wilma gives one, the `room`. `--from <date>` reads any other week (to that week's Friday) or, with `--to`, a period of up to 31 days, e.g. a few weeks to see the usual school days (wilma-cli 2.4+).
 
 ### Homework and exams
 ```bash
@@ -113,10 +114,17 @@ Each exam has its date, subject, name, topic (what to study) and teacher; `time`
 
 ### Grades
 ```bash
-wilma grades       # recent exam grades
-wilma gradebook    # course and report-card grades
+wilma grades                     # recent exam grades
+wilma grades --from 2026-08-01   # every exam since then, graded or not yet
+wilma gradebook                  # course and report-card grades
 ```
-The gradebook (Suoritukset) is a tree: subject → syllabus → course, each with `grade`, `credits` and completion `date`. Course codes ending in `LV` are usually school-year (report card) grades. An empty list means nothing has been graded yet.
+`grades --from` (wilma-cli 2.4+) reads Wilma's list of past exams for a period, as far back as the school keeps them; an exam still waiting for its grade has `grade: null`. The gradebook (Suoritukset) is a tree: subject → syllabus → course, each with `grade`, `credits` and completion `date`. Course codes ending in `LV` are usually school-year (report card) grades. An empty list means nothing has been graded yet.
+
+### Class and teachers
+```bash
+wilma contacts
+```
+The child's class, class teacher and other supervisors (`role` as Wilma names it, e.g. Luokanvalvoja), and their own teachers with the `subjects` each teaches them in this and next week's timetable (wilma-cli 2.4+). Use it for "who is the class teacher" or "who teaches maths".
 
 ### Lesson notes (merkinnät)
 ```bash
@@ -124,7 +132,7 @@ wilma notes --date yesterday
 wilma notes --days 14
 wilma notes summary
 ```
-Teachers' per-lesson notes: positive feedback, behavioural remarks, missing books or homework, and absence categorisations (medical, explained, unexplained). One day (default today), `--days N` for the last N days, or `--from`/`--to`. Teachers usually fill notes during or after class, so for a morning run use the previous day (the summary already does). When the teacher wrote something, it's in `note`.
+Teachers' per-lesson notes: positive feedback, behavioural remarks, missing books or homework, and absence categorisations (medical, explained, unexplained). One day (default today), `--days N` for the last N days, or `--from`/`--to` (`--to` can be ahead of today: a teacher may note a make-up exam on a coming lesson). Teachers usually fill notes during or after class, so for a morning run use the previous day (the summary already does). When the teacher wrote something, it's in `note`.
 
 `notes summary` counts the notes by `typeLabel` for this school year (or `--from`/`--to`), e.g. how many lessons were missed for health reasons.
 
@@ -139,7 +147,7 @@ wilma news
 wilma news --older
 wilma news <id>
 ```
-Message lists mark `unread` messages and `replyCount`; `wilma messages <id>` returns the thread with its `replies`. `wilma news` returns the newest dated bulletins plus every pinned one (`pinned: true`, e.g. the school-year bulletin); `--older` adds older bulletins (`archived: true`, dated once read). Reading an item needs no `--student` unless several Wilmas are connected.
+Message lists mark `unread` messages and `replyCount`; `wilma messages <id>` returns the thread with its `replies`. The `appointments` folder holds event invitations (parents' evenings, learning discussions) with the family's answer as Wilma lists it (wilma-cli 2.4+): `invitationStatus` `"Applied"` (signed up, the time in `invitationInfo`), `"ExpiredReg"` (sign-up closed), or null; reading the invitation gives its time slots. The summary's invitations carry the same fields. `wilma news` returns the newest dated bulletins plus every pinned one (`pinned: true`, e.g. the school-year bulletin); `--older` adds older bulletins (`archived: true`, dated once read). Reading an item needs no `--student` unless several Wilmas are connected.
 
 ### Printouts
 ```bash

@@ -49,6 +49,7 @@ const DATA_COMMANDS = [
   "exams",
   "grades",
   "gradebook",
+  "contacts",
   "notes",
   "messages",
   "news",

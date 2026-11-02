@@ -65,7 +65,7 @@ Starts a stdio MCP server with read-only Wilma tools (`wilma_summary`, `wilma_sc
 `wilma news <id>` lists every link in a bulletin (`resources`). Any resource can be downloaded with `wilma news <id> download <resource> [--output <directory>]` (the resource id also accepts a bare number, e.g. `1` for `resource-1`). Wilma-hosted files download through the session; external links are fetched without your Wilma login, and only from public websites. The result's `status` says what happened: `downloaded` (use the returned `path`) or `not_a_file` when the link answered with a web page (for example a sharing link that needs signing in — open it in a browser instead). `--output` defaults to the current directory; existing files are never overwritten.
 
 ## Several Wilmas
-Children at schools on different Wilmas need one login per Wilma. Run `wilma login` again (or press "Add another Wilma" on the login page); commands then cover every child, and each child carries the `wilma` it belongs to.
+Children at schools on different Wilmas need one login per Wilma. Run `wilma login` again (or press "Add another school's Wilma" on the login page); commands then cover every child, and each child carries the `wilma` it belongs to.
 ```bash
 wilma accounts                     # saved logins, numbered
 wilma accounts remove <number>     # or the Wilma name or username; also ends that login's Wilma session

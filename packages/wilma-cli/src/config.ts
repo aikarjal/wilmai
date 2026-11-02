@@ -10,10 +10,24 @@ export interface StoredProfile {
   username: string;
   passwordObfuscated: string;
   totpSecretObfuscated?: string | null;
-  students?: { studentNumber: string; name: string }[];
+  /** The children the login lists; `role` says whose login it is for each (a guardian's, or the student's own). */
+  students?: SavedStudent[];
+  /** Student numbers of children unticked on the login page (a profile Wilma lists twice): not read. */
+  hidden?: string[];
   lastStudentNumber?: string | null;
   lastStudentName?: string | null;
   lastUsedAt: string;
+}
+
+export interface SavedStudent {
+  studentNumber: string;
+  name: string;
+  role?: "guardian" | "student";
+}
+
+/** A child as saved with a login: the number, the name, and the role when Wilma says it. */
+export function savedStudent(s: SavedStudent): SavedStudent {
+  return { studentNumber: s.studentNumber, name: s.name, ...(s.role ? { role: s.role } : {}) };
 }
 
 export interface CliConfig {

@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+**In short:** the CLI and MCP tools read what WilmAI Home reads: the class and teachers, past exams, invitation answers and any week's lessons; and a parent's and a child's own login on one Wilma work together.
+
+### Added
+
+- **Class and teachers: `wilma contacts` and the `wilma_contacts` tool.** Each child's class, class teacher and other supervisors (with their role as Wilma names it), and their own teachers with the subjects each teaches them in this and next week's timetable. These are the pages WilmAI Home reads when you write to a teacher. A Wilma that doesn't show its recipient list gives the rest, with `unavailable: ["teachers"]`.
+- **Past exams for a period: `wilma grades --from <date>`, and `from`/`to` on `wilma_grades`.** Wilma's list of past exams (Kokeet > Menneet) for the period, as far back as the school keeps them, including exams still waiting for a grade (`grade: null`), as Home's Grades view shows them. Without `from`, grades come from the front page as before.
+- **Invitations with the family's answer.** In the appointments folder (`wilma messages --folder appointments`, `wilma_list_messages`) and in the summary, event invitations carry `invitationStatus` as Wilma lists it: `"Applied"` with the chosen time in `invitationInfo`, `"ExpiredReg"` when the sign-up has closed, or null. It's the same request as before.
+- **Any week's lessons: `wilma schedule --from <date> [--to <date>]`, and `from`/`to` on `wilma_schedule`.** A week further ahead or back (to that week's Friday), or a period of up to 31 days, e.g. a few weeks to see the usual school days.
+- **Lesson notes ahead.** `wilma_lesson_notes` takes `from`/`to`, as `wilma notes` already did, and `to` can be after today: a teacher may note a make-up exam on a coming lesson.
+- **A login page that works like WilmAI Home's Wilma page.** One page instead of steps: who uses WilmAI (a parent or a student), one row per Wilma, *Add another school's Wilma*, and one button that logs in every new row. A saved Wilma shows its username and children; you can untick a child Wilma lists twice (a new school gives a new profile), log in again on its row (a changed password, or another user), or remove it, which ends its Wilma session. Unticked children aren't read by any command or tool; `wilma accounts` lists them under `hidden`, and `wilma_account` marks them `hidden: true`. As in Home, the page keeps one login per Wilma; `wilma login --tenant` can still save a second user for a Wilma. Opened when logins are saved already, the page starts from them and says it's for adding a Wilma or logging in again.
+- **Whose login it is.** `wilma_account`, `wilma students` and `wilma accounts` give `role`: `"guardian"`, or `"student"` for a student's own login, as Wilma's roles say. It's saved with each login's children, so `wilma accounts` shows it without logging in.
+
+### Fixed
+
+- **A parent's and a child's own login on the same Wilma.** Both list the child, and every command and tool read that child through whichever login was used last, so the child's messages switched between the parent's inbox and the student's own, and `wilma_account` showed the child under one login only. The child is now read through the guardian's login, whatever the order. `wilma_account` lists the child under both logins, and on the student's own login the child has `readVia` with the parent's username. With two guardians' logins, the active one still comes first.
+
 ### Changed
 
 - **Clearer tool descriptions.** Five MCP tools now say what they return, how far back they go and which tool to use instead: `wilma_grades` (single exam grades; course and report-card grades are in `wilma_gradebook`), `wilma_gradebook`, `wilma_schedule`, `wilma_homework` and `wilma_upcoming_exams`. Their `limit` says its default. Glama's tool-quality review rated these five lowest.

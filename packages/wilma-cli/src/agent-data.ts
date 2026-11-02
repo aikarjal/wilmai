@@ -2,13 +2,16 @@ import {
   NetworkError,
   WilmaClient,
   addExamTimes,
+  type InvitationListing,
   type LessonNote,
   type Message,
   type MessageFolder,
+  type MessageRecipient,
   type MfaCallback,
   type NewsItem,
   type NewsResource,
   type OverviewData,
+  type ScheduleLesson,
   type StudentInfo,
   type WilmaProfile,
 } from "@wilm-ai/wilma-client";
@@ -141,14 +144,29 @@ export type ScheduleDateSelection = {
 
 export const SCHEDULE_WHEN = ["today", "tomorrow", "week", "next-week"] as const;
 
-function resolveScheduleDateSelection(opts: { when?: string; date?: string; weekday?: string }): ScheduleDateSelection {
+/** The longest period one schedule request covers. */
+export const SCHEDULE_MAX_DAYS = 31;
+
+function resolveScheduleDateSelection(opts: { when?: string; date?: string; weekday?: string; from?: string; to?: string }): ScheduleDateSelection {
   const when = opts.when || "week";
   if (!(SCHEDULE_WHEN as readonly string[]).includes(when)) {
     throw new WilmaAiError("invalid_argument", `Unknown period "${when}". Use ${SCHEDULE_WHEN.join(", ")}, a date or a weekday.`);
   }
 
-  if (opts.date && opts.weekday) {
-    throw new WilmaAiError("invalid_argument", "Use either a date or a weekday, not both.");
+  if ([opts.date, opts.weekday, opts.from].filter(Boolean).length > 1) {
+    throw new WilmaAiError("invalid_argument", "Use one of a date, a weekday, or from/to.");
+  }
+  if (opts.to && !opts.from) throw new WilmaAiError("invalid_argument", "A period needs a start date (from) as well.");
+
+  if (opts.from) {
+    const from = parseIsoDate(opts.from);
+    // Without an end: to the Friday of that week (a school week from any day).
+    const to = opts.to ? parseIsoDate(opts.to) : addDays(from, Math.max(0, 5 - weekdayOf(from)));
+    if (to < from) throw new WilmaAiError("invalid_argument", `The period ends (${to}) before it starts (${from}).`);
+    if (addDays(from, SCHEDULE_MAX_DAYS - 1) < to) {
+      throw new WilmaAiError("invalid_argument", `A period can be at most ${SCHEDULE_MAX_DAYS} days; ask for a longer one in parts.`);
+    }
+    return { when, startDate: from, endDate: to, outputWhen: "period" };
   }
 
   if (opts.date) {
@@ -175,11 +193,22 @@ function resolveScheduleDateSelection(opts: { when?: string; date?: string; week
   return { when, startDate, endDate, outputWhen: when };
 }
 
+/**
+ * An event invitation as listed: the message, plus the family's answer as
+ * Wilma's list shows it ("Applied" with the chosen time, "ExpiredReg"…;
+ * null when it shows none).
+ */
+export type ListedMessage = Message & { invitationStatus?: string | null; invitationInfo?: string | null };
+
+function listedInvitation(listing: InvitationListing): ListedMessage {
+  return { ...listing.message, invitationStatus: listing.status, invitationInfo: listing.extra };
+}
+
 /** Everything a daily summary is built from (see fetchSummaryInputs). */
 export interface SummaryInputs {
   overview: OverviewData;
   news: NewsItem[];
-  messages: Message[];
+  messages: ListedMessage[];
   lessonNotes: LessonNote[];
   /** Parts Wilma couldn't give this time (the rest of the summary is still right). */
   unavailable: string[];
@@ -216,6 +245,7 @@ function buildSummaryData(input: SummaryInputs, opts: { days?: number; since?: s
       folder: m.folder,
       unread: Boolean(m.unread),
       replyCount: m.replyCount ?? 0,
+      ...(m.invitationStatus !== undefined ? { invitationStatus: m.invitationStatus, invitationInfo: m.invitationInfo ?? null } : {}),
     }));
 
   return {
@@ -247,7 +277,9 @@ export interface AccessAccount {
   label?: string | null;
   onStudents?: (students: StudentInfo[]) => Promise<void>;
   /** The children saved with the login, used when Wilma's own list comes back empty. */
-  knownStudents?: { studentNumber: string; name: string }[];
+  knownStudents?: { studentNumber: string; name: string; role?: StudentInfo["role"] }[];
+  /** Student numbers unticked on the login page (a profile Wilma lists twice): not read. */
+  hidden?: string[];
 }
 
 type AccountStudent = StudentInfo & { account: number };
@@ -301,14 +333,15 @@ async function fetchSummaryInputs(client: WilmaClient, opts: { notesFrom: string
     client.exams.calendarOrEmpty(),
     client.news.listIfShown(),
     client.messages.list("inbox"),
-    optional("appointments", client.messages.list("appointments"), [] as Message[]),
+    // The invitations folder, with whether the family has answered (one request, as for the folder itself).
+    optional("appointments", client.invitations.list(), [] as InvitationListing[]),
     optional("lessonNotes", client.attendance.list({ from: opts.notesFrom, to: todayString() }), [] as LessonNote[]),
   ]);
   if (news === null) unavailable.push("news");
   return {
     overview: { ...overview, upcomingExams: addExamTimes(overview.upcomingExams, calendar) },
     news: news ?? [],
-    messages: [...inbox, ...appointments],
+    messages: [...inbox, ...appointments.map(listedInvitation)],
     lessonNotes,
     unavailable,
   };
@@ -318,6 +351,42 @@ async function fetchSummaryInputs(client: WilmaClient, opts: { notesFrom: string
 function daysBack(days: number): string {
   const today = todayString();
   return addDays(today, -(days - 1));
+}
+
+/** What each teacher teaches, by teacher code as the timetable writes it ("KOJ" → ["Matematiikka"]). */
+function subjectsByTeacher(lessons: ScheduleLesson[]): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const lesson of lessons) {
+    // A lesson can have several teachers ("KOJ, MÄL"): each teaches it.
+    for (const code of (lesson.teacherCode ?? "").split(",")) {
+      const key = code.trim().toUpperCase();
+      if (!key || !lesson.subject) continue;
+      const list = map.get(key) ?? [];
+      if (!list.includes(lesson.subject)) map.set(key, [...list, lesson.subject]);
+    }
+  }
+  return map;
+}
+
+/** The teacher's code at the end of a name as Wilma's recipient lists write it: "Korhonen Jussi (KOJ)" → "KOJ". */
+function codeInName(name: string): string | null {
+  return /\(([^()\s]{1,12})\)\s*$/.exec(name)?.[1] ?? null;
+}
+
+/**
+ * The child's own teachers in Wilma's recipient list: the list behind its
+ * "all own teachers" group (whatever the Wilma's language calls it), once
+ * each. Without that group, none.
+ */
+function ownTeachers(recipients: MessageRecipient[]): MessageRecipient[] {
+  const group = recipients.find((r) => r.kind === "group" && /[?&]r_ownteachers=/.test(r.composePath))?.group;
+  if (!group) return [];
+  const seen = new Set<string>();
+  return recipients.filter((r) => {
+    if (r.kind !== "teacher" || r.group !== group || seen.has(r.name)) return false;
+    seen.add(r.name);
+    return true;
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -491,9 +560,19 @@ export function matchStudents<T extends { studentNumber: string; name: string }>
   );
 }
 
+/** Whose login it is: a student's own when Wilma lists only the student themself, a guardian's when it says so. */
+export function roleOf(students: { role?: StudentInfo["role"] }[]): StudentInfo["role"] {
+  if (students.length && students.every((s) => s.role === "student")) return "student";
+  return students.some((s) => s.role === "guardian") ? "guardian" : undefined;
+}
+
 export class WilmaAccess {
   private readonly accounts: AccessAccount[];
   private studentsCache: AccountStudent[] | null = null;
+  /** The children each login lists (by login index), including those read through another login. */
+  private readonly listed = new Map<number, StudentInfo[]>();
+  /** Why a login failed (by login index), while others worked. */
+  private readonly failures = new Map<number, string>();
   /** One logged-in session per Wilma login, shared by every child on it. */
   private readonly sessions = new Map<number, Promise<WilmaClient>>();
   /** Logins that failed while other logins worked. */
@@ -541,7 +620,7 @@ export class WilmaAccess {
       })
     );
     const all: AccountStudent[] = [];
-    const seen = new Set<string>();
+    const seen = new Map<string, number>();
     let firstError: unknown = null;
     let worked = 0;
     for (const result of fetched) {
@@ -550,24 +629,32 @@ export class WilmaAccess {
         firstError ??= result.error;
         const message = result.error instanceof Error ? result.error.message : String(result.error);
         this.problems.push({ wilma: this.labelOf(result.index), message });
+        this.failures.set(result.index, message);
         continue;
       }
       worked += 1;
       // One at a time: these write the saved config.
       await account.onStudents?.(result.list);
-      const list = result.list.length
+      const list: StudentInfo[] = result.list.length
         ? result.list
         : account.knownStudents?.length
           ? // An empty answer keeps the children saved with the login.
             account.knownStudents.map((s) => ({ ...s, href: `/!${s.studentNumber}/` }))
           : // Accounts that list no students still work against the default page.
             [{ studentNumber: account.profile.studentNumber ?? "", name: "", href: "/" }];
+      this.listed.set(result.index, list);
       for (const student of list) {
-        // Two guardians' logins on the same Wilma list the same children once.
-        const key = `${account.profile.baseUrl}|${student.studentNumber}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        all.push({ ...student, account: result.index });
+        if (account.hidden?.includes(student.studentNumber)) continue;
+        // Two logins on the same Wilma (two guardians, or a guardian and the child) list the same child once.
+        const key = `${account.profile.baseUrl.replace(/\/$/, "").toLowerCase()}|${student.studentNumber}`;
+        const at = seen.get(key);
+        if (at === undefined) {
+          seen.set(key, all.length);
+          all.push({ ...student, account: result.index });
+        } else if (all[at].role === "student" && student.role === "guardian") {
+          // A guardian's login over the child's own, whichever logged in last: the parent's view (messages to guardians, invitations).
+          all[at] = { ...student, account: result.index };
+        }
       }
     }
     if (!worked) throw firstError instanceof Error ? firstError : new Error("Could not log in to Wilma");
@@ -575,9 +662,47 @@ export class WilmaAccess {
     return all;
   }
 
-  /** The children as tools and commands show them (with their Wilma when there are several). */
-  async studentList(): Promise<StudentRef[]> {
-    return (await this.students()).map((s) => this.ref(s));
+  /**
+   * The children as tools and commands show them (with their Wilma when there
+   * are several), and whose login reads each: a guardian's, or the student's own.
+   */
+  async studentList(): Promise<(StudentRef & { role?: StudentInfo["role"] })[]> {
+    return (await this.students()).map((s) => ({ ...this.ref(s), ...(s.role ? { role: s.role } : {}) }));
+  }
+
+  /**
+   * Each login: its Wilma, username, whose it is (a guardian's, or a
+   * student's own; missing when Wilma doesn't say) and the children it lists.
+   * A child another login on the same Wilma also lists is read through one of
+   * them only; `readVia` names the other login's username. A child unticked
+   * on the login page has `hidden: true` and isn't read.
+   */
+  async logins() {
+    const students = await this.students();
+    return this.accounts.map((account, index) => {
+      const listed = (this.listed.get(index) ?? []).filter((s) => s.name);
+      const role = roleOf(listed);
+      return {
+        wilma: this.labelOf(index),
+        username: account.profile.username,
+        ...(role ? { role } : {}),
+        children: listed.map((s) => {
+          if (account.hidden?.includes(s.studentNumber)) return { name: s.name, studentNumber: s.studentNumber, hidden: true };
+          const read = students.find((x) => x.studentNumber === s.studentNumber && this.sameWilma(x.account, index));
+          return {
+            name: s.name,
+            studentNumber: s.studentNumber,
+            ...(read && read.account !== index ? { readVia: this.accounts[read.account].profile.username } : {}),
+          };
+        }),
+        ...(this.failures.has(index) ? { problem: this.failures.get(index) } : {}),
+      };
+    });
+  }
+
+  private sameWilma(a: number, b: number): boolean {
+    const url = (i: number) => this.accounts[i].profile.baseUrl.replace(/\/$/, "").toLowerCase();
+    return url(a) === url(b);
   }
 
   async selectStudents(student?: string): Promise<AccountStudent[]> {
@@ -631,12 +756,14 @@ export class WilmaAccess {
     return { generatedAt: new Date(), ...(since ? { since } : {}), ...result };
   }
 
-  async schedule(opts: { student?: string; when?: (typeof SCHEDULE_WHEN)[number]; date?: string; weekday?: string } = {}) {
+  async schedule(opts: { student?: string; when?: (typeof SCHEDULE_WHEN)[number]; date?: string; weekday?: string; from?: string; to?: string } = {}) {
     const selection = resolveScheduleDateSelection(opts);
     const range =
-      selection.startDate === selection.endDate
-        ? { date: selection.startDate }
-        : { weekStart: selection.startDate, weekEnd: selection.endDate };
+      selection.outputWhen === "period"
+        ? { from: selection.startDate, to: selection.endDate }
+        : selection.startDate === selection.endDate
+          ? { date: selection.startDate }
+          : { weekStart: selection.startDate, weekEnd: selection.endDate };
     const result = await this.perStudent(opts.student, async (client) => ({
       lessons: await client.schedule.list({ from: selection.startDate, to: selection.endDate }),
     }));
@@ -656,7 +783,27 @@ export class WilmaAccess {
     });
   }
 
-  async grades(opts: { student?: string; limit?: number } = {}) {
+  /**
+   * Exam grades: the newest the front page lists, or with `from` (to `to`,
+   * default today) Wilma's list of past exams for that period (Kokeet >
+   * Menneet), including exams still waiting for a grade (grade: null).
+   */
+  async grades(opts: { student?: string; limit?: number; from?: string; to?: string } = {}) {
+    if (opts.to && !opts.from) throw new WilmaAiError("invalid_argument", "A period needs a start date (from) as well.");
+    if (opts.from) {
+      const from = parseIsoDate(opts.from);
+      const to = opts.to ? parseIsoDate(opts.to) : todayString();
+      if (to < from) throw new WilmaAiError("invalid_argument", `The period ends (${to}) before it starts (${from}).`);
+      return {
+        from,
+        to,
+        ...(await this.perStudent(opts.student, async (client) => {
+          const exams = await client.exams.past({ from, to });
+          // Every exam of the period unless a limit is given.
+          return { grades: opts.limit ? exams.slice(0, opts.limit) : exams };
+        })),
+      };
+    }
     return this.perStudent(opts.student, async (client) => {
       const overview = await client.overview.get();
       return { grades: overview.grades.slice(0, opts.limit ?? 20) };
@@ -692,6 +839,47 @@ export class WilmaAccess {
     return this.perStudent(opts.student, async (client) => ({ gradebook: await client.gradebook.get() }));
   }
 
+  /**
+   * The child's class, class teacher and other supervisors (front page), and
+   * their own teachers (Wilma's recipient list) with what each teaches them,
+   * from this and next week's timetable. Parts Wilma can't give are listed in
+   * `unavailable`.
+   */
+  async contacts(opts: { student?: string } = {}) {
+    const [from] = currentWeekBounds(0);
+    const [, to] = currentWeekBounds(1);
+    return this.perStudent(opts.student, async (client) => {
+      const unavailable: string[] = [];
+      const optional = <T>(name: string, promise: Promise<T>, fallback: T): Promise<T> =>
+        promise.catch((err) => {
+          if (err instanceof NetworkError) throw err;
+          unavailable.push(name);
+          return fallback;
+        });
+      const [details, recipients, lessons] = await Promise.all([
+        client.student.get(),
+        optional("teachers", client.messages.recipients(), [] as MessageRecipient[]),
+        // Only for what each teacher teaches.
+        client.schedule.list({ from, to }).catch((err) => {
+          if (err instanceof NetworkError) throw err;
+          return [] as ScheduleLesson[];
+        }),
+      ]);
+      const subjects = subjectsByTeacher(lessons);
+      return {
+        contacts: {
+          className: details.className,
+          supervisors: details.supervisors.map((s) => ({ name: s.name, role: s.role })),
+          teachers: ownTeachers(recipients).map((r) => {
+            const code = codeInName(r.name);
+            return { name: r.name, subjects: (code && subjects.get(code.toUpperCase())) || [] };
+          }),
+          ...(unavailable.length ? { unavailable } : {}),
+        },
+      };
+    });
+  }
+
   async printouts(opts: { student?: string } = {}) {
     return this.perStudent(opts.student, async (client) => ({ printouts: await client.printouts.list() }));
   }
@@ -712,7 +900,9 @@ export class WilmaAccess {
 
   async messages(opts: { student?: string; folder?: MessageFolder; limit?: number } = {}) {
     return this.perStudent(opts.student, async (client) => {
-      const messages = await client.messages.list(opts.folder ?? "inbox");
+      // Invitations come with the family's answer as Wilma lists it (the same request).
+      const messages: ListedMessage[] =
+        opts.folder === "appointments" ? (await client.invitations.list()).map(listedInvitation) : await client.messages.list(opts.folder ?? "inbox");
       return { messages: messages.slice(0, opts.limit ?? 20) };
     });
   }

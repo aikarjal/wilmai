@@ -74,7 +74,8 @@ const wilma2 = createServer(async (req, res) => {
     let body = "";
     for await (const chunk of req) body += chunk;
     const form = new URLSearchParams(body);
-    if (form.get("Login") === "parent2" && form.get("Password") === "pw2") {
+    // Two users of this Wilma, for logging in again with another one.
+    if (["parent2", "other2"].includes(form.get("Login")) && form.get("Password") === "pw2") {
       return send(200, "text/plain", "ok", { "Set-Cookie": "Wilma2SID=c2; Path=/; HttpOnly" });
     }
     return send(200, "text/html", "<div>loginfailed</div>");
@@ -171,7 +172,7 @@ try {
   assert.equal((await (await post({ ...creds, password: "wrong" })).json()).code, "bad_credentials");
   const ok = await (await post(creds)).json();
   assert.equal(ok.status, "ok");
-  assert.deepEqual(ok.students, ["Test Student", "Toinen Oppilas"]);
+  assert.deepEqual(ok.accounts[0].children.map((c) => c.name), ["Test Student", "Toinen Oppilas"]);
 
   const saved = JSON.parse(await readFile(mcpConfig, "utf8"));
   assert.equal(saved.profiles[0].tenantUrl, wilmaUrl);
@@ -218,7 +219,31 @@ try {
   // The login page stays open after a login, so a second Wilma can be added on it.
   const second = await (await post({ tenantUrl: wilma2Url, tenantName: "Second Wilma", username: "parent2", password: "pw2" })).json();
   assert.equal(second.status, "ok");
-  assert.deepEqual(second.accounts.map((a) => a.students.length), [2, 1]);
+  assert.deepEqual(second.accounts.map((a) => a.children.length), [2, 1]);
+  assert.deepEqual(second.accounts.map((a) => a.username), ["test-user", "parent2"], "each login named by its username");
+  // Opened again (to add a Wilma or log in after a password change), the page starts from the logins already saved.
+  assert.match(await (await fetch(loginUrl)).text(), /"username":"parent2"/);
+
+  // The page's own buttons, as in WilmAI Home: one login per Wilma, Log in again on a row, ticks, Remove.
+  const button = (path, body, headers = {}) =>
+    fetch(loginUrl + "api/" + path, { method: "POST", headers: { "Content-Type": "application/json", Origin: origin, ...headers }, body: JSON.stringify(body) }).then((r) => r.json());
+  const other = { tenantUrl: wilma2Url, tenantName: "Second Wilma", username: "other2", password: "pw2" };
+  assert.equal((await button("login", other)).code, "taken", "another user for a Wilma already saved goes through its row");
+  const swapped = await button("login", { ...other, replace: second.accounts[1].id });
+  assert.deepEqual(swapped.accounts.map((a) => a.username), ["test-user", "other2"], "Log in again takes the row's place");
+  const back = await button("login", { ...other, username: "parent2", replace: swapped.accounts[1].id });
+  assert.deepEqual(back.accounts.map((a) => a.username), ["test-user", "parent2"]);
+  const firstLogin = back.accounts[0];
+  const unticked = await button("children", { id: firstLogin.id, hidden: ["456"] });
+  assert.deepEqual(unticked.accounts[0].children.map((c) => [c.name, Boolean(c.hidden)]), [["Test Student", false], ["Toinen Oppilas", true]]);
+  const notRead = jsonOf(await client.callTool({ name: "wilma_homework", arguments: {} }));
+  assert.deepEqual(notRead.students.map((s) => s.student.name).sort(), ["Eino Kolmas", "Test Student"], "an unticked child isn't read");
+  const marked = jsonOf(await client.callTool({ name: "wilma_account", arguments: {} }));
+  assert.equal(marked.wilmas.flatMap((w) => w.children).find((c) => c.name === "Toinen Oppilas").hidden, true);
+  await button("children", { id: firstLogin.id, hidden: [] });
+  assert.equal((await button("remove", { id: back.accounts[1].id }, { Origin: "https://evil.example" })).status, "error", "only the page itself");
+  assert.deepEqual((await button("remove", { id: back.accounts[1].id })).accounts.map((a) => a.username), ["test-user"]);
+  assert.equal((await post({ tenantUrl: wilma2Url, tenantName: "Second Wilma", username: "parent2", password: "pw2" })).status, 200);
 
   // Same account, different capitalisation: updates the saved login instead of adding one.
   const recased = await (await post({ ...creds, username: "TEST-User" })).json();

@@ -19,19 +19,18 @@ import {
   type TenantInfo,
   type WilmaProfile,
 } from "@wilm-ai/wilma-client";
-import { clearConfig, getConfigPath, loadConfig, obfuscateSecret, revealSecret, saveConfig, type StoredProfile } from "./config.js";
+import { clearConfig, getConfigPath, loadConfig, obfuscateSecret, revealSecret, saveConfig, savedStudent, type StoredProfile } from "./config.js";
 import {
   WilmaAccess,
   WilmaAiError,
   adoptSession,
   flushSessions,
-  forgetSession,
-  logoutSession,
+  roleOf,
   useSessionStore,
   type FetchedAttachment,
   type StudentRef,
 } from "./agent-data.js";
-import { createAccess, logoutAccounts } from "./access.js";
+import { createAccess, logoutAccounts, removeLogin } from "./access.js";
 import { parseCliArgs, type Flags, type ParsedCommand } from "./cli-args.js";
 import { commandHelp, generalHelp } from "./cli-help.js";
 import { compactText, formatText, messageLine, newsLine } from "./cli-output.js";
@@ -84,6 +83,7 @@ const ACTIONS = [
   { value: "grades", name: "Exam grades" },
   { value: "notes", name: "Lesson notes (last 14 days)" },
   { value: "gradebook", name: "Gradebook" },
+  { value: "contacts", name: "Class and teachers" },
   { value: "news", name: "List news" },
   { value: "messages", name: "List messages" },
   { value: "exit", name: "Exit" },
@@ -198,15 +198,19 @@ async function runDataCommand(parsed: ParsedCommand, out: Output) {
     case "summary":
       return out.data(await access.summary({ student, days: flags.days, since: flags.since }));
     case "schedule":
-      return out.data(await access.schedule({ student, when: flags.when as never, date: flags.date, weekday: flags.weekday }));
+      return out.data(
+        await access.schedule({ student, when: flags.when as never, date: flags.date, weekday: flags.weekday, from: flags.from, to: flags.to })
+      );
     case "homework":
       return out.data(await access.homework({ student, limit: flags.limit }));
     case "exams":
       return out.data(await access.upcomingExams({ student, limit: flags.limit }));
     case "grades":
-      return out.data(await access.grades({ student, limit: flags.limit }));
+      return out.data(await access.grades({ student, limit: flags.limit, from: flags.from, to: flags.to }));
     case "gradebook":
       return out.data(await access.gradebook({ student }));
+    case "contacts":
+      return out.data(await access.contacts({ student }));
     case "notes":
       if (action === "summary") return out.data(await access.lessonNotesSummary({ student, from: flags.from, to: flags.to }));
       return out.data(await access.lessonNotes({ student, date: flags.date, days: flags.days, from: flags.from, to: flags.to }));
@@ -305,6 +309,7 @@ async function runInteractive(config: { profiles: StoredProfile[]; lastProfileId
       if (nextAction === "grades") show("grades", await access.grades({ student }));
       if (nextAction === "notes") show("notes", await access.lessonNotes({ student, days: 14 }));
       if (nextAction === "gradebook") show("gradebook", await access.gradebook({ student }));
+      if (nextAction === "contacts") show("contacts", await access.contacts({ student }));
       if (nextAction === "news") await selectNewsToRead(access, student);
       if (nextAction === "messages") {
         const folder = await selectOrCancel<MessageFolder>({
@@ -578,7 +583,7 @@ async function chooseStudentFromProfile(
   });
   if (fresh.length) {
     students = fresh;
-    stored.students = fresh.map((s) => ({ studentNumber: s.studentNumber, name: s.name }));
+    stored.students = fresh.map(savedStudent);
   } else if (stored.students && stored.students.length) {
     students = stored.students.map((s) => ({
       studentNumber: s.studentNumber,
@@ -683,7 +688,7 @@ async function handleLogin(args: string[], out: Output) {
       const students = (stored.students ?? []).map((s) => s.name);
       console.log(`\nLogged in to ${stored.tenantName ?? stored.tenantUrl} as ${stored.username}.`);
       if (students.length) console.log(`Children: ${students.join(", ")}`);
-      console.log("Add another Wilma in the browser if a child is on a different one, or press Done there (or Enter here) to finish.");
+      console.log("Add another school's Wilma in the browser if a child is on a different one, or press Done there (or Enter here) to finish.");
     },
   });
   const opened = flags.browser && openBrowser(server.url) === "opened";
@@ -739,11 +744,7 @@ const HEADLESS_LOGIN_HELP = [
 async function handleAccounts(action: string | null, args: string[], out: Output) {
   const config = await loadConfig();
   if (action === "remove") {
-    const removed = findSavedLogin(config.profiles, args.join(" "));
-    config.profiles = config.profiles.filter((p) => p.id !== removed.id);
-    if (config.lastProfileId === removed.id) config.lastProfileId = config.profiles[0]?.id ?? null;
-    await saveConfig(config);
-    const session = await endRemovedSession(removed);
+    const { removed, ...session } = await removeLogin(findSavedLogin(config.profiles, args.join(" ")).id);
     const result = { status: "removed", wilma: removed.tenantName ?? removed.tenantUrl, username: removed.username, ...session };
     out.data(result, () =>
       session.session === "ended"
@@ -754,41 +755,33 @@ async function handleAccounts(action: string | null, args: string[], out: Output
     );
     return;
   }
-  const accounts = config.profiles.map((p, i) => ({
-    number: i + 1,
-    wilma: p.tenantName ?? p.tenantUrl,
-    url: p.tenantUrl,
-    username: p.username,
-    children: (p.students ?? []).map((st) => st.name),
-  }));
+  const accounts = config.profiles.map((p, i) => {
+    // As Wilma said when the login's children were last read.
+    const role = roleOf(p.students ?? []);
+    const hidden = (p.students ?? []).filter((st) => p.hidden?.includes(st.studentNumber)).map((st) => st.name);
+    return {
+      number: i + 1,
+      wilma: p.tenantName ?? p.tenantUrl,
+      url: p.tenantUrl,
+      username: p.username,
+      ...(role ? { role } : {}),
+      children: (p.students ?? []).filter((st) => !p.hidden?.includes(st.studentNumber)).map((st) => st.name),
+      // Unticked on the login page: not read.
+      ...(hidden.length ? { hidden } : {}),
+    };
+  });
   out.data({ accounts }, () =>
     accounts.length
       ? [
-          ...accounts.map((a) => `${a.number}. ${a.wilma} — ${a.username}${a.children.length ? ` (${a.children.join(", ")})` : ""}`),
+          ...accounts.map(
+            (a) =>
+              `${a.number}. ${a.wilma} — ${a.username}${a.children.length ? ` (${a.children.join(", ")})` : ""}${a.role === "student" ? ", the student's own login" : ""}${a.hidden ? `; not read: ${a.hidden.join(", ")}` : ""}`
+          ),
           "",
           "Add another with `wilma login`; remove one with `wilma accounts remove <number>`.",
         ].join("\n")
       : "No saved Wilma logins. Run `wilma login`."
   );
-}
-
-/**
- * End a removed login's Wilma session and forget it; the other logins keep
- * theirs. The login is removed even when Wilma can't be reached: its saved
- * session is forgotten anyway, and Wilma ends the session when it expires.
- */
-async function endRemovedSession(
-  removed: StoredProfile
-): Promise<{ session: "ended" | "none" } | { session: "not_ended"; message: string }> {
-  const password = revealSecret(removed.passwordObfuscated);
-  if (!password) return { session: "none" };
-  const profile = { baseUrl: removed.tenantUrl, username: removed.username, password };
-  try {
-    return { session: (await logoutSession(profile)) ? "ended" : "none" };
-  } catch (err) {
-    await forgetSession(profile);
-    return { session: "not_ended", message: err instanceof Error ? err.message : String(err) };
-  }
 }
 
 /** A saved login by its number in `wilma accounts`, its Wilma's name or address, or its username. */

@@ -10,6 +10,7 @@ import {
   obfuscateSecret,
   revealSecret,
   saveConfig,
+  savedStudent,
   type CliConfig,
   type StoredProfile,
 } from "./config.js";
@@ -229,7 +230,7 @@ export async function saveLogin(
     username: input.username,
     passwordObfuscated: obfuscateSecret(input.password),
     totpSecretObfuscated: input.totpSecret ? obfuscateSecret(input.totpSecret.trim()) : previous?.totpSecretObfuscated ?? null,
-    students: input.students.map((s) => ({ studentNumber: s.studentNumber, name: s.name })),
+    students: input.students.map(savedStudent),
     lastStudentNumber: lastStudent?.studentNumber ?? null,
     lastStudentName: lastStudent?.name ?? null,
     lastUsedAt: new Date().toISOString(),
