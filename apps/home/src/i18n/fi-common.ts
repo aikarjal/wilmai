@@ -164,6 +164,11 @@ export const FI_COMMON: Record<string, string> = {
   "Forgot things": "Unohdukset",
   Remarks: "Huomautukset",
   Other: "Muut",
+  "Change what kind of note this is": "Muuta, minkä tyyppinen merkintä tämä on",
+  "Show “{label}” under": "Näytä ”{label}” kohdassa",
+  "You set this for every “{label}” note.": "Asetit tämän kaikille merkinnöille ”{label}”.",
+  "The AI read this from the note's type; change it if it's wrong.": "Tekoäly päätteli tämän merkinnän tyypistä; muuta, jos se meni väärin.",
+  "Going by the type's words; change it if it's wrong.": "Tyypin sanojen perusteella; muuta, jos se meni väärin.",
   "Go to Notes": "Siirry: Merkinnät",
   // Homework
   "Homework (nav)": "Läksyt",

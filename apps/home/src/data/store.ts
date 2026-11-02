@@ -15,6 +15,7 @@ import { clear, del, get, set } from "idb-keyval";
 import { oldKeychain } from "../wilma/transport";
 import { t } from "../i18n";
 import { DEFAULT_SETTINGS, keepsPassword, viewerOf, type AccountInfo, type Child, type ChildLook, type GradeKind, type ItemTranslation, type JevRecord, type LocalState, type LunaRecord, type Settings, type Snapshot, type UsageBucket, type Viewer } from "./model";
+import type { NoteKind } from "./notes";
 import { normalizeAIBudget } from "./ai-budget";
 import type { CalEvent } from "./calendar";
 
@@ -579,6 +580,16 @@ export function setHomework(key: string, value: boolean | null) {
     if (value === null) delete homework[key];
     else homework[key] = value;
     return { local: { ...s.local, homework } };
+  });
+}
+
+/** What kind a lesson note's type is, shown under in Notes, or null to go back to the AI's or the label's words. */
+export function setNoteKind(label: string, kind: Exclude<NoteKind, "explain"> | null) {
+  setState((s) => {
+    const noteKinds = { ...s.local.noteKinds };
+    if (kind === null) delete noteKinds[label];
+    else noteKinds[label] = kind;
+    return { local: { ...s.local, noteKinds } };
   });
 }
 

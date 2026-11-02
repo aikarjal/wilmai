@@ -1043,6 +1043,14 @@ a { color: var(--pen); }
 .note-main { min-width: 0; display: grid; gap: 3px; }
 .note-line { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .nk { background: var(--k-soft); color: var(--k); border-radius: 6px; padding: 1px 8px; font-size: 13px; font-weight: 600; }
+/* A note's type: a click picks the kind its notes go under. */
+.nk-box { position: relative; display: inline-block; }
+.nk-box > button.nk, .nk-pick button.nk { border: 0; font-family: inherit; cursor: pointer; }
+.nk-pick { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; display: grid; gap: 8px; width: 300px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 14px; background: var(--sheet); box-shadow: 0 18px 50px rgb(15 23 42 / 22%); }
+.nk-pick-head { font-size: 13px; font-weight: 600; }
+.nk-pick-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.nk-pick button[aria-checked="true"] { box-shadow: inset 0 0 0 1.5px var(--k); }
+.nk-pick small { color: var(--ink-3); font-size: 12.5px; line-height: 1.4; }
 .note-what { font-weight: 600; }
 .note-what small { font-weight: 400; color: var(--ink-3); font-family: var(--display); font-variant-numeric: tabular-nums; }
 .note-words { color: var(--ink); font-size: 14.5px; }

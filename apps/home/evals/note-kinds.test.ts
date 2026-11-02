@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { labelKinds, noteKind } from "../src/data/notes";
+import { labelKinds, noteKind, noteKindFrom, noteKinds } from "../src/data/notes";
 import { NOTE_LABEL_QS } from "../src/jev/questions";
 import type { JevRecord } from "../src/data/model";
 
@@ -44,3 +44,16 @@ test("with AI, the model's answers about a label decide; an unexplained absence 
   assert.equal(noteKind({ typeLabel: "Tiedoksi", typeClass: "" }, kinds), "other");
   assert.equal(noteKind({ typeLabel: "Selvittämätön poissaolo", typeClass: "" }, kinds), "explain");
 });
+
+test("the parent's word on a note type wins over the AI's and the words, but not over Wilma's unexplained absence", () => {
+  const jev = Object.fromEntries([answer("Hienoa työskentelyä", 0.9, "other", 0.8)]);
+  const set = { "Hienoa työskentelyä": "other" as const, Myöhästyminen: "absence" as const };
+  const kinds = noteKinds(jev, set);
+  assert.equal(noteKind({ typeLabel: "Hienoa työskentelyä", typeClass: "" }, kinds), "other");
+  assert.equal(noteKind({ typeLabel: "Myöhästyminen", typeClass: "" }, kinds), "absence");
+  assert.equal(noteKind({ typeLabel: "Selvittämätön poissaolo", typeClass: "" }, { "Selvittämätön poissaolo": "other" }), "explain");
+  assert.equal(noteKindFrom("Hienoa työskentelyä", jev, set), "parent");
+  assert.equal(noteKindFrom("Hienoa työskentelyä", jev, undefined), "ai");
+  assert.equal(noteKindFrom("Myöhästyminen", {}, undefined), "words");
+});
+

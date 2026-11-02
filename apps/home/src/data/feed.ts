@@ -14,7 +14,7 @@ import { awaitingAnswer, slotState, type Invitation as Invite, type InvitationSl
 import { clock, deadlineDay, shortDate } from "./dates";
 import { t } from "../i18n";
 import { examSuperseded, noteExam, type PupilExam } from "./note-exams";
-import { aiNoteKinds, noteKind, type NoteKind } from "./notes";
+import { isUnexplained, noteKind, noteKinds, type NoteKind } from "./notes";
 import { aboutShown, firstSyncOf, loginOfChild, loginOfId } from "./logins";
 
 export type ItemKind = "message" | "news" | "note";
@@ -137,8 +137,7 @@ export interface NoteGroup {
  * changes and the task disappears on the next sync.
  */
 export function absenceTask(note: Pick<NoteGroup, "typeLabel" | "typeClass">): FeedItem["task"] {
-  const label = `${note.typeLabel} ${note.typeClass}`;
-  if (!/selvittämät|selvitettäv|unexplained|ej utredd|outredd|oklar frånvaro/i.test(label)) return null;
+  if (!isUnexplained(note)) return null;
   return { label: t("Explain in Wilma"), reason: t("Wilma shows this absence as unexplained until a guardian explains it.") };
 }
 
@@ -405,7 +404,7 @@ export function buildFeed(state: Pick<AppState, "snapshot" | "local" | "jev" | "
         deadline: null,
         eventDate: null,
         task: student ? null : absenceTask(note),
-        tone: toneOf(note, state.jev[key], aiNoteKinds(state.jev)),
+        tone: toneOf(note, state.jev[key], noteKinds(state.jev, state.local.noteKinds)),
         replyCount: 0,
         note,
         pupilExam: exam && !examSuperseded(key, exam, state.luna) ? exam : null,

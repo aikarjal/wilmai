@@ -1,6 +1,7 @@
 import type { GradebookEntry, LessonNote, MessageRecipient, NewsItem, OverviewData, PastExam, ScheduleLesson, StudentDetails, UpcomingExam } from "@wilma-client/src/core";
 import type { Invitation as Invite } from "@wilma-client/src/core";
 import { DEFAULT_AI_BUDGET } from "./ai-budget.ts";
+import type { NoteKind } from "./notes";
 
 export interface Child {
   number: string;
@@ -199,6 +200,8 @@ export interface LocalState {
    * homeworkKey); otherwise the AI's reading of its text decides, or its words (data/homework.ts homeworkParts).
    */
   homework?: Record<string, boolean>;
+  /** The parent's word on what kind a lesson note's type is, by the school's label (data/notes.ts noteKinds); not an unexplained absence. */
+  noteKinds?: Record<string, Exclude<NoteKind, "explain">>;
   /** Each child's colour, nickname and emoji, by child number (Settings → Children); only on this device. */
   looks?: Record<string, ChildLook>;
 }

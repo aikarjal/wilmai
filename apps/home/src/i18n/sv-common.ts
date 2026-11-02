@@ -164,6 +164,11 @@ export const SV_COMMON: Record<string, string> = {
   "Forgot things": "Glömska",
   Remarks: "Anmärkningar",
   Other: "Övrigt",
+  "Change what kind of note this is": "Ändra vilken sorts anteckning det här är",
+  "Show “{label}” under": "Visa ”{label}” under",
+  "You set this for every “{label}” note.": "Du har ställt in det här för alla anteckningar ”{label}”.",
+  "The AI read this from the note's type; change it if it's wrong.": "AI:n bedömde det här utifrån anteckningens typ; ändra om det blev fel.",
+  "Going by the type's words; change it if it's wrong.": "Utifrån typens ord; ändra om det blev fel.",
   "Go to Notes": "Gå till Lektionsanteckningar",
   // Homework
   "Homework (nav)": "Läxor",

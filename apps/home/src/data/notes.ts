@@ -4,11 +4,12 @@
  * puuttui opiskeluvälineitä", "Hyvä!"). With AI, the model says what kind each
  * label is, once per label (jev/questions.ts, NOTE_LABEL_QS); without it, or
  * until it has answered, the label's words decide (Finnish, Swedish, English).
+ * The parent's word, set at a note in Notes (LocalState.noteKinds), wins over both.
  * An unexplained absence is always a code rule: it's Wilma's own state, and it
  * makes a task. A label that fits no kind is "other".
  */
 import type { LessonNote } from "@wilma-client/src/core";
-import type { JevRecord } from "./model";
+import type { JevRecord, LocalState } from "./model";
 import { getState, useApp } from "./store";
 import { NOTE_LABEL_QS } from "../jev/questions";
 
@@ -48,16 +49,22 @@ export function labelKinds(jev: Record<string, JevRecord>): Record<string, NoteK
   return out;
 }
 
-let known: { jev: Record<string, JevRecord>; kinds: Record<string, NoteKind> } | null = null;
-/** The model's kinds for the current account, worked out once per change of its answers. */
-export function aiNoteKinds(jev: Record<string, JevRecord> = getState().jev): Record<string, NoteKind> {
-  if (known?.jev !== jev) known = { jev, kinds: labelKinds(jev) };
+type Set = LocalState["noteKinds"];
+let known: { jev: Record<string, JevRecord>; set: Set; kinds: Record<string, NoteKind> } | null = null;
+/** Each label's kind for the current account: the parent's word, else the model's; worked out once per change of either. */
+export function noteKinds(jev: Record<string, JevRecord> = getState().jev, set: Set = getState().local.noteKinds): Record<string, NoteKind> {
+  if (known?.jev !== jev || known.set !== set) known = { jev, set, kinds: { ...labelKinds(jev), ...set } };
   return known.kinds;
 }
-/** The same, for a view: it shows again when the model answers. */
-export const useNoteKinds = () => useApp((s) => aiNoteKinds(s.jev));
+/** The same, for a view: it shows again when the model answers or the parent changes a kind. */
+export const useNoteKinds = () => useApp((s) => noteKinds(s.jev, s.local.noteKinds));
 
-export function noteKind(note: Pick<LessonNote, "typeLabel" | "typeClass">, kinds: Record<string, NoteKind> = aiNoteKinds()): NoteKind {
+/** Who said what kind a label is: the parent, the AI, or the label's words. */
+export function noteKindFrom(label: string, jev: Record<string, JevRecord>, set: Set): "parent" | "ai" | "words" {
+  return set?.[label] ? "parent" : labelKinds(jev)[label] ? "ai" : "words";
+}
+
+export function noteKind(note: Pick<LessonNote, "typeLabel" | "typeClass">, kinds: Record<string, NoteKind> = noteKinds()): NoteKind {
   if (isUnexplained(note)) return "explain";
   const asked = kinds[note.typeLabel];
   if (asked) return asked;

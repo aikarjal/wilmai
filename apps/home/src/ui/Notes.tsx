@@ -12,13 +12,13 @@
  * The sync keeps the last 20 days; the whole year is read from Wilma when
  * this view opens (one request per child, kept six hours).
  */
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { LessonNote } from "@wilma-client/src/core";
-import { markOpened, useApp, useViewer } from "../data/store";
+import { markOpened, setNoteKind, useApp, useViewer } from "../data/store";
 import { loadYearNotes, isDemo } from "../data/engine";
 import { wilmaPage } from "../data/logins";
 import { needsYou, noteGroups, type FeedItem, type NoteGroup } from "../data/feed";
-import { NOTE_KINDS, NOTE_KIND_LABEL, noteKind, useNoteKinds, type NoteKind } from "../data/notes";
+import { NOTE_KINDS, NOTE_KIND_LABEL, noteKind, noteKindFrom, useNoteKinds, type NoteKind } from "../data/notes";
 import { subjectNamer, teacherCodeFor } from "../data/schedule";
 import { addDays, dateSpan, dateSpanFi, isoWeek, mondayOf, shortDate, shortDateFi, today, weekday } from "../data/dates";
 import type { Child } from "../data/model";
@@ -361,6 +361,65 @@ function NoteMatrix({ matrix, kinds, filter, many, onPick }: { matrix: Matrix; k
   );
 }
 
+/**
+ * A note's type in its kind's colour. A click sets what kind the type is, for every note of it, and says who decided:
+ * the parent, the AI or the type's words. An unexplained absence is Wilma's own state, not changed here.
+ */
+function KindChip({ label, kind }: { label: string; kind: NoteKind }) {
+  const w = useWilma();
+  const jev = useApp((s) => s.jev);
+  const set = useApp((s) => s.local.noteKinds);
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => box.current && !box.current.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  if (kind === "explain") return <span className={`nk nk-${kind}`}>{w(label)}</span>;
+  const from = noteKindFrom(label, jev, set);
+  const pick = (k: Exclude<NoteKind, "explain"> | null) => {
+    setNoteKind(label, k);
+    setOpen(false);
+  };
+  return (
+    <span className="nk-box" ref={box}>
+      <button type="button" className={`nk nk-${kind}`} aria-expanded={open} title={t("Change what kind of note this is")} onClick={() => setOpen(!open)}>
+        {w(label)}
+      </button>
+      {open ? (
+        <div className="nk-pick" role="dialog" aria-label={t("Show “{label}” under", { label: w(label) })}>
+          <span className="nk-pick-head">{t("Show “{label}” under", { label: w(label) })}</span>
+          <div className="nk-pick-kinds" role="radiogroup">
+            {NOTE_KINDS.filter((k): k is Exclude<NoteKind, "explain"> => k !== "explain").map((k) => (
+              <button key={k} type="button" role="radio" aria-checked={kind === k} className={`nk nk-${k}`} onClick={() => pick(k)}>
+                {t(NOTE_KIND_LABEL[k])}
+              </button>
+            ))}
+          </div>
+          <small>
+            {from === "parent" ? t("You set this for every “{label}” note.", { label: w(label) }) : from === "ai" ? t("The AI read this from the note's type; change it if it's wrong.") : t("Going by the type's words; change it if it's wrong.")}
+            {from === "parent" ? (
+              <>
+                {" "}
+                <button type="button" className="linkish" onClick={() => pick(null)}>
+                  {t("Undo")}
+                </button>
+              </>
+            ) : null}
+          </small>
+        </div>
+      ) : null}
+    </span>
+  );
+}
+
 function NoteRow({ row, many, highlight, needs, wilma, teacherCode }: { row: Row; many: boolean; highlight: boolean; needs: boolean; wilma: string; teacherCode: string | null }) {
   const w = useWilma();
   const student = useViewer() === "student";
@@ -383,7 +442,7 @@ function NoteRow({ row, many, highlight, needs, wilma, teacherCode }: { row: Row
       {many ? <Tab child={child} /> : <span />}
       <div className="note-main">
         <div className="note-line">
-          <span className={`nk nk-${kind}`}>{w(group.typeLabel)}</span>
+          <KindChip label={group.typeLabel} kind={kind} />
           <span className="note-what">
             <Mark on={needs}>{what}</Mark>
             {time ? <small> · {time}</small> : null}
