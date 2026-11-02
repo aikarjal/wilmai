@@ -18,6 +18,8 @@ export interface WilmaForm {
   buttons: { name: string; value: string; label: string }[];
   selects: { name: string; options: { value: string; label: string; selected: boolean }[] }[];
   textareas: string[];
+  /** The form's checkboxes, ticked or not (`fields` has only the ticked ones, as a browser sends them). */
+  checkboxes?: { name: string; value: string; checked: boolean }[];
 }
 
 export class FormOutsideWilmaError extends Error {
@@ -42,6 +44,7 @@ export function readForm($: CheerioAPI, form: Cheerio<AnyNode>, pageUrl: string)
   const buttons: WilmaForm["buttons"] = [];
   const selects: WilmaForm["selects"] = [];
   const textareas: string[] = [];
+  const checkboxes: NonNullable<WilmaForm["checkboxes"]> = [];
   form.find("input, select, textarea, button").each((_, el) => {
     const control = $(el);
     const name = control.attr("name");
@@ -71,12 +74,14 @@ export function readForm($: CheerioAPI, form: Cheerio<AnyNode>, pageUrl: string)
     if (type === "submit" || type === "image") {
       buttons.push({ name, value, label: clean(control.text()) || value });
     } else if (type === "checkbox" || type === "radio") {
-      if (control.attr("checked") !== undefined) fields.push([name, control.attr("value") ?? "on"]);
+      const checked = control.attr("checked") !== undefined;
+      if (type === "checkbox") checkboxes.push({ name, value: control.attr("value") ?? "on", checked });
+      if (checked) fields.push([name, control.attr("value") ?? "on"]);
     } else if (type !== "file" && type !== "reset" && type !== "button") {
       fields.push([name, value]);
     }
   });
-  return { action: wilmaPath(form.attr("action") ?? "", pageUrl), fields, buttons, selects, textareas };
+  return { action: wilmaPath(form.attr("action") ?? "", pageUrl), fields, buttons, selects, textareas, checkboxes };
 }
 
 /** The form key on a page (Wilma's anti-forgery token), preferring one outside the logout form. */

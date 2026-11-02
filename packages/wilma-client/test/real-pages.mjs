@@ -14,6 +14,8 @@ import { addExamTimes, parseExamsHtml, parsePastExamsHtml } from "../dist/parser
 import { parseOverview } from "../dist/parsers/overview.js";
 import { parseInvitationListings, slotState, awaitingAnswer } from "../dist/parsers/invitations.js";
 import { parseRecipientsHtml, parseStudentDetailsHtml, recipientListSources } from "../dist/parsers/recipients.js";
+import { readForm } from "../dist/parsers/forms.js";
+import { load } from "cheerio";
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/real/${name}`, import.meta.url), "utf8");
 const finnishDay = (date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Helsinki" }).format(date);
@@ -252,6 +254,14 @@ const finnishDay = (date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europ
   assert.deepEqual(invitation.slots.map((s) => slotState(s, new Date("2026-05-27T12:00:00Z"), invitation)), ["closed", "chosen-by-other"]);
   assert.equal(awaitingAnswer(invitation, new Date("2026-05-27T12:00:00Z")), false, "the family has answered");
   assert.equal(listings.find((l) => l.message.wilmaId === message.wilmaId)?.status, "Applied");
+}
+
+// Wilma's new-message form: the "recipients see each other's replies" box is there, and not ticked.
+{
+  const $ = load(fixture("compose-to-teacher.html"));
+  const form = readForm($, $("form").filter((_, f) => $(f).find("textarea[name]").length > 0).first(), "https://wilma.example/!69944915/messages/compose");
+  assert.deepEqual(form.checkboxes?.find((c) => c.name === "CollatedReplies"), { name: "CollatedReplies", value: "true", checked: false });
+  assert.ok(!form.fields.some(([n]) => n === "CollatedReplies"));
 }
 
 console.log("real-pages: all assertions passed");

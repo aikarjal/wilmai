@@ -54,6 +54,28 @@ export function recipientKind(path: string): MessageRecipient["kind"] {
   }
 }
 
+/**
+ * One compose link to several recipients, made as Wilma's own "to all teachers" links are: every r_… parameter of
+ * theirs, each once, and for more than one person showrecipients=1&collatedreplies=1 (the recipients see who else
+ * got it and each other's replies, which the message form can still untick). The links must be one child's.
+ */
+export function composeToAll(paths: string[]): string {
+  if (!paths.length) throw new TypeError("No recipients");
+  if (paths.length === 1) return paths[0];
+  const urls = paths.map((p) => new URL(p, "https://wilma.invalid"));
+  if (urls.some((u) => u.pathname !== urls[0].pathname)) throw new TypeError("The recipients are another child's");
+  const params: [string, string][] = [];
+  for (const u of urls) {
+    for (const [k, v] of u.searchParams) if (k.startsWith("r_") && !params.some(([a, b]) => a === k && b === v)) params.push([k, v]);
+  }
+  const out = new URLSearchParams(params);
+  if (params.length > 1 || recipientKind(`?${out}`) === "group") {
+    out.set("showrecipients", "1");
+    out.set("collatedreplies", "1");
+  }
+  return `${urls[0].pathname}?${out}`;
+}
+
 /** The child's class and supervisors from their front page (`/!<n>/`); empty fields when the panel isn't there. */
 export function parseStudentDetailsHtml(html: string, pageUrl: string): StudentDetails {
   const $ = cheerio.load(html);

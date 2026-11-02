@@ -28,6 +28,7 @@ import { sessionOf } from "./internal.js";
 import { pageErrors, pageFormkey, pageNotices, readForm, setField, wilmaPath, type WilmaForm } from "./parsers/forms.js";
 import { slotState } from "./parsers/invitations.js";
 import { composePath } from "./parsers/recipients.js";
+export { composeToAll } from "./parsers/recipients.js";
 import type { Invitation, MessageRecipient } from "./types.js";
 
 export type { WilmaForm } from "./parsers/forms.js";
@@ -252,7 +253,14 @@ export interface MessageForm {
   readonly form: WilmaForm;
   readonly subjectField: string;
   readonly bodyField: string;
+  /**
+   * Whether the recipients see each other's replies (Wilma's CollatedReplies box, which makes the thread an open
+   * discussion), as Wilma's form has it; null when the form has no such box.
+   */
+  readonly collatedReplies?: boolean | null;
 }
+
+const COLLATED = "CollatedReplies";
 
 export async function prepareMessage(client: WilmaClient, to: { teacherId: string | number } | Pick<MessageRecipient, "composePath">): Promise<MessageForm> {
   const session = sessionFor(client);
@@ -269,17 +277,34 @@ export async function prepareMessage(client: WilmaClient, to: { teacherId: strin
   }
   const compose = await composeForm(session, path);
   if (!compose.subjectField) throw new NotOfferedError("Wilma's message form has no subject field.");
-  return { kind: "message", sessionMark: session.sessionMark, recipients: compose.recipients, form: compose.form, subjectField: compose.subjectField, bodyField: compose.bodyField };
+  const collated = compose.form.checkboxes?.find((c) => c.name === COLLATED);
+  return {
+    kind: "message",
+    sessionMark: session.sessionMark,
+    recipients: compose.recipients,
+    form: compose.form,
+    subjectField: compose.subjectField,
+    bodyField: compose.bodyField,
+    collatedReplies: collated ? collated.checked : null,
+  };
 }
 
-/** Send the message (once). */
-export async function sendMessage(client: WilmaClient, prepared: MessageForm, input: { subject: string; text: string }): Promise<void> {
+/**
+ * Send the message (once). `collatedReplies` ticks or clears Wilma's "recipients see each other's replies" box
+ * when the form has one; left out, the box stays as Wilma's form has it.
+ */
+export async function sendMessage(client: WilmaClient, prepared: MessageForm, input: { subject: string; text: string; collatedReplies?: boolean }): Promise<void> {
   const session = sessionFor(client);
   if (prepared.kind !== "message") throw new TypeError("Expected a form from prepareMessage()");
   if (!input.subject.trim()) throw new TypeError("The subject is empty");
   if (!input.text.trim()) throw new TypeError("The message is empty");
   const before = await sentState(client, null);
-  let fields = setField(prepared.form.fields, prepared.subjectField, input.subject);
+  let fields = prepared.form.fields;
+  const box = prepared.form.checkboxes?.find((c) => c.name === COLLATED);
+  if (box && input.collatedReplies !== undefined) {
+    fields = input.collatedReplies ? setField(fields, box.name, box.value) : fields.filter(([name]) => name !== box.name);
+  }
+  fields = setField(fields, prepared.subjectField, input.subject);
   fields = withButton(setField(fields, prepared.bodyField, editorBody(prepared.form, input.text)), prepared.form, "addsavebtn");
   sameSession(session, prepared);
   const answer = await read(await session.submit(prepared.form.action, fields), "The message");

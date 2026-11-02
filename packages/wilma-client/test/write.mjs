@@ -11,6 +11,7 @@ import {
   WriteRefusedError,
   WriteUnconfirmedError,
   answerInvitation,
+  composeToAll,
   declineInvitation,
   editorBody,
   prepareAbsenceReport,
@@ -246,12 +247,31 @@ const posts = (wilma) => wilma.state.posts.map((p) => `${p.path} ${p.body}`);
   ]);
   assert.equal(wilma.state.outbox[0].Subject, "Kysymys");
 
+  // Recipients seeing each other's replies: as Wilma's form has it, or as asked (ticked with the box's own value, or cleared).
+  assert.equal(form.collatedReplies, true);
+  await sendMessage(child, form, { subject: "Erikseen", text: "Vain minulle.", collatedReplies: false });
+  assert.ok(!posts(wilma)[1].includes("CollatedReplies"), "cleared");
+  const unticked = { ...form, form: { ...form.form, fields: form.form.fields.filter(([n]) => n !== "CollatedReplies"), checkboxes: [{ name: "CollatedReplies", value: "true", checked: false }] } };
+  await sendMessage(child, unticked, { subject: "Kaikille", text: "Näkyy kaikille.", collatedReplies: true });
+  assert.ok(posts(wilma)[2].includes("&CollatedReplies=true&"), "ticked");
+
   // A recipient's link from messages.recipients() or student.get(), kept to this child's compose page.
   const viaLink = await prepareMessage(child, { composePath: `${S}/messages/compose?r_teacher=555` });
   assert.deepEqual(viaLink.recipients, ["Testi Opettaja (TES)"]);
   await assert.rejects(() => prepareMessage(child, { composePath: "/!7654321/messages/compose?r_teacher=555" }), TypeError, "another child's link");
   await assert.rejects(() => prepareMessage(child, { composePath: `${S}/messages/apply/?r_teacher=555` }), TypeError, "not a compose page");
   await assert.rejects(() => prepareMessage(child, { composePath: "https://elsewhere.example/messages/compose?r_teacher=555" }), TypeError);
+}
+
+// 4a. Several recipients in one message: their r_ parameters together, as Wilma's own group links are.
+{
+  const one = `${S}/messages/compose?r_teacher=555`;
+  assert.equal(composeToAll([one]), one, "one recipient: the link as Wilma gave it");
+  assert.equal(
+    composeToAll([one, `${S}/messages/compose?r_teacher=556`, `${S}/messages/compose?r_personnel=7&r_teacher=555`]),
+    `${S}/messages/compose?r_teacher=555&r_teacher=556&r_personnel=7&showrecipients=1&collatedreplies=1`
+  );
+  assert.throws(() => composeToAll([one, "/!7654321/messages/compose?r_teacher=1"]), TypeError, "another child's");
 }
 
 // 4b. Text as Wilma's editor sends it: paragraphs, line breaks, and nothing read as markup.
