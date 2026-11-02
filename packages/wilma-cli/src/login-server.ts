@@ -507,7 +507,8 @@ export function renderLoginPage(opts: LoginPageOptions): string {
   .muted { color:var(--muted); font-size:14px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin:20px 0; }
   label, .label { display:block; font-weight:600; margin:14px 0 6px; }
-  .school > label:first-child { margin-top:0; }
+  .school-top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:0 0 10px; }
+  .school-top label, .school-top .label { margin:0; }
   input { width:100%; font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); }
   input:focus { outline:2px solid var(--teal); outline-offset:1px; }
   input[type=checkbox] { width:auto; margin:0; accent-color:var(--teal); }
@@ -540,7 +541,6 @@ export function renderLoginPage(opts: LoginPageOptions): string {
   .wilma-row.new { border-style:dashed; }
   .wilma-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
   .wilma-head small { display:block; color:var(--muted); font-size:14px; }
-  .row-cancel { position:absolute; top:10px; right:10px; }
   .kids { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
   .kid { display:flex; align-items:center; gap:10px; font-weight:400; margin:0; cursor:pointer; }
   .kids .help { margin:2px 0 0; }
@@ -752,14 +752,15 @@ export function renderLoginPage(opts: LoginPageOptions): string {
   function draftRow(d, label) {
     const row = el("div", { className: "wilma-row new" });
     const fresh = drafts.filter((x) => !x.replace);
-    if (d.replace || accounts.length || fresh.length > 1) {
-      row.append(el("button", { type: "button", className: "quiet row-cancel", textContent: t.cancel, onclick: () => {
-        drafts = drafts.filter((x) => x !== d);
-        if (!accounts.length && !drafts.length) drafts.push(newDraft());
-        note = ""; render();
-      } }));
-    }
-    row.append(schoolField(d, label));
+    // Cancel sits on the label's line, clear of the field below.
+    const cancel = d.replace || accounts.length || fresh.length > 1
+      ? el("button", { type: "button", className: "quiet", textContent: t.cancel, onclick: () => {
+          drafts = drafts.filter((x) => x !== d);
+          if (!accounts.length && !drafts.length) drafts.push(newDraft());
+          note = ""; render();
+        } })
+      : null;
+    row.append(schoolField(d, label, cancel));
     const user = el("input", { id: "user-" + d.id, value: d.username, autocomplete: "username", autocapitalize: "none", spellcheck: false });
     user.addEventListener("input", () => { d.username = user.value; updateGo(); });
     const pass = el("input", { id: "pass-" + d.id, type: "password", value: d.password, autocomplete: "current-password" });
@@ -781,11 +782,11 @@ export function renderLoginPage(opts: LoginPageOptions): string {
     return row;
   }
 
-  function schoolField(d, label) {
+  function schoolField(d, label, cancel) {
     const box = el("div", { className: "school" });
     const id = "school-" + d.id;
     if (d.tenant) {
-      box.append(el("span", { className: "label", textContent: label }), el("div", { className: "chosen" },
+      box.append(el("div", { className: "school-top" }, el("span", { className: "label", textContent: label }), cancel), el("div", { className: "chosen" },
         el("div", {}, el("span", { textContent: d.tenant.name || d.tenant.url }), el("small", { textContent: d.tenant.url })),
         d.mfa ? null : el("button", { type: "button", className: "link", textContent: t.change, onclick: () => { d.tenant = null; d.error = ""; render(); focus(id); } })));
       return box;
@@ -855,7 +856,7 @@ export function renderLoginPage(opts: LoginPageOptions): string {
     for (const city of ["Helsinki", "Espoo", "Tampere", "Vantaa", "Oulu", "Turku", "Jyväskylä"]) {
       chips.append(el("button", { type: "button", textContent: city, onclick: () => { input.value = city; search(city).catch(failed); input.focus(); } }));
     }
-    box.append(el("label", { htmlFor: id, textContent: label }), input, results, help, chips, none);
+    box.append(el("div", { className: "school-top" }, el("label", { htmlFor: id, textContent: label }), cancel), input, results, help, chips, none);
     return box;
   }
 

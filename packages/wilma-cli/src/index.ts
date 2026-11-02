@@ -710,22 +710,26 @@ async function handleLogin(args: string[], out: Output) {
     process.stdin.off("data", finishOnEnter);
     process.stdin.pause();
   }
-  if (!logins.length) {
+  // Done without a new login is fine when logins are saved already: the page also logs in again, unticks and removes.
+  const saved = (await loadConfig()).profiles;
+  if (!saved.length) {
     throw new WilmaAiError("login_cancelled", "Login page closed before logging in. Run `wilma login` again.");
   }
   await flushSessions();
   if (out.json) {
+    // Every saved login, as the page left them.
     out.data({
       status: "ok",
-      logins: logins.map((stored) => ({
+      logins: saved.map((stored) => ({
         wilma: stored.tenantName ?? stored.tenantUrl,
         username: stored.username,
-        students: (stored.students ?? []).map((s) => s.name),
+        students: (stored.students ?? []).filter((s) => !stored.hidden?.includes(s.studentNumber)).map((s) => s.name),
       })),
       configPath: getConfigPath(),
     });
     return;
   }
+  if (!logins.length) console.log(`\nNo new login. On this computer: ${saved.map((p) => `${p.tenantName ?? p.tenantUrl} — ${p.username}`).join(", ")}.`);
   console.log(`\nSaved to ${getConfigPath()}`);
 }
 

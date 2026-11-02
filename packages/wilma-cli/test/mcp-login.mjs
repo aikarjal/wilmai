@@ -361,6 +361,22 @@ try {
   assert.equal(await new Promise((r) => child.on("close", r)), 0);
   assert.equal(JSON.parse(childOut).logins[0].username, "test-user");
 
+  // Opened again and closed with Done, nothing new: the saved login stays, and that's not an error.
+  const again = spawn(process.execPath, [cliPath, "login", "--no-browser", "--json"], { env: baseEnv(browserConfig) });
+  let againOut = "";
+  again.stdout.on("data", (d) => (againOut += d));
+  const reopened = await new Promise((r) => {
+    let buffer = "";
+    again.stderr.on("data", (d) => {
+      buffer += d;
+      const line = buffer.split("\n").find((l) => l.includes('"waiting"'));
+      if (line) r(JSON.parse(line));
+    });
+  });
+  await fetch(reopened.url + "api/done", { method: "POST", headers: { "Content-Type": "application/json", Origin: new URL(reopened.url).origin }, body: "{}" });
+  assert.equal(await new Promise((r) => again.on("close", r)), 0, againOut);
+  assert.deepEqual(JSON.parse(againOut).logins.map((l) => l.username), ["test-user"]);
+
   console.log("mcp-login: all assertions passed");
 } finally {
   wilma.close();
