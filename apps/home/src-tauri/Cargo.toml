@@ -1,6 +1,6 @@
 [package]
 name = "wilmai-home"
-version = "0.3.0"
+version = "0.3.1"
 description = "WilmAI Home: your children's Wilma, sorted. Runs on this computer."
 authors = ["WilmAI"]
 license = "MIT"

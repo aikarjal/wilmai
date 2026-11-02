@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 2.4.0 (unreleased)
+
+_Releases: wilma-cli 2.4.0; the `wilma` skill and plugin 2.4.0. wilma-client stays 1.9.0._
 
 **In short:** the CLI and MCP tools read what WilmAI Home reads: the class and teachers, past exams, invitation answers and any week's lessons; and a parent's and a child's own login on one Wilma work together.
 

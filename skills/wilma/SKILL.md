@@ -1,6 +1,6 @@
 ---
 name: wilma
-version: 2.3.2
+version: 2.4.0
 description: Access Finland's Wilma school system from AI agents, for parents (and students with their own login). Fetch schedules, homework, exams, grades and the gradebook, lesson notes (merkinnät) and absence summaries, messages with replies, news, printouts and linked news resources — through the WilmAI MCP tools (`wilma_*`) when connected, or the wilma CLI. Start with a summary, drill into messages and news, and fetch linked attachments. Requires wilma-cli 2.0+.
 metadata:
   {
