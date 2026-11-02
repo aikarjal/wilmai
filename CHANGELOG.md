@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.4.0 (unreleased)
+## 2.4.0 (2026-11-03)
 
 _Releases: wilma-cli 2.4.0; the `wilma` skill and plugin 2.4.0. wilma-client stays 1.9.0._
 
