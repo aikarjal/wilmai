@@ -159,6 +159,13 @@ if (args.includes("--check")) {
       if (!["praise", "absence", "late", "forgot", "remark", "other"].includes(t.kind)) say(`noteKind: no kind ${t.kind}`);
     }
     for (const t of c.expect.marks ?? []) need(t.item, ["mark"], "marks");
+    for (const t of c.expect.subjects ?? []) {
+      const lesson = c.items.some((i) => i.type === "lesson" && i.subject === t.subject);
+      const graded = c.items.some((i) => i.type === "grade" && i.subject === t.subject);
+      if ((t.pe !== undefined || t.bring !== undefined) && !lesson) say(`subjects: no lesson of "${t.subject}"`);
+      if (t.kind !== undefined && !graded) say(`subjects: "${t.subject}" isn't on the report card`);
+      for (const k of t.kind === undefined ? [] : Array.isArray(t.kind) ? t.kind : [t.kind]) if (!["academic", "other", "conduct"].includes(k)) say(`subjects: no kind ${k}`);
+    }
     const cal = c.expect.calendar;
     for (const e of cal?.events ?? []) {
       if (!isDate(e.date) || (e.endDate !== undefined && !isDate(e.endDate))) say(`calendar: a bad date ${e.date}${e.endDate ? `–${e.endDate}` : ""}`);
@@ -300,7 +307,7 @@ function alignChecks(runs: Check[][]): { check: Check; per: (Check | undefined)[
 const checkId = (caseId: string, x: Check) => `${caseId} · ${x.task}: ${x.what}`;
 const pct = ({ ok, n }: { ok: number; n: number }) => (n ? `${Math.round((100 * ok) / n)} %` : "–");
 const quantile = (xs: number[], q: number) => (xs.length ? [...xs].sort((a, b) => a - b)[Math.min(xs.length - 1, Math.floor(xs.length * q))] : 0);
-const TASKS = ["triage", "action", "tone", "marks", "calendar"] as const;
+const TASKS = ["triage", "action", "tone", "marks", "subjects", "calendar"] as const;
 
 interface Summary {
   localRuntime?: typeof localStatus;

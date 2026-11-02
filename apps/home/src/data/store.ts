@@ -14,7 +14,7 @@ import { useSyncExternalStore } from "react";
 import { clear, del, get, set } from "idb-keyval";
 import { oldKeychain } from "../wilma/transport";
 import { t } from "../i18n";
-import { DEFAULT_SETTINGS, keepsPassword, viewerOf, type AccountInfo, type Child, type ChildLook, type ItemTranslation, type JevRecord, type LocalState, type LunaRecord, type Settings, type Snapshot, type UsageBucket, type Viewer } from "./model";
+import { DEFAULT_SETTINGS, keepsPassword, viewerOf, type AccountInfo, type Child, type ChildLook, type GradeKind, type ItemTranslation, type JevRecord, type LocalState, type LunaRecord, type Settings, type Snapshot, type UsageBucket, type Viewer } from "./model";
 import { normalizeAIBudget } from "./ai-budget";
 import type { CalEvent } from "./calendar";
 
@@ -555,14 +555,26 @@ export function setLeftOut(child: string, subject: string, out: boolean) {
 }
 
 /** Whether a subject is PE, as the parent says (null: back to the AI's reading, or the name's). */
+/** A subject's record with the parent's word set, or taken back (null) so the AI's reading or the name decides again. */
+function withWord<T extends { set?: unknown }>(records: Record<string, T> | undefined, subject: string, value: T["set"] | null): Record<string, T> {
+  const out = { ...records };
+  const { set: _, ...rest } = out[subject] ?? ({} as T);
+  out[subject] = (value === null ? rest : { ...rest, set: value }) as T;
+  return out;
+}
+
 export function setPE(subject: string, value: boolean | null) {
-  setState((s) => {
-    const pe = { ...s.local.pe };
-    const { set: _, ...rest } = pe[subject] ?? {};
-    if (value === null) pe[subject] = rest;
-    else pe[subject] = { ...rest, set: value };
-    return { local: { ...s.local, pe } };
-  });
+  setState((s) => ({ local: { ...s.local, pe: withWord(s.local.pe, subject, value) } }));
+}
+
+/** Whether the child packs for a subject (the Bring line in Homework), or null to go back to the AI's or the name's. */
+export function setBring(subject: string, value: boolean | null) {
+  setState((s) => ({ local: { ...s.local, bring: withWord(s.local.bring, subject, value) } }));
+}
+
+/** What a report-card subject is (academic, another subject, behaviour), or null to go back to the AI's or the name's. */
+export function setGradeKind(subject: string, value: GradeKind | null) {
+  setState((s) => ({ local: { ...s.local, gradeKinds: withWord(s.local.gradeKinds, subject, value) } }));
 }
 
 /** Pin an item to the top of the inbox, or unpin it (only in this app; nothing changes in Wilma). */

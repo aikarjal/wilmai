@@ -1,0 +1,511 @@
+{
+  "id": "subject-names",
+  "added": "2026-11-02",
+  "why": "What the AI reads school subjects' names as, once each: PE (the gym kit), whether the child packs for a lesson (the Bring line in Homework: not lunch, a break, an assembly, a class teacher's moment, a club or remedial teaching), and what a report-card subject is for the averages (academic, another subject, behaviour). Some names here are ones the fallback words miss: Pallopelit, Välkkä, Aamunavaus, Ryhmänohjaajan tuokio, Modersmål och litteratur, Omgivningslära.",
+  "tags": [
+    "subjects",
+    "trap-words"
+  ],
+  "today": "2026-11-04",
+  "pupils": [
+    {
+      "name": "Aino Esimerkki",
+      "class": "7C"
+    },
+    {
+      "name": "Veeti Esimerkki",
+      "class": "3B"
+    },
+    {
+      "name": "Elsa Esimerkki",
+      "class": "5A"
+    }
+  ],
+  "items": [
+    {
+      "type": "lesson",
+      "id": 1,
+      "pupil": 0,
+      "date": "2026-11-04",
+      "start": "08:15",
+      "end": "09:00",
+      "subject": "Matematiikka",
+      "subjectCode": "MA_7"
+    },
+    {
+      "type": "lesson",
+      "id": 2,
+      "pupil": 0,
+      "date": "2026-11-05",
+      "start": "09:15",
+      "end": "10:00",
+      "subject": "Englanti",
+      "subjectCode": "ENA_7"
+    },
+    {
+      "type": "lesson",
+      "id": 3,
+      "pupil": 0,
+      "date": "2026-11-06",
+      "start": "10:15",
+      "end": "11:00",
+      "subject": "Liikunta",
+      "subjectCode": "LI_7"
+    },
+    {
+      "type": "lesson",
+      "id": 4,
+      "pupil": 0,
+      "date": "2026-11-04",
+      "start": "11:15",
+      "end": "12:00",
+      "subject": "Pallopelit",
+      "subjectCode": "VLI_7"
+    },
+    {
+      "type": "lesson",
+      "id": 5,
+      "pupil": 0,
+      "date": "2026-11-05",
+      "start": "12:15",
+      "end": "13:00",
+      "subject": "Kuvataide",
+      "subjectCode": "KU_7"
+    },
+    {
+      "type": "lesson",
+      "id": 6,
+      "pupil": 0,
+      "date": "2026-11-06",
+      "start": "13:15",
+      "end": "14:00",
+      "subject": "Terveystieto",
+      "subjectCode": "TE_7"
+    },
+    {
+      "type": "lesson",
+      "id": 7,
+      "pupil": 0,
+      "date": "2026-11-04",
+      "start": "08:15",
+      "end": "09:00",
+      "subject": "Ruokailu",
+      "subjectCode": ""
+    },
+    {
+      "type": "lesson",
+      "id": 8,
+      "pupil": 0,
+      "date": "2026-11-05",
+      "start": "09:15",
+      "end": "10:00",
+      "subject": "Ryhmänohjaajan tuokio",
+      "subjectCode": "RO"
+    },
+    {
+      "type": "lesson",
+      "id": 9,
+      "pupil": 0,
+      "date": "2026-11-06",
+      "start": "10:15",
+      "end": "11:00",
+      "subject": "Tukiopetus, matematiikka",
+      "subjectCode": "TUKI"
+    },
+    {
+      "type": "lesson",
+      "id": 10,
+      "pupil": 1,
+      "date": "2026-11-04",
+      "start": "11:15",
+      "end": "12:00",
+      "subject": "Uinti",
+      "subjectCode": "UI_3"
+    },
+    {
+      "type": "lesson",
+      "id": 11,
+      "pupil": 1,
+      "date": "2026-11-05",
+      "start": "12:15",
+      "end": "13:00",
+      "subject": "Käsityö",
+      "subjectCode": "KS_3"
+    },
+    {
+      "type": "lesson",
+      "id": 12,
+      "pupil": 1,
+      "date": "2026-11-06",
+      "start": "13:15",
+      "end": "14:00",
+      "subject": "Ympäristöoppi",
+      "subjectCode": "YM_3"
+    },
+    {
+      "type": "lesson",
+      "id": 13,
+      "pupil": 1,
+      "date": "2026-11-04",
+      "start": "08:15",
+      "end": "09:00",
+      "subject": "Välkkä",
+      "subjectCode": ""
+    },
+    {
+      "type": "lesson",
+      "id": 14,
+      "pupil": 1,
+      "date": "2026-11-05",
+      "start": "09:15",
+      "end": "10:00",
+      "subject": "Aamunavaus",
+      "subjectCode": ""
+    },
+    {
+      "type": "lesson",
+      "id": 15,
+      "pupil": 1,
+      "date": "2026-11-06",
+      "start": "10:15",
+      "end": "11:00",
+      "subject": "Luokanvalvojan vartti",
+      "subjectCode": "LV"
+    },
+    {
+      "type": "lesson",
+      "id": 16,
+      "pupil": 1,
+      "date": "2026-11-04",
+      "start": "11:15",
+      "end": "12:00",
+      "subject": "Shakkikerho",
+      "subjectCode": "KERHO"
+    },
+    {
+      "type": "lesson",
+      "id": 17,
+      "pupil": 2,
+      "date": "2026-11-05",
+      "start": "12:15",
+      "end": "13:00",
+      "subject": "Idrott och hälsa",
+      "subjectCode": "GY_5"
+    },
+    {
+      "type": "lesson",
+      "id": 18,
+      "pupil": 2,
+      "date": "2026-11-06",
+      "start": "13:15",
+      "end": "14:00",
+      "subject": "Matematik",
+      "subjectCode": "MA_5"
+    },
+    {
+      "type": "lesson",
+      "id": 19,
+      "pupil": 2,
+      "date": "2026-11-04",
+      "start": "08:15",
+      "end": "09:00",
+      "subject": "Lunch",
+      "subjectCode": ""
+    },
+    {
+      "type": "grade",
+      "id": 20,
+      "pupil": 0,
+      "subject": "Suomen kieli ja kirjallisuus",
+      "grade": "9"
+    },
+    {
+      "type": "grade",
+      "id": 21,
+      "pupil": 0,
+      "subject": "Matematiikka",
+      "grade": "8"
+    },
+    {
+      "type": "grade",
+      "id": 22,
+      "pupil": 0,
+      "subject": "Englanti, A1",
+      "grade": "9"
+    },
+    {
+      "type": "grade",
+      "id": 23,
+      "pupil": 0,
+      "subject": "Ruotsi, B1",
+      "grade": "8"
+    },
+    {
+      "type": "grade",
+      "id": 24,
+      "pupil": 0,
+      "subject": "Historia",
+      "grade": "9"
+    },
+    {
+      "type": "grade",
+      "id": 25,
+      "pupil": 0,
+      "subject": "Elämänkatsomustieto",
+      "grade": "9"
+    },
+    {
+      "type": "grade",
+      "id": 26,
+      "pupil": 0,
+      "subject": "Terveystieto",
+      "grade": "8"
+    },
+    {
+      "type": "grade",
+      "id": 27,
+      "pupil": 0,
+      "subject": "Kuvataide",
+      "grade": "9"
+    },
+    {
+      "type": "grade",
+      "id": 28,
+      "pupil": 0,
+      "subject": "Musiikki",
+      "grade": "8"
+    },
+    {
+      "type": "grade",
+      "id": 29,
+      "pupil": 0,
+      "subject": "Liikunta",
+      "grade": "9"
+    },
+    {
+      "type": "grade",
+      "id": 30,
+      "pupil": 0,
+      "subject": "Kotitalous",
+      "grade": "9"
+    },
+    {
+      "type": "grade",
+      "id": 31,
+      "pupil": 0,
+      "subject": "Valinnainen: Digitaalinen media",
+      "grade": "9"
+    },
+    {
+      "type": "grade",
+      "id": 32,
+      "pupil": 0,
+      "subject": "Oppilaanohjaus",
+      "grade": "S"
+    },
+    {
+      "type": "grade",
+      "id": 33,
+      "pupil": 0,
+      "subject": "Käyttäytyminen",
+      "grade": "9"
+    },
+    {
+      "type": "grade",
+      "id": 34,
+      "pupil": 0,
+      "subject": "Työskentely",
+      "grade": "8"
+    },
+    {
+      "type": "grade",
+      "id": 35,
+      "pupil": 2,
+      "subject": "Modersmål och litteratur",
+      "grade": "8"
+    },
+    {
+      "type": "grade",
+      "id": 36,
+      "pupil": 2,
+      "subject": "Omgivningslära",
+      "grade": "9"
+    },
+    {
+      "type": "grade",
+      "id": 37,
+      "pupil": 2,
+      "subject": "Bildkonst",
+      "grade": "9"
+    },
+    {
+      "type": "grade",
+      "id": 38,
+      "pupil": 2,
+      "subject": "Uppförande",
+      "grade": "9"
+    }
+  ],
+  "expect": {
+    "subjects": [
+      {
+        "subject": "Matematiikka",
+        "pe": false,
+        "bring": true,
+        "kind": "academic"
+      },
+      {
+        "subject": "Englanti",
+        "pe": false,
+        "bring": true
+      },
+      {
+        "subject": "Liikunta",
+        "pe": true,
+        "bring": true,
+        "kind": "other"
+      },
+      {
+        "subject": "Pallopelit",
+        "pe": true,
+        "bring": true
+      },
+      {
+        "subject": "Kuvataide",
+        "pe": false,
+        "bring": true,
+        "kind": "other"
+      },
+      {
+        "subject": "Terveystieto",
+        "pe": false,
+        "bring": true,
+        "kind": "academic"
+      },
+      {
+        "subject": "Ruokailu",
+        "pe": false,
+        "bring": false
+      },
+      {
+        "subject": "Ryhmänohjaajan tuokio",
+        "pe": false,
+        "bring": false
+      },
+      {
+        "subject": "Tukiopetus, matematiikka",
+        "bring": false
+      },
+      {
+        "subject": "Uinti",
+        "pe": true,
+        "bring": true
+      },
+      {
+        "subject": "Käsityö",
+        "pe": false,
+        "bring": true
+      },
+      {
+        "subject": "Ympäristöoppi",
+        "pe": false,
+        "bring": true
+      },
+      {
+        "subject": "Välkkä",
+        "pe": false,
+        "bring": false
+      },
+      {
+        "subject": "Aamunavaus",
+        "pe": false,
+        "bring": false
+      },
+      {
+        "subject": "Luokanvalvojan vartti",
+        "pe": false,
+        "bring": false
+      },
+      {
+        "subject": "Shakkikerho",
+        "pe": false,
+        "bring": false
+      },
+      {
+        "subject": "Idrott och hälsa",
+        "pe": true,
+        "bring": true
+      },
+      {
+        "subject": "Matematik",
+        "pe": false,
+        "bring": true
+      },
+      {
+        "subject": "Lunch",
+        "pe": false,
+        "bring": false
+      },
+      {
+        "subject": "Suomen kieli ja kirjallisuus",
+        "kind": "academic"
+      },
+      {
+        "subject": "Englanti, A1",
+        "kind": "academic"
+      },
+      {
+        "subject": "Ruotsi, B1",
+        "kind": "academic"
+      },
+      {
+        "subject": "Historia",
+        "kind": "academic"
+      },
+      {
+        "subject": "Elämänkatsomustieto",
+        "kind": "academic"
+      },
+      {
+        "subject": "Musiikki",
+        "kind": "other"
+      },
+      {
+        "subject": "Kotitalous",
+        "kind": "other"
+      },
+      {
+        "subject": "Valinnainen: Digitaalinen media",
+        "kind": "other"
+      },
+      {
+        "subject": "Oppilaanohjaus",
+        "kind": "other"
+      },
+      {
+        "subject": "Käyttäytyminen",
+        "kind": "conduct"
+      },
+      {
+        "subject": "Työskentely",
+        "kind": "conduct"
+      },
+      {
+        "subject": "Modersmål och litteratur",
+        "kind": "academic"
+      },
+      {
+        "subject": "Omgivningslära",
+        "kind": "academic"
+      },
+      {
+        "subject": "Bildkonst",
+        "kind": "other"
+      },
+      {
+        "subject": "Uppförande",
+        "kind": "conduct"
+      }
+    ]
+  }
+}

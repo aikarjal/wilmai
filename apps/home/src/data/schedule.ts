@@ -160,16 +160,40 @@ export function allTogether(days: (Pick<DayTimes, "start" | "end"> | undefined)[
 export const nameSaysPE = (l: Pick<ScheduleLesson, "subject" | "subjectCode">): boolean =>
   /liikunta|idrott|gymnastik|physical education/i.test(l.subject) || courseOf(l.subjectCode) === "LI";
 
+/** Who said what a subject is: the parent, the AI reading its name, or the name's usual words. */
+export type SaidBy = "parent" | "ai" | "name";
+
+/** The parent's word, else the AI's reading of the name (yes when more likely than not), else the name's usual words. */
+function judged(known: { ai?: number; set?: boolean } | undefined, byName: () => boolean): { yes: boolean; from: SaidBy } {
+  if (known?.set !== undefined) return { yes: known.set, from: "parent" };
+  if (known?.ai !== undefined) return { yes: known.ai >= 0.5, from: "ai" };
+  return { yes: byName(), from: "name" };
+}
+
 /** Where a subject's PE comes from: the parent's word, the AI's reading of the name, or the name's usual words. */
-export function peOf(l: Pick<ScheduleLesson, "subject" | "subjectCode">, pe: LocalState["pe"]): { pe: boolean; from: "parent" | "ai" | "name" } {
-  const known = pe?.[l.subject];
-  if (known?.set !== undefined) return { pe: known.set, from: "parent" };
-  if (known?.ai !== undefined) return { pe: known.ai >= 0.5, from: "ai" };
-  return { pe: nameSaysPE(l), from: "name" };
+export function peOf(l: Pick<ScheduleLesson, "subject" | "subjectCode">, pe: LocalState["pe"]): { pe: boolean; from: SaidBy } {
+  const { yes, from } = judged(pe?.[l.subject], () => nameSaysPE(l));
+  return { pe: yes, from };
 }
 
 /** A PE lesson: the day the gym kit goes along. */
 export const isPE = (l: Pick<ScheduleLesson, "subject" | "subjectCode">, pe: LocalState["pe"]): boolean => peOf(l, pe).pe;
+
+/**
+ * Without the AI: whether a lesson's name leaves it something to pack for, not lunch, a break, the class teacher's
+ * moment, remedial teaching or a club. A school that names these otherwise is set right by the parent at a lesson
+ * (LocalState.bring).
+ */
+export const nameSaysBring = (l: Pick<ScheduleLesson, "subject">): boolean => !/ruokailu|lounas|lunch|vartti|välitunti|tukiopetus|kerho/i.test(l.subject);
+
+/** Whether the child packs for a subject (the Bring line in Homework), and who said so, as for PE. */
+export function bringOf(l: Pick<ScheduleLesson, "subject">, bring: LocalState["bring"]): { bring: boolean; from: SaidBy } {
+  const { yes, from } = judged(bring?.[l.subject], () => nameSaysBring(l));
+  return { bring: yes, from };
+}
+
+/** A lesson the child packs for: its books, materials or kit. */
+export const bringFor = (l: Pick<ScheduleLesson, "subject">, bring: LocalState["bring"]): boolean => bringOf(l, bring).bring;
 
 /** One weekday of the child's usual week (0 = Monday): the usual start and finish, and whether PE is usual that day. */
 export interface UsualDay {

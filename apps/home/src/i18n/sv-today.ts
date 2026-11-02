@@ -117,6 +117,7 @@ export const SV_TODAY: Record<string, string> = {
   "You set this for every {subject} lesson.": "Du har ställt in det här för alla lektioner i {subject}.",
   "The AI read this from the subject's name; change it if it's wrong.": "AI:n bedömde det här utifrån läroämnets namn; ändra om det blev fel.",
   "Going by the subject's name; change it if it's wrong.": "Utifrån läroämnets namn; ändra om det blev fel.",
+  "On the Bring line in Homework": "På raden Ta med under Läxor",
   // Today, rebuilt: school days, needs you, this week and next
   "School days": "Skoldagar",
   Weekend: "Veckoslut",

@@ -6,12 +6,13 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { RealDate } from "./shim.ts";
-import { firstName, LUNA_THRESHOLDS, type JevRecord, type LunaRecord, type LunaThresholds, type Snapshot } from "../src/data/model.ts";
+import { firstName, LUNA_THRESHOLDS, type GradeKind, type JevRecord, type LocalState, type LunaRecord, type LunaThresholds, type Snapshot } from "../src/data/model.ts";
 export { buildFeed } from "../src/data/feed.ts";
 import { buildFeed, examsNeedingAttention, isNeedsYou } from "../src/data/feed.ts";
 import { calendarEvents, readExams, type CalEvent } from "../src/data/calendar.ts";
 import { examMark, markKey } from "../src/data/marks.ts";
-import { resultKey } from "../src/data/grades.ts";
+import { kindOf, resultKey } from "../src/data/grades.ts";
+import { bringOf, peOf } from "../src/data/schedule.ts";
 import { addDays } from "../src/data/dates.ts";
 import { labelKinds } from "../src/data/notes.ts";
 import type { PastExam } from "@wilma-client/src/core";
@@ -28,6 +29,8 @@ export type CaseItem =
   | { type: "note"; id: number; pupil: number; date: string; start: string | null; end: string | null; subject: string; kind: string; teacher: string; text?: string }
   | { type: "mark"; id: number; pupil: number; date: string; subject: string; name: string; grade: string; info?: string | null }
   | { type: "lesson"; id: number; pupil: number; date: string; start: string; end: string; subject: string; subjectCode: string }
+  /** A subject on the report card (the grade book), with its grade now. */
+  | { type: "grade"; id: number; pupil: number; subject: string; grade: string }
   /** An exam in Wilma's own exam list (exact data, not read). */
   | { type: "exam"; id: number; pupil: number; date: string; time?: string | null; subject: string; subjectCode: string; name?: string; teacher: string; teacherCode: string };
 export interface ExpectedEvent {
@@ -66,6 +69,11 @@ export interface Case {
     noteExam?: { item: number; important: boolean; quote?: string; date?: string | null; originalExam?: number | null }[];
     /** kind: one kind, or the kinds a parent would accept ("88 %" is points or a scale). */
     marks?: { item: number; kind: string | string[]; text?: string; value?: number; share?: [number, number] }[];
+    /**
+     * What the AI reads a subject's name as (luna/subjects.ts), a subject in the case's lessons or on its report card:
+     * PE, packed for (the Bring line in Homework), its kind on the report card (the kinds a parent would accept).
+     */
+    subjects?: { subject: string; pe?: boolean; bring?: boolean; kind?: GradeKind | GradeKind[] }[];
     calendar?: {
       events?: ExpectedEvent[];
       /** Days that must have no event in the calendar, or none for this pupil (suggestions allowed unless `suggestions: false`). */
@@ -138,6 +146,10 @@ export function snapshotOf(c: Case): Snapshot {
       snap.perChild[num(item.pupil)].notes.push({ date: item.date, start: item.start, end: item.end, subject: item.subject, typeLabel: item.kind, typeClass: "", teacher: item.teacher, note: item.text ?? null });
     } else if (item.type === "lesson") {
       snap.perChild[num(item.pupil)].lessons.push({ date: item.date, start: item.start, end: item.end, subject: item.subject, subjectCode: item.subjectCode, dayOfWeek: ((at(item.date).getDay() + 6) % 7) + 1, teacher: "Opettaja Esimerkki", teacherCode: "OPE", groupId: 1 });
+    } else if (item.type === "grade") {
+      const data = snap.perChild[num(item.pupil)];
+      const entry = { name: item.subject, code: null, grade: item.grade, credits: null, date: null, children: [] };
+      data.gradebook = { entries: [...(data.gradebook?.entries ?? []), entry], fetchedAt: at(c.today) };
     } else if (item.type === "exam") {
       const data = snap.perChild[num(item.pupil)];
       data.exams = [
@@ -165,7 +177,7 @@ export function snapshotOf(c: Case): Snapshot {
 }
 
 export interface Check {
-  task: "triage" | "action" | "tone" | "marks" | "calendar";
+  task: "triage" | "action" | "tone" | "marks" | "subjects" | "calendar";
   what: string;
   ok: boolean;
   got: string;
@@ -182,7 +194,7 @@ export interface Scored {
   snapshot: Snapshot;
   jev: Record<string, JevRecord>;
   luna: Record<string, LunaRecord>;
-  local: { opened: Record<string, number>; done: Record<string, number> };
+  local: { opened: Record<string, number>; done: Record<string, number> } & Pick<LocalState, "pe" | "bring" | "gradeKinds">;
 }
 
 /** What the app would show for a case, against what a parent would call right; `thresholds` as the app's unless tried others. */
@@ -284,6 +296,24 @@ export function scoreCase(
       ok: !problems.length,
       got: problems.join(", ") || `${shown.kind} "${shown.text}"${shown.share !== null ? ` ${shown.share.toFixed(2)}` : ""}`,
     });
+  }
+
+  // What the AI read each subject's name as. Only its own answer counts: the name's words standing in for it is a miss.
+  const said = (from: string, value: string, sure?: number) => (from === "ai" ? `${value}${sure === undefined ? "" : ` (${sure.toFixed(2)})`}` : `no AI answer (the name says ${value})`);
+  for (const want of c.expect.subjects ?? []) {
+    const lesson = { subject: want.subject, subjectCode: "" };
+    if (want.pe !== undefined) {
+      const { pe, from } = peOf(lesson, state.local.pe);
+      checks.push({ task: "subjects", what: `"${want.subject}" ${want.pe ? "is" : "isn't"} PE`, ok: from === "ai" && pe === want.pe, got: said(from, pe ? "PE" : "not PE", state.local.pe?.[want.subject]?.ai) });
+    }
+    if (want.bring !== undefined) {
+      const { bring, from } = bringOf(lesson, state.local.bring);
+      checks.push({ task: "subjects", what: `"${want.subject}" ${want.bring ? "is" : "isn't"} on the Bring line`, ok: from === "ai" && bring === want.bring, got: said(from, bring ? "packed for" : "not packed for", state.local.bring?.[want.subject]?.ai) });
+    }
+    if (want.kind !== undefined) {
+      const { kind, from } = kindOf(want.subject, state.local.gradeKinds);
+      checks.push({ task: "subjects", what: `"${want.subject}" on the report card → ${kinds(want.kind)!.join("/")}`, ok: from === "ai" && kinds(want.kind)!.includes(kind), got: said(from, kind) });
+    }
   }
 
   // The calendar as the app would draw it: the read events (no exact Wilma data in these cases).

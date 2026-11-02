@@ -117,6 +117,7 @@ export const FI_TODAY: Record<string, string> = {
   "You set this for every {subject} lesson.": "Asetit tämän kaikille tunneille: {subject}.",
   "The AI read this from the subject's name; change it if it's wrong.": "Tekoäly päätteli tämän oppiaineen nimestä; muuta, jos se meni väärin.",
   "Going by the subject's name; change it if it's wrong.": "Oppiaineen nimen perusteella; muuta, jos se meni väärin.",
+  "On the Bring line in Homework": "Kotitehtävien Mukaan-rivillä",
   // Today, rebuilt: school days, needs you, this week and next
   "School days": "Koulupäivät",
   Weekend: "Viikonloppu",

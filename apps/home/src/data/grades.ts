@@ -6,7 +6,7 @@
  * whose rows are courses.
  */
 import type { ExamGrade, GradebookEntry, PastExam } from "@wilma-client/src/core";
-import type { ChildData } from "./model";
+import type { ChildData, GradeKind, LocalState } from "./model";
 import { addDays, today } from "./dates";
 import { examMark, type ExamMark } from "./marks";
 
@@ -42,23 +42,42 @@ export function gradeValue(grade: string | null | undefined): number | null {
   return mark === "+" ? base + 0.25 : mark === "-" ? base - 0.25 : mark ? base + 0.5 : base;
 }
 
+/** What the parent said about each subject and the AI's reading of its name (LocalState.gradeKinds). */
+type Kinds = LocalState["gradeKinds"];
+
+/**
+ * What a report-card subject is, and who said so: the parent's word, else the AI's reading of the name (luna/subjects.ts),
+ * else the name's usual words.
+ */
+export function kindOf(name: string, kinds: Kinds): { kind: GradeKind; from: "parent" | "ai" | "name" } {
+  const known = kinds?.[name];
+  if (known?.set) return { kind: known.set, from: "parent" };
+  if (known?.ai) return { kind: known.ai, from: "ai" };
+  return { kind: nameSaysConduct(name) ? "conduct" : nameSaysAcademic(name) ? "academic" : "other", from: "name" };
+}
+
 /**
  * Lukuaineet: the academic subjects (languages, mathematics, the sciences,
  * history and civics, religion or ethics, health), whose average the
  * spring joint application (yhteishaku) looks at. Not: arts and skills
  * (art, music, crafts, PE, home economics), electives, behaviour.
  */
-export const isAcademic = (name: string): boolean =>
-  !isConduct(name) &&
+export const isAcademic = (name: string, kinds: Kinds): boolean => kindOf(name, kinds).kind === "academic";
+
+/** Behaviour (and work habits) get a grade but aren't school subjects: shown, not counted in the average. */
+export const isConduct = (name: string, kinds: Kinds): boolean => kindOf(name, kinds).kind === "conduct";
+
+/** Without the AI: whether the name is an academic subject's usual name (Finnish, Swedish). */
+const nameSaysAcademic = (name: string): boolean =>
   !/kuvataide|musiikki|käsityö|tekninen työ|tekstiilityö|liikunta|kotitalous|valinnai|soveltava|design|tanssi|teatteri|ilmaisu|oppilaanohjaus|bildkonst|musik|slöjd|gymnastik|huslig/i.test(name) &&
   /kieli|äidinkieli|kirjallisuus|ruotsi|englanti|saksa|ranska|espanja|venäjä|italia|kiina|japani|latina|\b[AB][12]\b|matematiikka|biologia|maantieto|fysiikka|kemia|ympäristöoppi|terveystieto|uskonto|elämänkatsomus|historia|yhteiskunta|svenska|finska|engelska|matematik|biologi|geografi|fysik|kemi|hälsokunskap|religion|livsåskådning|historia|samhälls/i.test(name);
 
-/** Behaviour (and work habits) get a grade but aren't school subjects: shown, not counted in the average. */
-export const isConduct = (name: string): boolean => /käyttäytyminen|työskentely|uppförande|arbetssätt|behaviou?r|conduct/i.test(name);
+/** Without the AI: whether the name is behaviour's or work habits' usual name. */
+const nameSaysConduct = (name: string): boolean => /käyttäytyminen|työskentely|uppförande|arbetssätt|behaviou?r|conduct/i.test(name);
 
 /** The mean of the subjects' numeric grades and how many there were (behaviour not counted), or null when there are none. */
-export function averageOf(subjects: SubjectGrades[]): { mean: number; count: number } | null {
-  const values = subjects.filter((s) => !isConduct(s.name)).map((s) => gradeValue(s.grade)).filter((v): v is number => v !== null);
+export function averageOf(subjects: SubjectGrades[], kinds: Kinds): { mean: number; count: number } | null {
+  const values = subjects.filter((s) => !isConduct(s.name, kinds)).map((s) => gradeValue(s.grade)).filter((v): v is number => v !== null);
   return values.length ? { mean: values.reduce((a, b) => a + b, 0) / values.length, count: values.length } : null;
 }
 
@@ -81,11 +100,11 @@ export function termsOf(subjects: SubjectGrades[]): { key: string; year: number;
 }
 
 /** The mean of the numeric course grades given in each term (behaviour not counted). */
-export function termAverages(subjects: SubjectGrades[]): { key: string; mean: number }[] {
+export function termAverages(subjects: SubjectGrades[], kinds: Kinds): { key: string; mean: number }[] {
   return termsOf(subjects)
     .map(({ key }) => {
       const values = subjects
-        .filter((s) => !isConduct(s.name))
+        .filter((s) => !isConduct(s.name, kinds))
         .flatMap((s) => s.courses.filter((c) => termOf(c.date)?.key === key).map((c) => gradeValue(c.grade)))
         .filter((v): v is number => v !== null);
       return { key, mean: values.length ? values.reduce((a, b) => a + b, 0) / values.length : NaN };
@@ -94,10 +113,10 @@ export function termAverages(subjects: SubjectGrades[]): { key: string; mean: nu
 }
 
 /** How many subjects have each whole grade now (10, 9, 8…), behaviour not counted. */
-export function spreadOf(subjects: SubjectGrades[]): { grade: number; count: number }[] {
+export function spreadOf(subjects: SubjectGrades[], kinds: Kinds): { grade: number; count: number }[] {
   const counts = new Map<number, number>();
   for (const s of subjects) {
-    if (isConduct(s.name)) continue;
+    if (isConduct(s.name, kinds)) continue;
     const v = gradeValue(s.grade);
     if (v !== null) counts.set(Math.round(v), (counts.get(Math.round(v)) ?? 0) + 1);
   }

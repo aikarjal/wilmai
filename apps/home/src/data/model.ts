@@ -151,6 +151,9 @@ export interface Snapshot {
   firstSyncAt?: number;
 }
 
+/** A report-card subject: academic ("lukuaine"), another school subject, or behaviour and work habits (graded, not averaged). */
+export type GradeKind = "academic" | "other" | "conduct";
+
 /** What the parent did in this app (kept on this device only). */
 export interface LocalState {
   opened: Record<string, number>;
@@ -179,6 +182,18 @@ export interface LocalState {
    * wins (data/schedule.ts isPE).
    */
   pe?: Record<string, { ai?: number; by?: string; set?: boolean }>;
+  /**
+   * Which subjects the child packs for (on the Bring line in Homework: books, materials or kit), by subject name; not
+   * lunch, a break or a class teacher's moment. The AI's reading of the name and the parent's word, as for `pe`
+   * (data/schedule.ts bringFor).
+   */
+  bring?: Record<string, { ai?: number; by?: string; set?: boolean }>;
+  /**
+   * What each report-card subject is, by subject name as the grade book writes it: an academic subject, another
+   * subject, or behaviour (not in the average). The AI's reading (`ai`, `by`) and the parent's word (`set`), which
+   * wins (data/grades.ts kindOf).
+   */
+  gradeKinds?: Record<string, { ai?: GradeKind; by?: string; set?: GradeKind }>;
   /** Each child's colour, nickname and emoji, by child number (Settings → Children); only on this device. */
   looks?: Record<string, ChildLook>;
 }

@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { ScheduleLesson } from "@wilma-client/src/core";
 import type { ChildData } from "../src/data/model.ts";
-import { allTogether, codeInName, dayLessons, dayTimes, isPE, peOf, subjectsByTeacher, teacherSubjects, together, unusualDays, usualWeek } from "../src/data/schedule.ts";
+import { allTogether, bringFor, bringOf, codeInName, dayLessons, dayTimes, isPE, peOf, subjectsByTeacher, teacherSubjects, together, unusualDays, usualWeek } from "../src/data/schedule.ts";
 
 // The children's school days side by side, as a parent with a first-grader keeps them on the fridge: who starts and
 // finishes together, the PE days, the usual week, and an optional lesson (remedial teaching) that shouldn't stretch the day.
@@ -74,6 +74,25 @@ test("PE: the parent's word, else the AI's reading of the subject, else the subj
   // The parent's word wins over both.
   assert.deepEqual(peOf(sport, { Sporttikurssi: { ai: 0.92, by: "x", set: false } }), { pe: false, from: "parent" });
   assert.deepEqual(peOf({ subject: "Uinti", subjectCode: "UI" }, { Uinti: { set: true } }), { pe: true, from: "parent" });
+});
+
+test("the Bring line: the parent's word, else the AI's reading of the subject, else the subject's name", () => {
+  const lunch = { subject: "Ruokailu" };
+  const recess = { subject: "Välkkä" };
+  const maths = { subject: "Matematiikka" };
+  // Without the AI, the name's usual words: lunch isn't packed for; a break named otherwise slips through.
+  assert.deepEqual([bringOf(lunch, undefined), bringOf(maths, undefined), bringOf(recess, undefined)], [
+    { bring: false, from: "name" },
+    { bring: true, from: "name" },
+    { bring: true, from: "name" },
+  ]);
+  // The AI reads the name the words don't know.
+  const ai = { Välkkä: { ai: 0.04, by: "x" }, Matematiikka: { ai: 0.98, by: "x" } };
+  assert.deepEqual(bringOf(recess, ai), { bring: false, from: "ai" });
+  assert.ok(bringFor(maths, ai));
+  // The parent's word wins over both, either way.
+  assert.deepEqual(bringOf(recess, { Välkkä: { ai: 0.9, by: "x", set: false } }), { bring: false, from: "parent" });
+  assert.deepEqual(bringOf(lunch, { Ruokailu: { set: true } }), { bring: true, from: "parent" });
 });
 
 test("what a teacher teaches the child, by the code in a message's name or by the timetable's name", () => {

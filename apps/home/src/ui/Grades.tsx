@@ -20,7 +20,7 @@
  */
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { PastExam } from "@wilma-client/src/core";
-import { markOpened, useApp } from "../data/store";
+import { markOpened, setGradeKind, useApp } from "../data/store";
 import { loadGradebook, loadPastExams } from "../data/engine";
 import {
   averageOf,
@@ -31,6 +31,7 @@ import {
   isConduct,
   isNewResult,
   isResultOrWaiting,
+  kindOf,
   resultKey,
   spreadOf,
   subjectsOf,
@@ -44,7 +45,7 @@ import {
 import { examMark, markKey, markShade, type ExamMark } from "../data/marks";
 import { MARK_QS } from "../jev/questions";
 import { shortDate, today } from "../data/dates";
-import { intelligenceOn, type Child } from "../data/model";
+import { intelligenceOn, type Child, type GradeKind } from "../data/model";
 import { Icon, Linked, Tab } from "./bits";
 import { go, gradesAcademicOnly, tSense, useChildFilter } from "./shared";
 import { locale, plural, t } from "../i18n";
@@ -438,19 +439,20 @@ function ReportCard({
   loading: boolean;
 }) {
   const w = useWilma();
-  const subjects = all.filter((s) => !academic || isAcademic(s.name));
+  const kinds = useApp((s) => s.local.gradeKinds);
+  const subjects = all.filter((s) => !academic || isAcademic(s.name, kinds));
   // Newest term first, after the grade now.
   const terms = termsOf(subjects).reverse();
   // The summary (average and spread) is of one column: the grades now, or a term's (a click on its heading).
   const [column, setColumn] = useState<string>("now");
   const term = terms.find((x) => x.key === column) ?? null;
   const summed = term ? termSubjects(subjects, term.key) : subjects;
-  const avg = averageOf(summed);
-  const spread = spreadOf(summed);
+  const avg = averageOf(summed, kinds);
+  const spread = spreadOf(summed, kinds);
   const total = spread.reduce((sum, s) => sum + s.count, 0);
   const withExams = subjectsWithExams(all, exams);
   // School subjects first in Wilma's order; behaviour at the end.
-  const rows = [...subjects.filter((s) => !isConduct(s.name)), ...subjects.filter((s) => isConduct(s.name))];
+  const rows = [...subjects.filter((s) => !isConduct(s.name, kinds)), ...subjects.filter((s) => isConduct(s.name, kinds))];
 
   return (
     <section className={`card grade-card c${child.color % 16}`}>
@@ -468,7 +470,7 @@ function ReportCard({
             </span>
           ) : null}
         </div>
-        <TermLine points={termAverages(subjects)} />
+        <TermLine points={termAverages(subjects, kinds)} />
       </div>
 
       {total ? (
@@ -500,7 +502,7 @@ function ReportCard({
             const isOpen = open === s.name;
             return (
               <div className={`xs-group${isOpen ? " open" : ""}`} key={`${i}:${s.name}`}>
-                <button type="button" className={`grade-row${isConduct(s.name) ? " conduct" : ""}`} aria-expanded={isOpen} onClick={() => onToggle(s.name)}>
+                <button type="button" className={`grade-row${isConduct(s.name, kinds) ? " conduct" : ""}`} aria-expanded={isOpen} onClick={() => onToggle(s.name)}>
                   <span className="grade-subject">{w(s.name)}</span>
                   <span className={`grade-now ${heat(s.grade)}`}>{s.grade ?? "–"}</span>
                   <Trend trend={trendOf(s)} />
@@ -513,7 +515,12 @@ function ReportCard({
                     );
                   })}
                 </button>
-                {isOpen ? <SubjectTimeline child={child} subject={s} exams={withExams.find((r) => r.subject === s)?.exams ?? []} fresh={fresh} highlight={null} /> : null}
+                {isOpen ? (
+                  <>
+                    <SubjectTimeline child={child} subject={s} exams={withExams.find((r) => r.subject === s)?.exams ?? []} fresh={fresh} highlight={null} />
+                    <GradeKindSwitch name={s.name} />
+                  </>
+                ) : null}
               </div>
             );
           })}
@@ -521,8 +528,38 @@ function ReportCard({
       ) : (
         <p className="ov-none">{loading ? t("Reading…") : t("Wilma has no grades for {name} yet.", { name: child.first })}</p>
       )}
-      {rows.some((s) => isConduct(s.name)) ? <p className="grade-foot">{t("Behaviour isn't counted in the average, as at school.")}</p> : null}
+      {rows.some((s) => isConduct(s.name, kinds)) ? <p className="grade-foot">{t("Behaviour isn't counted in the average, as at school.")}</p> : null}
     </section>
+  );
+}
+
+/** What a report-card subject is, for the averages, and who said so; the parent's word can be undone. */
+function GradeKindSwitch({ name }: { name: string }) {
+  const w = useWilma();
+  const { kind, from } = kindOf(name, useApp((s) => s.local.gradeKinds));
+  const said = from === "parent" ? t("You set this for {subject}.", { subject: w(name) }) : from === "ai" ? t("The AI read this from the subject's name; change it if it's wrong.") : t("Going by the subject's name; change it if it's wrong.");
+  return (
+    <div className="grade-kind">
+      <label>
+        <span>{t("Counts as")}</span>
+        <select value={kind} onChange={(e) => setGradeKind(name, e.target.value as GradeKind)}>
+          <option value="academic">{t("an academic subject")}</option>
+          <option value="other">{t("another subject")}</option>
+          <option value="conduct">{t("behaviour: not in the average")}</option>
+        </select>
+      </label>
+      <small>
+        {said}
+        {from === "parent" ? (
+          <>
+            {" "}
+            <button type="button" className="linkish" onClick={() => setGradeKind(name, null)}>
+              {t("Undo")}
+            </button>
+          </>
+        ) : null}
+      </small>
+    </div>
   );
 }
 

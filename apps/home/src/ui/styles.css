@@ -967,6 +967,11 @@ a { color: var(--pen); }
 .dp-counts small { color: var(--ink-3); font-size: 12.5px; line-height: 1.4; }
 .dp-counts + .dp-counts { border-top: 0; padding-top: 0; }
 .dp-counts .dp-shirt { width: 15px; height: 15px; vertical-align: -2px; }
+/* Report cards: what an opened subject counts as in the averages, and who said so. */
+.grade-kind { display: grid; gap: 3px; margin: 2px 0 12px; font-size: 14px; }
+.grade-kind label { display: flex; gap: 8px; align-items: center; }
+.grade-kind select { font: inherit; }
+.grade-kind small { color: var(--ink-3); font-size: 12.5px; line-height: 1.4; }
 
 
 /* ---------- Exams ---------- */

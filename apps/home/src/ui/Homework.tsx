@@ -18,7 +18,7 @@ import type { ScheduleLesson } from "@wilma-client/src/core";
 import type { HomeworkItem } from "@wilma-client/src/types";
 import { useApp } from "../data/store";
 import { absentWhenGiven, courseKey, dueHomework, isForChild, sameCourse, splitAbsentees } from "../data/homework";
-import { knownLessons, lessonKey } from "../data/schedule";
+import { bringFor, knownLessons, lessonKey } from "../data/schedule";
 import { addDays, dayName, dayWithDate, minutes, mondayOf, nowMinutes, shortDate, today, weekday } from "../data/dates";
 import type { Child, ChildData } from "../data/model";
 import { DetailsPanel } from "./Details";
@@ -28,9 +28,6 @@ import { Icon, Tab } from "./bits";
 import { go, homeworkBySubject as bySubjectView, shortLabel, tSense, useChildFilter } from "./shared";
 import { plural, t } from "../i18n";
 import { useWilma } from "../data/phrases";
-
-/** Lessons that need no books: lunch, homeroom minutes, breaks. */
-const NO_BOOKS = /ruokailu|lounas|lunch|vartti|välitunti|tukiopetus|kerho/i;
 
 /** One homework with what the app knows about it. */
 type Hw = { child: Child; item: HomeworkItem; due: ScheduleLesson | null };
@@ -231,6 +228,7 @@ function UpcomingList({ children, days, dueOn, onOpen }: { children: Child[]; da
 function DayCard({ day, children, due, onOpen }: { day: string; children: Child[]; due: Hw[]; onOpen: (hw: Hw) => void }) {
   const w = useWilma();
   const snap = useApp((s) => s.snapshot)!;
+  const bring = useApp((s) => s.local.bring);
   const summary = children.map((c) => {
     const n = due.filter((h) => h.child === c).length;
     return n ? t("{name}: {n}", { n, name: c.first }) : t("{name}: none", { name: c.first });
@@ -247,7 +245,7 @@ function DayCard({ day, children, due, onOpen }: { day: string; children: Child[
           .filter((l) => l.date === day)
           .sort((a, b) => minutes(a.start) - minutes(b.start));
         if (!lessons.length) return null;
-        const books = [...new Set(lessons.filter((l) => !NO_BOOKS.test(l.subject)).map((l) => l.subject))];
+        const books = [...new Set(lessons.filter((l) => bringFor(l, bring)).map((l) => l.subject))];
         const mine = due.filter((h) => h.child === child);
         return (
           <div className="hw-kid" key={child.number}>
@@ -304,6 +302,7 @@ function BySubject({
 }) {
   const w = useWilma();
   const snap = useApp((s) => s.snapshot)!;
+  const bring = useApp((s) => s.local.bring);
   const now = today();
   return (
     <>
@@ -314,7 +313,7 @@ function BySubject({
         // Each row: the subject's lessons by day (the first that day) and the homework due.
         const rows = new Map<string, { name: string; lessons: Map<string, ScheduleLesson>; due: Hw[] }>();
         for (const l of [...knownLessons(data)].sort((a, b) => a.start.localeCompare(b.start))) {
-          if (!days.includes(l.date) || NO_BOOKS.test(l.subject)) continue;
+          if (!days.includes(l.date) || !bringFor(l, bring)) continue;
           const row = rows.get(keyOf(l)) ?? { name: l.subject, lessons: new Map<string, ScheduleLesson>(), due: [] };
           if (!row.lessons.has(l.date)) row.lessons.set(l.date, l);
           rows.set(keyOf(l), row);

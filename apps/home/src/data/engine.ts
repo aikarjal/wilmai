@@ -53,6 +53,7 @@ import { aboutShown, accountOf, familyChild, familyChildren, familyId, loginOf, 
 import { demoContacts, demoSnapshot } from "../demo/demo";
 import { runJev } from "../jev/runner";
 import { runLuna } from "../luna/events";
+import { runSubjects } from "../luna/subjects";
 import { runTranslations } from "./translations";
 import { t } from "../i18n";
 import { retainedScheduleWeeks } from "./schedule";
@@ -1527,6 +1528,8 @@ export async function loadGradebook(child: string): Promise<GradebookEntry[]> {
       const d = s.perChild[child] ?? { lessons: [], notes: [], exams: [] };
       return { ...s, perChild: { ...s.perChild, [child]: { ...d, gradebook: { entries, fetchedAt: new Date() } } } };
     });
+    // A report-card subject the AI hasn't read yet (with the AI on): what it is, for the averages.
+    void runSubjects();
     return entries;
   } catch (err) {
     if (scope === accountScope() && err instanceof SessionEndedError) handleError(err, loginOfChild(child));

@@ -9,11 +9,11 @@
  * child's times, an exam, the homework) and from the Calendar (an exam or a
  * note there).
  */
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import type { ScheduleLesson, UpcomingExam } from "@wilma-client/src/core";
-import { setLeftOut, setPE, useApp } from "../data/store";
+import { setBring, setLeftOut, setPE, useApp } from "../data/store";
 import { dueHomework, sameCourse } from "../data/homework";
-import { dayLessons, dayTimes, examForLesson, formatMinutes, knownLessons, lessonKey, peOf, unusualDays } from "../data/schedule";
+import { bringOf, dayLessons, dayTimes, examForLesson, formatMinutes, knownLessons, lessonKey, peOf, unusualDays, type SaidBy } from "../data/schedule";
 import { addDays, dayWithDate, minutes, mondayOf, nowMinutes, shortDate, today } from "../data/dates";
 import type { Child } from "../data/model";
 import { buildFeed } from "../data/feed";
@@ -324,6 +324,7 @@ function LessonFacts({ lesson, child }: { lesson: ScheduleLesson; child: Child }
       </div>
       <SchoolDaySwitch lesson={lesson} child={child} />
       <PESwitch lesson={lesson} />
+      <BringSwitch lesson={lesson} />
     </section>
   );
 }
@@ -352,22 +353,39 @@ function SchoolDaySwitch({ lesson, child }: { lesson: ScheduleLesson; child: Chi
  * reads each subject's name; without the AI, the name's usual words; the parent, whose word wins and can be undone.
  */
 function PESwitch({ lesson }: { lesson: ScheduleLesson }) {
-  const w = useWilma();
   const { pe, from } = peOf(lesson, useApp((s) => s.local.pe));
+  return (
+    <SubjectSwitch lesson={lesson} on={pe} from={from} set={setPE}>
+      <Icon name="shirt" className="icon dp-shirt" /> {t("PE: pack the gym kit")}
+    </SubjectSwitch>
+  );
+}
+
+/** Whether the child packs for the subject (its books, materials or kit: the Bring line in Homework), and who said so, as for PE. */
+function BringSwitch({ lesson }: { lesson: ScheduleLesson }) {
+  const { bring, from } = bringOf(lesson, useApp((s) => s.local.bring));
+  return (
+    <SubjectSwitch lesson={lesson} on={bring} from={from} set={setBring}>
+      {t("On the Bring line in Homework")}
+    </SubjectSwitch>
+  );
+}
+
+/** A yes or no about every lesson of a subject, with who said so; the parent's word can be undone. */
+function SubjectSwitch({ lesson, on, from, set, children }: { lesson: ScheduleLesson; on: boolean; from: SaidBy; set: (subject: string, value: boolean | null) => void; children: ReactNode }) {
+  const w = useWilma();
   const said = from === "parent" ? t("You set this for every {subject} lesson.", { subject: w(lesson.subject) }) : from === "ai" ? t("The AI read this from the subject's name; change it if it's wrong.") : t("Going by the subject's name; change it if it's wrong.");
   return (
     <label className="dp-counts">
-      <input type="checkbox" checked={pe} onChange={(e) => setPE(lesson.subject, e.target.checked)} />
+      <input type="checkbox" checked={on} onChange={(e) => set(lesson.subject, e.target.checked)} />
       <span>
-        <b>
-          <Icon name="shirt" className="icon dp-shirt" /> {t("PE: pack the gym kit")}
-        </b>
+        <b>{children}</b>
         <small>
           {said}
           {from === "parent" ? (
             <>
               {" "}
-              <button type="button" className="linkish" onClick={(e) => (e.preventDefault(), setPE(lesson.subject, null))}>
+              <button type="button" className="linkish" onClick={(e) => (e.preventDefault(), set(lesson.subject, null))}>
                 {t("Undo")}
               </button>
             </>

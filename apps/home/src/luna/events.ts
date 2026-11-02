@@ -683,7 +683,7 @@ export function lunaBacklog(): { src: LunaSource; h: string }[] {
 
 let running: Promise<void> | null = null;
 
-/** After the items are read: the items together (what later ones say about earlier events), then the subjects' PE. */
+/** After the items are read: the items together (what later ones say about earlier events), then the subjects (luna/subjects.ts). */
 async function afterReading() {
   await runLinks();
   await runSubjects();
