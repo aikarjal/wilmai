@@ -1,6 +1,6 @@
 {
   "name": "wilmai",
-  "description": "WilmAI: read-only access to Finland's Wilma school system for parents.",
+  "description": "WilmAI: read-only access to Finland's Wilma school system for parents and students.",
   "owner": {
     "name": "Antti Karjalainen",
     "url": "https://wilm.ai"
@@ -9,7 +9,7 @@
     {
       "name": "wilma",
       "source": "./skills",
-      "description": "Ask about your kids' school: schedules, homework, exams, grades, lesson notes, messages and news from Wilma."
+      "description": "Ask about your kids' school, or your own: schedules, homework, exams, grades, lesson notes, messages and news from Wilma."
     }
   ]
 }

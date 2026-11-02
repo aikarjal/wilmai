@@ -1,6 +1,6 @@
 {
   "name": "wilma",
-  "description": "Ask about your kids' school: schedules, homework, exams, grades, lesson notes, messages and news from Finland's Wilma. Read-only; your login stays on your computer.",
+  "description": "Ask about your kids' school, or your own: schedules, homework, exams, grades, lesson notes, messages and news from Finland's Wilma. Read-only; your login stays on your computer.",
   "version": "2.3.0",
   "author": {
     "name": "Antti Karjalainen",
@@ -14,6 +14,7 @@
     "school",
     "finland",
     "parents",
+    "students",
     "koulu"
   ],
   "mcpServers": {

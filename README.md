@@ -55,6 +55,7 @@ WilmAI connects Wilma, the system Finnish schools use for schedules, homework, e
 - **It all runs on your computer.** No WilmAI server, no account, no telemetry. It logs in only to your school's Wilma and can't send messages or change anything there. The password goes into a local login page, never into a chat.
 - **Agent skills.** `wilma` teaches an agent the tools and commands; `wilma-triage` turns them into a morning briefing that flags what needs doing and puts exams in the family calendar.
 - **Any school on Wilma.** The login page finds your school's Wilma by city or school name. Two-step verification and families with several Wilmas work.
+- **Students can use it too.** With their own Wilma login, a student asks about their own lessons, homework and exams.
 
 ## Try it in one line
 

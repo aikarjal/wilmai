@@ -1,7 +1,7 @@
 {
   "name": "@wilm-ai/wilma-cli",
   "version": "2.3.1",
-  "description": "Read your children's Wilma (Finnish school system) from the terminal or an AI assistant: schedule, homework, exams, messages and news.",
+  "description": "Read your children's Wilma (Finnish school system) from the terminal or an AI assistant: schedule, homework, exams, messages and news. Students can use their own login too.",
   "mcpName": "ai.wilm/wilma",
   "license": "MIT",
   "repository": {

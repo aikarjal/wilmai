@@ -1,7 +1,7 @@
 ---
 name: wilma
 version: 2.3.0
-description: Access Finland's Wilma school system from AI agents. Fetch schedules, homework, exams, grades and the gradebook, lesson notes (merkinnät) and absence summaries, messages with replies, news, printouts and linked news resources — through the WilmAI MCP tools (`wilma_*`) when connected, or the wilma CLI. Start with a summary, drill into messages and news, and fetch linked attachments. Requires wilma-cli 2.0+.
+description: Access Finland's Wilma school system from AI agents, for parents (and students with their own login). Fetch schedules, homework, exams, grades and the gradebook, lesson notes (merkinnät) and absence summaries, messages with replies, news, printouts and linked news resources — through the WilmAI MCP tools (`wilma_*`) when connected, or the wilma CLI. Start with a summary, drill into messages and news, and fetch linked attachments. Requires wilma-cli 2.0+.
 metadata:
   {
     "openclaw":
@@ -33,7 +33,7 @@ metadata:
 
 ## Overview
 
-Wilma is the Finnish school information system used by schools and municipalities to share messages, news, exams, schedules, homework, and other student-related updates with parents/guardians.
+Wilma is the Finnish school information system used by schools and municipalities to share messages, news, exams, schedules, homework, and other student-related updates with parents/guardians. Students can use WilmAI with their own login too; it then covers just that student.
 
 There are two ways to reach Wilma. Both return the same data, in the same JSON shape.
 

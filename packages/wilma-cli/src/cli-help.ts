@@ -82,7 +82,7 @@ const COMMAND_HELP: Record<string, CommandHelp> = {
   login: {
     usage: ["wilma login [--no-browser]", "wilma login --tenant <url|city> --username <name> [--password-stdin] [--totp-secret <key>]"],
     about:
-      "Log in to Wilma. Opens a one-time login page in the browser where the parent picks their school's Wilma; logins are saved on this computer. Families with children on different Wilmas add each one there. Without a browser, pass --tenant and --username with the password on stdin or in WILMA_PASSWORD.",
+      "Log in to Wilma, with a parent's account or a student's own. Opens a one-time login page in the browser where the user picks their school's Wilma; logins are saved on this computer. Families with children on different Wilmas add each one there. Without a browser, pass --tenant and --username with the password on stdin or in WILMA_PASSWORD.",
     examples: ["wilma login"],
   },
   accounts: {

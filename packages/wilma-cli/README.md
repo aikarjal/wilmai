@@ -1,6 +1,6 @@
 # @wilm-ai/wilma-cli
 
-Command line interface for Wilma (Finnish school system), built for parents and AI agents.
+Command line interface for Wilma (Finnish school system), built for parents and AI agents. Students can use it with their own Wilma login too.
 
 ## Install
 Needs Node.js 20.18.1 or newer.
