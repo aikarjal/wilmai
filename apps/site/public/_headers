@@ -17,3 +17,9 @@
 # release. Short-lived, so a withdrawn release goes quickly.
 /app/latest.json
   Cache-Control: public, max-age=60, must-revalidate
+
+# The public key that proves to the MCP Registry that wilm.ai publishes the
+# server "ai.wilm/wilma" (packages/wilma-cli/server.json). The private key is
+# kept outside the repository; see DEVELOPING.md.
+/.well-known/mcp-registry-auth
+  Content-Type: text/plain; charset=utf-8

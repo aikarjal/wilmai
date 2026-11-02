@@ -9,6 +9,7 @@ Notes for working on WilmAI and releasing it. Tests are in [TESTING.md](TESTING.
 | Wilma client | `packages/wilma-client` | npm `@wilm-ai/wilma-client` | its `package.json` |
 | CLI and MCP server | `packages/wilma-cli` | npm `@wilm-ai/wilma-cli` | its `package.json` |
 | Claude Desktop extension | built from the CLI (`packages/wilma-cli/mcpb`, `scripts/build-mcpb.mjs`) | `wilmai.mcpb` on each CLI GitHub release and on the rolling `claude-desktop` release, which https://wilm.ai/get/claude points to | the CLI's `package.json` |
+| MCP Registry entry | `packages/wilma-cli/server.json`, named by `mcpName` in the CLI's `package.json` | `ai.wilm/wilma` on the [official MCP Registry](https://registry.modelcontextprotocol.io), which PulseMCP and other directories copy | `server.json`, twice: the same as the CLI's version |
 | Skills | `skills/wilma`, `skills/wilma-triage` | ClawHub `wilma` and `wilma-triage`; also `npx skills add aikarjal/wilmai` | `version:` in each `SKILL.md` |
 | Plugin (Claude Code, Codex, ChatGPT) | `skills/` (`skills/.claude-plugin/plugin.json`; marketplace in `.claude-plugin/marketplace.json`) | this GitHub repository, as the marketplace `aikarjal/wilmai` | `plugin.json` |
 | Website | `apps/site` | wilm.ai on Cloudflare Workers, deployed from `main` | none |
@@ -86,6 +87,7 @@ Only `aikarjal` can publish to npm and ClawHub.
      (cd packages/wilma-cli && npm pack --dry-run)
      pnpm --filter @wilm-ai/wilma-cli build:mcpb
      claude plugin validate ./skills
+     mcp-publisher validate packages/wilma-cli/server.json
      ```
    - Smoke-test the CLI as it will be installed: `npm pack` it, `npm install -g --prefix <empty dir> <tarball>`, then run `<dir>/bin/wilma --version` and a command.
    - Push `main` and wait for CI to pass.
@@ -93,20 +95,29 @@ Only `aikarjal` can publish to npm and ClawHub.
    - Run it in an interactive terminal. npm prints an npmjs.com link to approve the publish in the browser; from a non-interactive shell it fails with `EOTP`.
    - `npm login` first if needed (a login lasts about two hours).
    - npm says the package "is being processed" for a few minutes; check with `npm view @wilm-ai/wilma-cli dist-tags --prefer-online`.
-3. **GitHub:** tag the release-prep commit (`wilma-client@x.y.z`, `wilma-cli@x.y.z`), push the tags, and create the release:
+3. **MCP Registry**, once npm serves the new CLI (the registry reads `mcpName` from that version on npm):
+   ```bash
+   cd packages/wilma-cli
+   KEY="$(op document get 'wilm.ai MCP Registry key' --account my.1password.com | "$(brew --prefix openssl@3)/bin/openssl" pkey -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n')"
+   mcp-publisher login http --domain wilm.ai --private-key "$KEY"
+   mcp-publisher publish
+   ```
+   - The key is a 1Password document in the maintainer's personal account; its public half is `apps/site/public/.well-known/mcp-registry-auth`, which the registry reads from wilm.ai. A new key needs that file changed and deployed first. macOS's own `openssl` can't read Ed25519 keys, hence Homebrew's `openssl@3`. `mcp-publisher` is `brew install mcp-publisher`.
+   - Check: `curl -s 'https://registry.modelcontextprotocol.io/v0.1/servers?search=ai.wilm/wilma'`.
+4. **GitHub:** tag the release-prep commit (`wilma-client@x.y.z`, `wilma-cli@x.y.z`), push the tags, and create the release:
    ```bash
    gh release create wilma-cli@x.y.z --title "wilma-cli x.y.z" --notes-file notes.md --latest
    ```
    A client release of its own (`wilma-client@x.y.z`) gets `--latest=false`, so the CLI keeps Latest (see GitHub releases above).
    The notes start with an "**Update:** `wilma update` …" line, followed by the changelog section (with its "In short" line). The `release-mcpb` workflow then attaches `wilmai.mcpb` and updates the `claude-desktop` release. Check that https://wilm.ai/get/claude serves the new version (`unzip -p wilmai.mcpb manifest.json`).
-4. **ClawHub, last** (ClawHub can't withdraw a skill's latest version):
+5. **ClawHub, last** (ClawHub can't withdraw a skill's latest version):
    ```bash
    npx clawhub publish skills/wilma --slug wilma --version x.y.z --changelog "…" \
      --source-repo aikarjal/wilmai --source-commit <sha> --source-ref wilma-cli@x.y.z --source-path skills/wilma
    ```
    The same for `wilma-triage` if it changed. `npx clawhub inspect wilma` shows when the security scan has passed and the version is public.
-5. **Date the changelog** ("changelog: x.y.z released YYYY-MM-DD") and push.
-6. **Check** that npx gets the new version on a machine without a global install:
+6. **Date the changelog** ("changelog: x.y.z released YYYY-MM-DD") and push.
+7. **Check** that npx gets the new version on a machine without a global install:
    ```bash
    NPM_CONFIG_PREFIX=$(mktemp -d) npx -y @wilm-ai/wilma-cli@2 --version
    ```
@@ -116,3 +127,4 @@ Only `aikarjal` can publish to npm and ClawHub.
 - npm: `npm dist-tag add @wilm-ai/wilma-cli@<previous> latest`. People who already updated keep the new version.
 - Claude Desktop download: mark the GitHub release as a pre-release and rebuild the previous one: `gh workflow run release-mcpb.yml -f tag=wilma-cli@<previous>`. Give Latest back to the previous CLI release (`gh release edit wilma-cli@<previous> --latest`), or "what's new" opens whatever GitHub picks.
 - ClawHub: publish a fixed version.
+- MCP Registry: `mcp-publisher status --status deprecated --message "…" ai.wilm/wilma <version>` (after `mcp-publisher login`). A version can't be published twice; a fix goes out as a new version.

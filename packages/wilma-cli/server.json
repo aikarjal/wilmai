@@ -1,0 +1,28 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "ai.wilm/wilma",
+  "title": "WilmAI",
+  "description": "Finland's Wilma school system for parents and students: schedule, homework, exams and messages.",
+  "websiteUrl": "https://wilm.ai",
+  "repository": {
+    "url": "https://github.com/aikarjal/wilmai",
+    "source": "github",
+    "id": "1150112092",
+    "subfolder": "packages/wilma-cli"
+  },
+  "icons": [
+    { "src": "https://wilm.ai/icon.png", "mimeType": "image/png", "sizes": ["512x512"] }
+  ],
+  "version": "2.3.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@wilm-ai/wilma-cli",
+      "version": "2.3.1",
+      "runtimeHint": "npx",
+      "transport": { "type": "stdio" },
+      "packageArguments": [{ "type": "positional", "value": "mcp" }]
+    }
+  ]
+}
