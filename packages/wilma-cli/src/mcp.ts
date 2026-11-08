@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { AuthenticationError, CredentialsUnavailableError } from "@wilm-ai/wilma-client";
+import { AuthenticationError, CredentialsUnavailableError, LoginBlockedError } from "@wilm-ai/wilma-client";
 import { runBackgroundMoves } from "./secret-moves.js";
 import { SecretStoreError } from "./secret-store.js";
 import { type WilmaAccess, useSessionStore } from "./agent-data.js";
@@ -115,6 +115,9 @@ async function withAccess(run: (access: WilmaAccess) => Promise<CallToolResult>)
         "Wilma rejected the saved login (the password may have changed). Call wilma_login to log in again.",
         true
       );
+    }
+    if (err instanceof LoginBlockedError) {
+      return textResult(`${err.message}.\n${err.hint}\nDon't start a new Wilma login: from this computer it is refused the same way. Tell the user what this says.`, true);
     }
     return textResult(err instanceof Error ? err.message : String(err), true);
   }

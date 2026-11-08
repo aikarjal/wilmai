@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { AuthenticationError, WilmaClient } from "../dist/index.js";
+import { APIError, AuthenticationError, LoginBlockedError, WilmaClient } from "../dist/index.js";
 
 let loginPosts = 0;
 let currentSid = 0;
@@ -178,6 +178,67 @@ try {
     assert.deepEqual(asked, ["fk1", "fk1"], "asked twice for the same challenge");
   } finally {
     mfaServer.close();
+  }
+
+  // A Wilma that refuses the computer (a service in front of it answers 403
+  // to every request, as Helsinki's does from outside Finland): the login
+  // stops at the token, before the password is sent, with LoginBlockedError.
+  let blocked = false;
+  let blockedPosts = 0;
+  let blockedSid = 0;
+  const blockServer = createServer((req, res) => {
+    if (blocked) {
+      if (req.method === "POST") blockedPosts += 1;
+      res.writeHead(403, { "Content-Type": "text/html", "cf-mitigated": "challenge" });
+      return res.end("<title>Just a moment...</title>");
+    }
+    const base = `http://127.0.0.1:${blockServer.address().port}`;
+    if (req.method === "GET" && req.url === "/login") {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      return res.end("<form></form>");
+    }
+    if (req.method === "GET" && req.url === "/token") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ Wilma2LoginID: "t" }));
+    }
+    if (req.method === "POST" && req.url === "/login") {
+      blockedSid += 1;
+      res.writeHead(303, { Location: `${base}/?checkcookie`, "Set-Cookie": `Wilma2SID=ok${blockedSid}; Path=/` });
+      return res.end();
+    }
+    if (req.url?.startsWith("/?checkcookie")) {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      return res.end("<html>home</html>");
+    }
+    res.writeHead(404);
+    res.end();
+  });
+  await new Promise((r) => blockServer.listen(0, "127.0.0.1", r));
+  try {
+    const blockedUrl = `http://127.0.0.1:${blockServer.address().port}`;
+    blocked = true;
+    const err = await WilmaClient.login({ baseUrl: blockedUrl, username: "parent", password: "right" }).then(
+      () => assert.fail("a refused computer must not log in"),
+      (e) => e
+    );
+    assert.ok(err instanceof LoginBlockedError, `LoginBlockedError, got ${err?.name}: ${err?.message}`);
+    assert.equal(err.status, 403);
+    assert.match(err.message, /before the password was sent/);
+    assert.match(err.hint, /only from Finland/);
+    assert.ok(!(err instanceof APIError), "not an APIError, so 403-tolerant reads don't hide it");
+    assert.ok(!(err instanceof AuthenticationError), "not a wrong password");
+    assert.equal(blockedPosts, 0, "the password is never sent");
+
+    // A logged-in client whose computer gets refused later (its session ended,
+    // the new login is refused): a read that takes a 403 as "not shown" fails
+    // with the block instead of answering "no bulletins".
+    blocked = false;
+    const later = await WilmaClient.login({ baseUrl: blockedUrl, username: "parent", password: "right" });
+    blocked = true;
+    await assert.rejects(later.news.listIfShown(), LoginBlockedError);
+    assert.equal(blockedPosts, 0, "no password sent on the re-login either");
+  } finally {
+    blockServer.close();
   }
 
   console.log("login: all assertions passed");

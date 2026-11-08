@@ -67,6 +67,27 @@ export class APIError extends Error {
   }
 }
 /**
+ * Wilma answered 403 for its login token, the first step of every login,
+ * before the password is sent: it refuses this computer, not the username or
+ * password. Some Wilmas accept connections only from Finland (a service in
+ * front of Wilma answers everyone else with 403), so a computer abroad, such
+ * as a cloud server, can't log in there. Not an APIError on purpose: reads
+ * that take a 403 to mean "this Wilma doesn't show it" mustn't hide it.
+ */
+export class LoginBlockedError extends Error {
+  status: number;
+  /** What to do about it, for people and assistants. */
+  hint: string;
+  constructor(status = 403) {
+    super(`Wilma refused this computer's connection before the password was sent (HTTP ${status} for its login token)`);
+    this.name = "LoginBlockedError";
+    this.status = status;
+    this.hint =
+      "Some Wilmas accept connections only from Finland. If WilmAI runs on a server or cloud computer outside Finland, " +
+      "run it on a computer in Finland instead, such as your own computer or a server located in Finland.";
+  }
+}
+/**
  * Wilma ended the session (another login on the account, or it expired) and
  * this client doesn't log in again by itself (no saved credentials, or
  * `relogin: false`). Nothing was sent; log in again and retry.
@@ -769,6 +790,11 @@ export class WilmaSession {
 
   private async getLoginToken(): Promise<string> {
     const resp = await this.rawRequest("/token", { method: "GET" });
+    if (resp.status === 403) {
+      // Judged by the step and the status only: nothing has been sent but GETs.
+      await resp.body?.cancel();
+      throw new LoginBlockedError(resp.status);
+    }
     if (resp.status !== 200) {
       // An outage or a changed login page, not a wrong password.
       await resp.body?.cancel();

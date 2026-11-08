@@ -49,7 +49,7 @@ wilma help <command>          # usage, examples and the JSON shape
 - **Dates** are `YYYY-MM-DD`, `today`, `yesterday` or `tomorrow`.
 - **One login, not one per command.** Commands continue the last Wilma session (saved next to the login, readable only by you) and log in again only when Wilma has ended it. Each login would otherwise log you out of Wilma in your browser and, with two-step verification, need a new code. `WILMAI_NO_SESSION_CACHE=1` turns this off.
 - **For daily runs:** `wilma summary --since yesterday` returns only what is new: bulletins, messages, homework and lesson notes from that day on, plus anything unread.
-- **Errors** are JSON too: `{ "status": "error", "code": "unknown_student", "message": "…" }`, with exit code 2 for usage errors, 3 when not logged in, and 1 otherwise. Codes include `invalid_argument`, `unknown_command`, `not_logged_in`, `unknown_student`, `ambiguous_student`, `not_found`, `login_failed`, `mfa_required`, `network` and `wilma_error`.
+- **Errors** are JSON too: `{ "status": "error", "code": "unknown_student", "message": "…" }`, with exit code 2 for usage errors, 3 when not logged in, and 1 otherwise. Codes include `invalid_argument`, `unknown_command`, `not_logged_in`, `unknown_student`, `ambiguous_student`, `not_found`, `login_failed`, `login_blocked` (Wilma refused this computer before the password was sent; some Wilmas accept connections only from Finland), `mfa_required`, `network` and `wilma_error`.
 
 The 1.x spellings still work: `kids list`, `tenants`, `attendance list`, `<command> list`, `messages read <id>`, `news read <id>`, `news resource download <id> <resource>`, `printouts download <id>` and `--all-students`.
 

@@ -89,6 +89,17 @@ const wilma2 = createServer(async (req, res) => {
 await new Promise((r) => wilma2.listen(0, "127.0.0.1", r));
 const wilma2Url = `http://127.0.0.1:${wilma2.address().port}`;
 
+// A Wilma that refuses this computer: a service in front of it answers 403 to
+// every request (as Helsinki's does from outside Finland). Counts password posts.
+let blockedPosts = 0;
+const blockedWilma = createServer((req, res) => {
+  if (req.method === "POST") blockedPosts += 1;
+  res.writeHead(403, { "Content-Type": "text/html", "cf-mitigated": "challenge" });
+  res.end("<title>Just a moment...</title>");
+});
+await new Promise((r) => blockedWilma.listen(0, "127.0.0.1", r));
+const blockedUrl = `http://127.0.0.1:${blockedWilma.address().port}`;
+
 const baseEnv = (configPath, extra = {}) => {
   const env = { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_NO_BROWSER: "1", WILMAI_NO_UPDATE_CHECK: "1", ...extra };
   for (const key of ["WILMA_TENANT", "WILMA_USERNAME", "WILMA_PASSWORD", "WILMA_TOTP_SECRET"]) {
@@ -170,6 +181,10 @@ try {
 
   assert.equal((await post(creds, { Origin: "https://evil.example" })).status, 403);
   assert.equal((await (await post({ ...creds, password: "wrong" })).json()).code, "bad_credentials");
+  // A Wilma that refuses the computer: its own code (the page explains it), and the password never reaches it.
+  assert.equal((await (await post({ ...creds, tenantUrl: blockedUrl, tenantName: "Blocked Wilma" })).json()).code, "login_blocked");
+  assert.match(pageHtml, /login_blocked: t\.blocked/);
+  assert.equal(blockedPosts, 0, "no password sent to a Wilma that refuses the computer");
   const ok = await (await post(creds)).json();
   assert.equal(ok.status, "ok");
   assert.deepEqual(ok.accounts[0].children.map((c) => c.name), ["Test Student", "Toinen Oppilas"]);
@@ -323,6 +338,35 @@ try {
     }
   );
 
+  // A Wilma that refuses this computer: login_blocked with a hint, the same for a saved
+  // login's commands (env-var account), and in the MCP tools; never a password sent.
+  const blockedEnv = { WILMA_TENANT: blockedUrl, WILMA_USERNAME: "test-user", WILMA_PASSWORD: "test-password" };
+  for (const args of [["login", "--tenant", blockedUrl, "--username", "test-user", "--json"], ["kids", "list", "--json"]]) {
+    await assert.rejects(execFileAsync(process.execPath, [cliPath, ...args], { env: baseEnv(join(tempDirectory, "blocked.json"), blockedEnv) }), (err) => {
+      const failure = JSON.parse(err.stdout);
+      assert.equal(err.code, 1);
+      assert.equal(failure.code, "login_blocked", `${args[0]}: ${err.stdout}`);
+      assert.match(failure.message, /before the password was sent/);
+      assert.match(failure.hint, /only from Finland/);
+      return true;
+    });
+  }
+  const blockedText = await execFileAsync(process.execPath, [cliPath, "kids", "list", "--text"], { env: baseEnv(join(tempDirectory, "blocked.json"), blockedEnv) }).then(
+    () => assert.fail("blocked kids list must fail"),
+    (err) => err.stderr
+  );
+  assert.match(blockedText, /^Error: Wilma refused this computer's connection[^\n]*\nSome Wilmas accept connections only from Finland/);
+  const blockedMcp = new Client({ name: "test", version: "0.0.0" });
+  await blockedMcp.connect(new StdioClientTransport({ command: process.execPath, args: [cliPath, "mcp"], env: baseEnv(join(tempDirectory, "blocked.json"), blockedEnv), stderr: "pipe" }));
+  try {
+    const refused = await blockedMcp.callTool({ name: "wilma_summary", arguments: {} });
+    assert.equal(refused.isError, true);
+    assert.match(textOf(refused), /before the password was sent[\s\S]*only from Finland[\s\S]*Don't start a new Wilma login/);
+  } finally {
+    await blockedMcp.close();
+  }
+  assert.equal(blockedPosts, 0, "no password sent to a Wilma that refuses the computer");
+
   /* ---------------- CLI: env-var account, no config ---------------- */
   const { stdout: kidsOut } = await execFileAsync(process.execPath, [cliPath, "kids", "list", "--json"], {
     env: baseEnv(join(tempDirectory, "missing.json"), {
@@ -381,5 +425,6 @@ try {
 } finally {
   wilma.close();
   wilma2.close();
+  blockedWilma.close();
   await rm(tempDirectory, { recursive: true, force: true });
 }

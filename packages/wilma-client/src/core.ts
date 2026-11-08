@@ -36,7 +36,7 @@ export type {
 } from "./types.js";
 export { WilmaClient } from "./client.js";
 export type { MfaCallback, ClientOptions, ResumeProfile } from "./client.js";
-export { WilmaSession, AuthenticationError, MfaRequiredError, APIError, SessionEndedError, CredentialsUnavailableError } from "./session.js";
+export { WilmaSession, AuthenticationError, MfaRequiredError, APIError, SessionEndedError, CredentialsUnavailableError, LoginBlockedError } from "./session.js";
 export type { SessionOptions, RequestInit, SharedSession, SessionEvent, PasswordSource } from "./session.js";
 export { setDefaultTransport } from "./transport.js";
 export type { WilmaTransport, WilmaRequest, WilmaReply } from "./transport.js";

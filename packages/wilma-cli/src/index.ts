@@ -10,6 +10,7 @@ import {
   APIError,
   AuthenticationError,
   CredentialsUnavailableError,
+  LoginBlockedError,
   MfaRequiredError,
   NetworkError,
   WilmaClient,
@@ -1215,6 +1216,10 @@ function describeError(err: unknown): { code: string; message: string; hint?: st
       hint: "Run `wilma login` again.",
       exitCode: 1,
     };
+  }
+  if (err instanceof LoginBlockedError) {
+    // Before the password was sent: where this computer is, not the login.
+    return { code: "login_blocked", message: err.message, hint: err.hint, exitCode: 1 };
   }
   if (err instanceof NetworkError) {
     return { code: "network", message: err.message, ...(err.code ? { cause: err.code } : {}), ...(err.hint ? { hint: err.hint } : {}), exitCode: 1 };

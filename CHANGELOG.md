@@ -2,12 +2,14 @@
 
 ## 2.5.1 (unreleased)
 
-**In short:** when the keychain is locked, WilmAI now says so, and the help says to keep the file on servers, a Mac used as a server too.
+**In short:** when the keychain is locked, WilmAI now says so, and the help says to keep the file on servers, a Mac used as a server too. A Wilma that refuses connections from outside Finland now gets a clear message instead of "HTTP 403 for its login token".
 
 ### Fixed
 
 - **A login saved in the file because the keychain refused it** (locked, or someone said no) now says "the keychain couldn't be used just now (it may be locked)". Before, it said there was no keychain on the computer, which is only true where there's none, such as headless Linux.
 - **`wilma help config`** says to keep `file` on servers and for unattended runs, a Mac used as a server too: there `auto` picks the Keychain, which can be locked after a restart or over SSH.
+- **A Wilma that refuses the computer now says so** ([#26](https://github.com/aikarjal/wilmai/issues/26)). Some Wilmas, Helsinki's and Vantaa's among them, answer connections from outside Finland (a cloud computer abroad, say) with HTTP 403 before the password is sent, and the login stopped with "Wilma answered HTTP 403 for its login token". It now fails with `login_blocked`: the message says the password was never sent, and the hint suggests running WilmAI on a computer in Finland. The login page and the MCP tools say the same, and the tools tell the assistant not to start a new login.
+- **wilma-client: `LoginBlockedError`** when Wilma answers 403 for its login token. It isn't an `APIError`, so reads that take a 403 to mean "this Wilma doesn't show it" (bulletins, the timetable) can't hide it as "nothing to show".
 
 ## 2.5.0 (2026-11-08)
 

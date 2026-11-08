@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
-import { AuthenticationError } from "@wilm-ai/wilma-client";
+import { AuthenticationError, LoginBlockedError } from "@wilm-ai/wilma-client";
 import { getConfigPath, loadConfig, saveConfig, type StoredProfile } from "./config.js";
 import { roleOf } from "./agent-data.js";
 import { removeLogin, saveVerifiedLogin, setHiddenChildren } from "./access.js";
@@ -239,6 +239,8 @@ export async function startLoginServer(
           sendJson(res, 200, { status: "error", code: "bad_totp", message: err.message });
         } else if (err instanceof AuthenticationError) {
           sendJson(res, 200, { status: "error", code: "bad_credentials" });
+        } else if (err instanceof LoginBlockedError) {
+          sendJson(res, 200, { status: "error", code: "login_blocked" });
         } else {
           sendJson(res, 200, { status: "error", message: err instanceof Error ? err.message : String(err) });
         }
@@ -417,6 +419,7 @@ export function renderLoginPage(opts: LoginPageOptions): string {
       finishedTitle: "All set",
       finishedBody: "You can close this tab and go back to your assistant.",
       badCredentials: "Wilma didn't accept that username and password.",
+      blocked: "This Wilma refused this computer's connection before the password was sent. Some Wilmas accept connections only from Finland: if WilmAI runs on a server or cloud computer outside Finland, run it on a computer in Finland instead.",
       badTotp: "Wilma didn't accept the two-step verification. Paste the authenticator setup key (a long base32 key or an otpauth:// link), not a 6-digit code.",
       tooMany: "Too many attempts. Close this tab and start again from your assistant.",
       missing: "Choose the school's Wilma, and type the username and password.",
@@ -478,6 +481,7 @@ export function renderLoginPage(opts: LoginPageOptions): string {
       finishedTitle: "Kaikki valmista",
       finishedBody: "Voit sulkea tämän välilehden ja palata avustajaasi.",
       badCredentials: "Wilma ei hyväksynyt käyttäjätunnusta ja salasanaa.",
+      blocked: "Tämä Wilma torjui tämän tietokoneen yhteyden jo ennen kuin salasana lähetettiin. Osa Wilmoista ottaa yhteyksiä vastaan vain Suomesta: jos WilmAI on palvelimella tai pilvipalvelussa Suomen ulkopuolella, käytä sitä Suomessa olevalla tietokoneella.",
       badTotp: "Wilma ei hyväksynyt kaksivaiheista tunnistautumista. Liitä todennussovelluksen asetusavain (pitkä base32-avain tai otpauth://-linkki), ei 6-numeroista koodia.",
       tooMany: "Liian monta yritystä. Sulje välilehti ja aloita uudelleen avustajasi kautta.",
       missing: "Valitse koulun Wilma ja kirjoita käyttäjätunnus ja salasana.",
@@ -899,7 +903,7 @@ export function renderLoginPage(opts: LoginPageOptions): string {
         first ??= d;
         if (data.status === "mfa_required") { d.mfa = true; continue; }
         if (data.code === "bad_totp") { d.mfa = true; d.error = lang === "fi" ? t.badTotp : data.message || t.badTotp; }
-        else d.error = { bad_credentials: t.badCredentials, too_many_attempts: t.tooMany, missing_fields: t.missing, taken: t.taken }[data.code] || data.message || "Error";
+        else d.error = { bad_credentials: t.badCredentials, login_blocked: t.blocked, too_many_attempts: t.tooMany, missing_fields: t.missing, taken: t.taken }[data.code] || data.message || "Error";
       } catch {
         // The page stops after Done, a timeout, or too many attempts.
         note = t.expired;
