@@ -14,6 +14,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFile, execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 // `--run` (any platform, e.g. Windows' cmd) or WILMAI_REAL_KEYCHAIN_TEST=1; `--temp` or =temp for macOS's temporary keychain.
 const mode = process.argv.includes("--temp") ? "temp" : process.argv.includes("--run") ? "1" : process.env.WILMAI_REAL_KEYCHAIN_TEST;
@@ -97,7 +98,7 @@ await new Promise((r) => server.listen(0, "127.0.0.1", r));
 wilma.url = `http://127.0.0.1:${server.address().port}`;
 const dir = await mkdtemp(join(tmpdir(), "wilmai-real-keychain-"));
 const configPath = join(dir, "config.json");
-const cliPath = resolve(new URL("../dist/index.js", import.meta.url).pathname);
+const cliPath = fileURLToPath(new URL("../dist/index.js", import.meta.url)); // not .pathname: "/D:/..." on Windows
 const env = { ...process.env, WILMAI_CONFIG_PATH: configPath, WILMAI_NO_BROWSER: "1", WILMAI_NO_UPDATE_CHECK: "1", WILMAI_KEYCHAIN_SERVICE: SERVICE };
 delete env.WILMAI_KEYCHAIN_BACKEND; // the platform's own
 for (const key of ["WILMA_TENANT", "WILMA_USERNAME", "WILMA_PASSWORD", "WILMA_TOTP_SECRET", "WILMAI_SECRET_STORE"]) delete env[key];
