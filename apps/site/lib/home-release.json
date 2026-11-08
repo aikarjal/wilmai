@@ -1,18 +1,18 @@
 {
-  "version": "0.3.1",
+  "version": "0.4.0",
   "channel": "beta",
   "downloads": [
     {
       "id": "macos-arm64",
       "platform": "macos",
       "arch": "arm64",
-      "url": "https://github.com/aikarjal/wilmai/releases/download/home-v0.3.1/WilmAI-Home-0.3.1-beta-macos-arm64.dmg"
+      "url": "https://github.com/aikarjal/wilmai/releases/download/home-v0.4.0/WilmAI-Home-0.4.0-beta-macos-arm64.dmg"
     },
     {
       "id": "windows-x64",
       "platform": "windows",
       "arch": "x64",
-      "url": "https://github.com/aikarjal/wilmai/releases/download/home-v0.3.1/WilmAI-Home-0.3.1-beta-windows-x64.exe"
+      "url": "https://github.com/aikarjal/wilmai/releases/download/home-v0.4.0/WilmAI-Home-0.4.0-beta-windows-x64.exe"
     }
   ]
 }

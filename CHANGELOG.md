@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.5.0 (unreleased)
+## 2.5.0 (2026-11-08)
 
 _Releases: wilma-cli 2.5.0, wilma-client 1.10.0, WilmAI Home 0.4.0._
 
