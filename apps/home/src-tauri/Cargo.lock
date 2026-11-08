@@ -4967,7 +4967,7 @@ dependencies = [
 
 [[package]]
 name = "wilmai-home"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "fs2",
  "getrandom 0.2.17",

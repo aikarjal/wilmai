@@ -2,7 +2,7 @@
 
 ## 2.5.0 (unreleased)
 
-_Releases: wilma-cli 2.5.0, wilma-client 1.10.0, WilmAI Home 0.4.0. Not published yet._
+_Releases: wilma-cli 2.5.0, wilma-client 1.10.0, WilmAI Home 0.4.0._
 
 **In short:** the CLI can keep saved passwords in the operating system's keychain instead of its file, if you turn it on; the file stays the default, and the choice for servers. WilmAI Home keeps its passwords and its OpenAI key in the keychain. ([#27](https://github.com/aikarjal/wilmai/issues/27), design in `packages/wilma-cli/docs/secret-store.md`.)
 
