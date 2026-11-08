@@ -15,9 +15,9 @@ import {
   type StudentInfo,
   type WilmaProfile,
 } from "@wilm-ai/wilma-client";
-import { createHash } from "node:crypto";
 import { fileNameFromResponse, readResponseCapped } from "./downloads.js";
 import type { SessionStore } from "./session-store.js";
+import { sessionKeyV1, type SessionKeys } from "./session-keys.js";
 
 /**
  * An error with a stable code for agents and scripts (the CLI's JSON errors
@@ -271,7 +271,12 @@ export type StudentRef = { studentNumber: string; name: string; wilma?: string }
 
 /** One Wilma login. A family can have several (children on different Wilmas). */
 export interface AccessAccount {
+  /** For a keychain login the password is empty here and `password` gives it. */
   profile: WilmaProfile;
+  /** The password when Wilma needs a new login (a keychain read), never while a saved session works. */
+  password?: () => Promise<string>;
+  /** Where its session is saved and pooled; by default today's key (address, username and password). */
+  keys?: SessionKeys;
   mfa?: MfaCallback;
   /** The Wilma's name, shown to tell children apart when there are several logins. */
   label?: string | null;
@@ -433,24 +438,22 @@ function rememberSession(key: string, client: WilmaClient, opts: { fresh: boolea
 
 const pendingSaves = new Set<Promise<void>>();
 
-/** Identifies one Wilma account and password (a changed password starts fresh). */
-function poolKey(profile: WilmaProfile): string {
-  const { baseUrl, username, password } = profile;
-  // The password is part of the key, so a changed password starts a fresh session.
-  return createHash("sha256")
-    .update(`${baseUrl.replace(/\/$/, "")}\n${username.toLowerCase()}\n${password}`)
-    .digest("hex");
+/** Today's keys for a login known by its password (file and environment logins): a changed password starts fresh. */
+function defaultKeys(profile: WilmaProfile): SessionKeys {
+  const key = sessionKeyV1(profile.baseUrl, profile.username, profile.password);
+  return { sessionKey: key, poolKey: key };
 }
 
 /**
  * Keep a session that is already logged in — e.g. the one the login page just
  * verified — so the first tool call needs no second login (and, with two-step
- * verification, no second code).
+ * verification, no second code). `keys` are the saved login's (v2 for a
+ * keychain login); without them, today's keys from the profile.
  */
-export function adoptSession(profile: WilmaProfile, client: WilmaClient): void {
-  const key = poolKey(profile);
-  pool.set(key, { client: Promise.resolve(client), lastUsed: Date.now() });
-  rememberSession(key, client, { fresh: true });
+export function adoptSession(profileOrKeys: WilmaProfile | SessionKeys, client: WilmaClient): void {
+  const keys = "sessionKey" in profileOrKeys ? profileOrKeys : defaultKeys(profileOrKeys);
+  pool.set(keys.poolKey, { client: Promise.resolve(client), lastUsed: Date.now() });
+  rememberSession(keys.sessionKey, client, { fresh: true });
 }
 
 /**
@@ -463,37 +466,40 @@ export async function flushSessions(): Promise<void> {
   await Promise.all([...pendingSaves]);
 }
 
+/** Drop this process's client for a login (after its secrets moved, so the next use starts from its new keys). */
+export function dropPooledSession(keys: SessionKeys): void {
+  pool.delete(keys.poolKey);
+}
+
 /**
  * End WilmAI's Wilma session for one login (Wilma's own "Log out") and forget
  * it, in this process and in the session store, so nothing continues it. The
  * login itself stays saved; the next command or tool call logs in again.
- * Never logs in. Returns true when a live session was ended, false when there
- * was none. If Wilma can't be reached, throws and keeps the saved session, so
- * logging out can be tried again.
+ * Never logs in (so it needs no password). Returns true when a live session
+ * was ended, false when there was none. If Wilma can't be reached, throws and
+ * keeps the saved session, so logging out can be tried again.
  */
-export async function logoutSession(profile: WilmaProfile): Promise<boolean> {
-  const key = poolKey(profile);
-  const entry = pool.get(key);
+export async function logoutSession(profile: WilmaProfile, keys: SessionKeys = defaultKeys(profile)): Promise<boolean> {
+  const entry = pool.get(keys.poolKey);
   // The session in use here (a login in progress finishes first) and the saved
   // one, which another process may have replaced since. At most one is live.
   const pooled = entry ? await entry.client.catch(() => null) : null;
   const pooledState = pooled?.exportSession();
-  const saved = sessionStore ? await sessionStore.load(key).catch(() => null) : null;
+  const saved = sessionStore ? await sessionStore.load(keys.sessionKey).catch(() => null) : null;
   let ended = pooled ? await pooled.logout() : false;
-  if (pool.get(key) === entry) pool.delete(key);
+  if (pool.get(keys.poolKey) === entry) pool.delete(keys.poolKey);
   if (saved && saved !== pooledState) {
     const resumed = WilmaClient.resume({ ...profile, studentNumber: null }, saved);
     if (resumed && (await resumed.logout())) ended = true;
   }
-  await sessionStore?.remove(key);
+  await sessionStore?.remove(keys.sessionKey);
   return ended;
 }
 
 /** Forget one login's session without ending it in Wilma (when the login itself is removed). */
-export async function forgetSession(profile: WilmaProfile): Promise<void> {
-  const key = poolKey(profile);
-  pool.delete(key);
-  await sessionStore?.remove(key);
+export async function forgetSession(profile: WilmaProfile, keys: SessionKeys = defaultKeys(profile)): Promise<void> {
+  pool.delete(keys.poolKey);
+  await sessionStore?.remove(keys.sessionKey);
 }
 
 function pooledSession(account: AccessAccount): Promise<WilmaClient> {
@@ -501,23 +507,25 @@ function pooledSession(account: AccessAccount): Promise<WilmaClient> {
   for (const [key, entry] of pool) {
     if (now - entry.lastUsed > POOL_IDLE_MS) pool.delete(key);
   }
-  const key = poolKey(account.profile);
-  let entry = pool.get(key);
+  const keys = account.keys ?? defaultKeys(account.profile);
+  let entry = pool.get(keys.poolKey);
   if (!entry) {
     const profile = { ...account.profile, studentNumber: null };
+    const lazy = account.password;
     const client = (async () => {
-      // A saved session first; it logs in again by itself if Wilma has ended it.
-      const saved = sessionStore ? await sessionStore.load(key).catch(() => null) : null;
-      const resumed = saved ? WilmaClient.resume(profile, saved, account.mfa) : null;
-      const client = resumed ?? (await WilmaClient.login(profile, account.mfa));
-      rememberSession(key, client, { fresh: !resumed });
+      // A saved session first; it logs in again by itself if Wilma has ended it
+      // (reading a keychain login's password only then).
+      const saved = sessionStore ? await sessionStore.load(keys.sessionKey).catch(() => null) : null;
+      const resumed = saved ? WilmaClient.resume({ ...profile, password: lazy ?? profile.password }, saved, account.mfa) : null;
+      const client = resumed ?? (await WilmaClient.login({ ...profile, password: lazy ? await lazy() : profile.password }, account.mfa));
+      rememberSession(keys.sessionKey, client, { fresh: !resumed });
       return client;
     })();
     const created = { client, lastUsed: now };
     entry = created;
-    pool.set(key, created);
+    pool.set(keys.poolKey, created);
     client.catch(() => {
-      if (pool.get(key) === created) pool.delete(key);
+      if (pool.get(keys.poolKey) === created) pool.delete(keys.poolKey);
     });
   }
   entry.lastUsed = now;

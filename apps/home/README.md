@@ -384,10 +384,15 @@ allows it.
   redirects not followed, so the app sees every cookie); `secret_get` reads a
   Jev key an earlier build kept in the keychain, once, to move it;
   `shared_session_get/set` read and write the
-  shared session file; `cli_logins` lists the CLI's saved logins without
-  secrets and `cli_login_secret` reads one login's password, only for a
-  login made with the CLI's saved login before; `update_manifest` checks
-  wilm.ai for a newer version.
+  shared session file, working out the login's key from the CLI's config each
+  time (v2 while the CLI keeps the login's password in the keychain, else v1,
+  so a login the CLI moves while the app is open stays shared); `cli_logins`
+  lists the CLI's saved logins without secrets and `cli_login_secret` reads
+  one login's password, only for a login made with the CLI's saved login
+  before or one the CLI keeps in the keychain (read only when Wilma needs a
+  new login: `/usr/bin/security` on a Mac, Credential Manager on Windows; the
+  app keeps no password for such a login); `update_manifest` checks wilm.ai
+  for a newer version.
   The window may only call those, move itself and open https links in the
   browser (`src-tauri/capabilities`).
 - Wilma itself is **wilma-client**: its runtime-neutral `core` entry for

@@ -4,7 +4,9 @@ import { resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { AuthenticationError } from "@wilm-ai/wilma-client";
+import { AuthenticationError, CredentialsUnavailableError } from "@wilm-ai/wilma-client";
+import { runBackgroundMoves } from "./secret-moves.js";
+import { SecretStoreError } from "./secret-store.js";
 import { type WilmaAccess, useSessionStore } from "./agent-data.js";
 import { fileSessionStore, nameSessionOwner } from "./session-store.js";
 import { createAccess, logoutAccounts } from "./access.js";
@@ -100,6 +102,8 @@ async function withAccess(run: (access: WilmaAccess) => Promise<CallToolResult>)
   try {
     return await run(access);
   } catch (err) {
+    const secret = keychainFailure(err);
+    if (secret) return textResult(secret, true);
     if (isMfaFailure(err)) {
       return textResult(
         "Wilma rejected the two-step verification code; the saved authenticator setup key may be wrong. Call wilma_login to log in again.",
@@ -114,6 +118,21 @@ async function withAccess(run: (access: WilmaAccess) => Promise<CallToolResult>)
     }
     return textResult(err instanceof Error ? err.message : String(err), true);
   }
+}
+
+/**
+ * A keychain failure as the assistant should hear it. "missing": the password
+ * is gone, so a new login is the fix. "refused" and "unavailable": the
+ * password is saved but this computer didn't hand it over, so starting a
+ * login (and having the parent retype it) doesn't help.
+ */
+function keychainFailure(err: unknown): string | null {
+  const cause = err instanceof CredentialsUnavailableError && err.cause instanceof SecretStoreError ? err.cause : err;
+  const reason = cause instanceof SecretStoreError ? cause.reason : err instanceof CredentialsUnavailableError ? err.reason : null;
+  if (!reason) return null;
+  const message = cause instanceof Error ? cause.message : String(cause);
+  if (reason === "missing") return `${message}\nCall wilma_login so the user can log in again.`;
+  return `${message}\nDon't start a new Wilma login: the password is saved, and retyping it won't help. Tell the user what this says.`;
 }
 
 function createWilmaMcpServer(version: string): McpServer {
@@ -212,4 +231,6 @@ export async function runMcpServer(version: string): Promise<void> {
   const server = createWilmaMcpServer(version);
   mcpServer = server;
   await server.connect(new StdioServerTransport());
+  // With the keychain turned on: move file logins over (quietly, once at start; messages go to stderr).
+  void runBackgroundMoves();
 }

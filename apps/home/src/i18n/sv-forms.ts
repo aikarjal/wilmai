@@ -165,6 +165,13 @@ export const SV_FORMS: Record<string, string> = {
   "That saved login isn't there any more.": "Den sparade inloggningen finns inte längre.",
   "The saved login has no readable password.": "Den sparade inloggningen har inget läsbart lösenord.",
   "The saved authenticator key isn't valid.": "Den sparade autentiseringsnyckeln är inte giltig.",
+  // The CLI's login kept in the keychain (src-tauri/src/lib.rs)
+  "The password the WilmAI CLI saved for this Wilma isn't in the keychain any more. Log in again with the CLI (`wilma login`), or type the password here.":
+    "Lösenordet som WilmAI CLI sparade för den här Wilman finns inte längre i nyckelringen. Logga in igen med CLI:n (`wilma login`), eller skriv lösenordet här.",
+  "The keychain on this computer didn't hand over the password the WilmAI CLI saved. If the computer is locked or asking for a password, unlock it, then try again.":
+    "Nyckelringen på den här datorn lämnade inte ut lösenordet som WilmAI CLI sparade. Om datorn är låst eller ber om ett lösenord, lås upp den och försök sedan igen.",
+  "A newer WilmAI saved this login's password where this version of WilmAI Home can't read it. Update WilmAI Home, or type the password here.":
+    "En nyare WilmAI sparade den här inloggningens lösenord där den här versionen av WilmAI Home inte kan läsa det. Uppdatera WilmAI Home, eller skriv lösenordet här.",
   // Settings: sign-in history
   "Sign-in history": "Inloggningshistorik",
   "Wilma keeps one session per account: signing in anywhere (the phone, a browser, a WilmAI program) ends the others. This shows what happened to this app's session.":

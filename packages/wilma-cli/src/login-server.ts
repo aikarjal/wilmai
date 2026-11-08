@@ -3,9 +3,10 @@ import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
 import { AuthenticationError } from "@wilm-ai/wilma-client";
 import { getConfigPath, loadConfig, saveConfig, type StoredProfile } from "./config.js";
-import { adoptSession, roleOf } from "./agent-data.js";
-import { removeLogin, setHiddenChildren } from "./access.js";
-import { saveLogin, TotpSecretInvalidError, TotpSecretRequiredError, verifyLoginSession } from "./credentials.js";
+import { roleOf } from "./agent-data.js";
+import { removeLogin, saveVerifiedLogin, setHiddenChildren } from "./access.js";
+import { chooseSecretStore, TotpSecretInvalidError, TotpSecretRequiredError, verifyLoginSession } from "./credentials.js";
+import { effectiveSecretStore, keychainKind, keychainProblem, SecretStoreError } from "./secret-store.js";
 import { normalizeTenantUrl, searchTenants } from "./tenant-search.js";
 
 export interface LoginServer {
@@ -37,6 +38,17 @@ function accountsSummary(profiles: StoredProfile[]): SavedLogin[] {
 }
 
 const savedLogins = async () => accountsSummary((await loadConfig()).profiles);
+
+/** The keychain this page's logins would go to, or undefined when they go to the file. */
+async function keychainForPage(): Promise<string | undefined> {
+  try {
+    const setting = effectiveSecretStore((await loadConfig()).secretStore);
+    if (setting === "file") return undefined;
+    return (await keychainProblem()) ? undefined : keychainKind();
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Serve a one-time login page on 127.0.0.1, laid out like WilmAI Home's Wilma
@@ -117,7 +129,7 @@ export async function startLoginServer(
       });
       // The logins already saved, so adding another Wilma (or logging in again) starts from what's there.
       const accounts = await savedLogins().catch(() => []);
-      res.end(renderLoginPage({ nonce, apiBase: `${base}/api`, configPath: getConfigPath(), openedBy: opts.openedBy, accounts }));
+      res.end(renderLoginPage({ nonce, apiBase: `${base}/api`, configPath: getConfigPath(), keychain: await keychainForPage(), openedBy: opts.openedBy, accounts }));
       return;
     }
 
@@ -200,21 +212,18 @@ export async function startLoginServer(
         return;
       }
       try {
+        // Where the password goes is settled before Wilma is contacted (a login that can't be saved costs no code).
+        const choice = await chooseSecretStore(before, wilmaUrl, username);
         const { client, students } = await verifyLoginSession({ tenantUrl, username, password, totpSecret });
-        // Keep this verified session for the assistant's first questions (no second login or code).
-        adoptSession({ baseUrl: wilmaUrl, username, password }, client);
-        const config = await loadConfig();
-        const stored = await saveLogin(config, {
-          tenantUrl: wilmaUrl,
-          tenantName: body.tenantName ?? null,
-          username,
-          password,
-          totpSecret,
-          students,
-        });
+        // Saved first, then this verified session kept for the assistant's first questions (no second login or code).
+        const stored = await saveVerifiedLogin(
+          { tenantUrl: wilmaUrl, tenantName: body.tenantName ?? null, username, password, totpSecret, students },
+          client,
+          choice
+        );
         if (replaced && replaced.id !== stored.id) await takePlace(stored.id, replaced.id);
         // Every Wilma login saved so far, so the page can show the whole family.
-        sendJson(res, 200, { status: "ok", accounts: await savedLogins() });
+        sendJson(res, 200, { status: "ok", accounts: await savedLogins(), ...(stored.note ? { note: stored.note } : {}) });
         // What this page saved, for `wilma login` to report (a replaced login isn't).
         saved.splice(0, saved.length, ...saved.filter((p) => p.id !== stored.id && p.id !== replaced?.id), stored);
         attempts = 0;
@@ -222,7 +231,9 @@ export async function startLoginServer(
         settleFirst(stored);
         opts.onSaved?.(stored);
       } catch (err) {
-        if (err instanceof TotpSecretRequiredError) {
+        if (err instanceof SecretStoreError) {
+          sendJson(res, 200, { status: "error", code: "secret_store", message: err.message });
+        } else if (err instanceof TotpSecretRequiredError) {
           sendJson(res, 200, { status: "mfa_required" });
         } else if (err instanceof TotpSecretInvalidError) {
           sendJson(res, 200, { status: "error", code: "bad_totp", message: err.message });
@@ -350,6 +361,8 @@ export interface LoginPageOptions {
   apiBase: string;
   /** Shown in the privacy note under the form. */
   configPath?: string;
+  /** The keychain new passwords go to (the privacy note names it), or undefined for the file. */
+  keychain?: string;
   openedBy?: OpenedBy;
   /** The logins already saved. */
   accounts?: SavedLogin[];
@@ -409,6 +422,7 @@ export function renderLoginPage(opts: LoginPageOptions): string {
       missing: "Choose the school's Wilma, and type the username and password.",
       expired: "This login page is no longer active. Start the login again from your assistant, or run wilma login.",
       privacy: "Your login is saved only on this computer, in {path}, readable only by your user account. To remove it, run wilma config clear or delete that file.",
+      privacyKeychain: "Your login is saved only on this computer: the password in the {keychain}, the rest in {path}. To remove it, run wilma config clear.",
       trustLocalTitle: "On your own computer",
       trustLocal: "This page isn't a website. It runs on this computer (that's what 127.0.0.1 in the address bar means), and WilmAI has no server.",
       trustWilmaTitle: "Only to your school's Wilma",
@@ -469,6 +483,7 @@ export function renderLoginPage(opts: LoginPageOptions): string {
       missing: "Valitse koulun Wilma ja kirjoita käyttäjätunnus ja salasana.",
       expired: "Tämä kirjautumissivu ei ole enää käytössä. Aloita kirjautuminen uudelleen avustajasi kautta tai komennolla wilma login.",
       privacy: "Kirjautumistietosi tallennetaan vain tälle tietokoneelle, tiedostoon {path}, jota vain sinun käyttäjätilisi voi lukea. Voit poistaa ne komennolla wilma config clear tai poistamalla tiedoston.",
+      privacyKeychain: "Kirjautumistietosi tallennetaan vain tälle tietokoneelle: salasana avainnippuun ({keychain}), muut tiedot tiedostoon {path}. Voit poistaa ne komennolla wilma config clear.",
       trustLocalTitle: "Omalla koneellasi",
       trustLocal: "Tämä sivu ei ole verkkosivusto. Se toimii tällä koneella (sitä osoiterivin 127.0.0.1 tarkoittaa), eikä WilmAI:lla ole palvelinta.",
       trustWilmaTitle: "Vain koulusi Wilmaan",
@@ -621,6 +636,7 @@ export function renderLoginPage(opts: LoginPageOptions): string {
   const STRINGS = ${jsonForScript(strings)};
   const API = ${jsonForScript(opts.apiBase)};
   const CONFIG_PATH = ${jsonForScript(opts.configPath ?? "")};
+  const KEYCHAIN = ${jsonForScript(opts.keychain ?? "")};
   const OPENED_BY = ${jsonForScript(opts.openedBy ?? null)};
   // Every saved login, as the page opened and after each change here.
   let accounts = ${jsonForScript(opts.accounts ?? [])};
@@ -671,7 +687,7 @@ export function renderLoginPage(opts: LoginPageOptions): string {
     text("who-label", t.who); text("who-guardian", t.parent); text("who-student", t.student);
     text("add", t.addAnother); text("add-help", t.addAnotherHint);
     text("finished-title", t.finishedTitle); text("finished-body", t.finishedBody);
-    text("privacy", t.privacy.replace("{path}", CONFIG_PATH));
+    text("privacy", (KEYCHAIN ? t.privacyKeychain.replace("{keychain}", KEYCHAIN) : t.privacy).replace("{path}", CONFIG_PATH));
     text("learn-more", t.learnMore); text("source-code", t.sourceCode);
     text("disclaimer", t.disclaimer);
     for (const code of ["fi", "en"]) $("lang-" + code).setAttribute("aria-pressed", String(code === lang));
@@ -879,7 +895,7 @@ export function renderLoginPage(opts: LoginPageOptions): string {
           tenantUrl: d.tenant.url, tenantName: d.tenant.name, username: d.username.trim(), password: d.password,
           totpSecret: d.totp.trim() || undefined, replace: d.replace || undefined,
         });
-        if (data.status === "ok") { accounts = data.accounts; drafts = drafts.filter((x) => x !== d); continue; }
+        if (data.status === "ok") { accounts = data.accounts; drafts = drafts.filter((x) => x !== d); if (data.note) note = data.note; continue; }
         first ??= d;
         if (data.status === "mfa_required") { d.mfa = true; continue; }
         if (data.code === "bad_totp") { d.mfa = true; d.error = lang === "fi" ? t.badTotp : data.message || t.badTotp; }

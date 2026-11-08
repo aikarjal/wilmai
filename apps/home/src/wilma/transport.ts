@@ -46,8 +46,8 @@ export class BridgeError extends Error {
 
 interface DesktopBridge {
   wilma(wire: WireRequest): Promise<unknown>;
-  sessionGet(key: string): Promise<unknown>;
-  sessionSet(key: string, state: string): Promise<unknown>;
+  sessionGet(login: SharedLogin): Promise<unknown>;
+  sessionSet(login: SharedLogin, state: string): Promise<unknown>;
   jev(key: string | undefined, body: unknown): Promise<unknown>;
   openai(key: string | undefined, path: string | undefined, body: unknown): Promise<unknown>;
   openaiReach(): Promise<unknown>;
@@ -100,9 +100,9 @@ export const here = (): string => (isDesktopApp ? t("on this computer") : t("in 
 const desktop: DesktopBridge | undefined = isDesktopApp
   ? {
       wilma: (wire) => native("wilma_send", { wire }),
-      // { state, savedAt, by } or null; errors as { error }.
-      sessionGet: async (key) => (await native("shared_session_get", { key })) ?? { state: null },
-      sessionSet: async (key, state) => (await native("shared_session_set", { key, state })) ?? { ok: true },
+      // { state, savedAt, by } or null; errors as { error }. The native side works out the login's key each time.
+      sessionGet: async (login) => (await native("shared_session_get", { login })) ?? { state: null },
+      sessionSet: async (login, state) => (await native("shared_session_set", { login, state })) ?? { ok: true },
       jev: (key, body) => native("jev_call", { key: key ?? "", body }),
       openai: (key, path, body) => native("openai_call", { key: key ?? "", path: path ?? "", body }),
       openaiReach: () => native("openai_reach", {}),
@@ -123,9 +123,9 @@ async function desktopCall(d: DesktopBridge, path: string, init: { body?: unknow
     case "wilma":
       return d.wilma(init.body as WireRequest);
     case "session/get":
-      return d.sessionGet((init.body as { key: string }).key);
+      return d.sessionGet((init.body as { login: SharedLogin }).login);
     case "session/set":
-      return d.sessionSet((init.body as { key: string }).key, (init.body as { state: string }).state);
+      return d.sessionSet((init.body as { login: SharedLogin }).login, (init.body as { state: string }).state);
     case "jev":
       return d.jev(init.headers?.["x-jev-key"], init.body);
     case "openai":
@@ -187,18 +187,35 @@ export interface SharedEntry {
 }
 
 /**
+ * A login in WilmAI's shared session file: its Wilma and username, and its v1 key when the app knows its password.
+ *
+ * The file's key for a login is the CLI's: v2 (the address and username, no password) while the CLI keeps the login's
+ * password in the keychain, else v1 (the address, username and password; sessionKeyV1). The CLI can move a login
+ * between its file and the keychain while the app is open, so the key is worked out from the CLI's config at every
+ * read and write (the native side, or the bridge in development), never kept. A login the app knows no password for
+ * shares a session only while the CLI keeps it in the keychain.
+ */
+export interface SharedLogin {
+  baseUrl: string;
+  username: string;
+  v1Key?: string;
+}
+
+/**
  * WilmAI's shared session for one login: the CLI's session file, which the
  * CLI, assistants' connectors and this app all use, so they continue one Wilma
- * session instead of ending each other's. `key` is the CLI's key for the login.
- * `entry()` also says who saved it; `last` is the entry the client last loaded.
+ * session instead of ending each other's. `entry()` also says who saved it;
+ * `last` is the entry the client last loaded.
  */
-export function sharedSessionFor(key: string): SharedSession & { entry(): Promise<SharedEntry | null>; last: SharedEntry | null } {
-  const test = key.startsWith(TEST_KEY);
+export function sharedSessionFor(login: SharedLogin): SharedSession & { entry(): Promise<SharedEntry | null>; last: SharedEntry | null } {
+  const test = isTestWilma(login.baseUrl) ? `${login.baseUrl.replace(/\/$/, "")}\n${login.username.toLowerCase()}` : null;
+  // Only what the other side needs: nothing else of the account goes along.
+  const wire: SharedLogin = { baseUrl: login.baseUrl, username: login.username, ...(login.v1Key ? { v1Key: login.v1Key } : {}) };
   const shared = {
     last: null as SharedEntry | null,
     entry: async (): Promise<SharedEntry | null> => {
-      if (test) return testShared.has(key) ? { state: testShared.get(key)!, savedAt: null, by: "home" } : null;
-      const found = await bridgeCall<{ state: string | null; savedAt?: number | null; by?: string | null } | null>("session/get", { body: { key } });
+      if (test) return testShared.has(test) ? { state: testShared.get(test)!, savedAt: null, by: "home" } : null;
+      const found = await bridgeCall<{ state: string | null; savedAt?: number | null; by?: string | null } | null>("session/get", { body: { login: wire } });
       return found?.state ? { state: found.state, savedAt: found.savedAt ?? null, by: found.by ?? null } : null;
     },
     load: async () => {
@@ -206,8 +223,8 @@ export function sharedSessionFor(key: string): SharedSession & { entry(): Promis
       return shared.last?.state ?? null;
     },
     save: async (state: string) => {
-      if (test) testShared.set(key, state);
-      else await bridgeCall("session/set", { body: { key, state } });
+      if (test) testShared.set(test, state);
+      else await bridgeCall("session/set", { body: { login: wire, state } });
     },
   };
   return shared;
@@ -215,20 +232,21 @@ export function sharedSessionFor(key: string): SharedSession & { entry(): Promis
 
 /** The development server's test Wilmas (demo/test-wilma.ts): answered in memory, their sessions kept out of the shared file. */
 const isTestWilma = (url: string) => typeof __TEST_WILMAS__ !== "undefined" && __TEST_WILMAS__ && /^https:\/\/[^/]+\.wilmai\.test(\/|$)/i.test(url);
-const TEST_KEY = "test:";
 const testShared = new Map<string, string>();
 
-/** One saved login's password and authenticator key, read when the parent clicks "Continue as" (desktop app). */
+/**
+ * One saved login's password and authenticator key (desktop app): from the CLI's file, or from the keychain for a
+ * login the CLI keeps there, read only when Wilma needs a new login. A failure comes with the words for the parent.
+ */
 export function savedLoginSecret(id: string): Promise<{ password: string; totpSecret: string | null }> {
   return bridgeCall("cli/secret", { body: { id } });
 }
 
-/** The CLI's key for a login (SHA-256 hex of the Wilma address, the lower-case username and the password). */
-export async function sharedKeyFor(baseUrl: string, username: string, password: string): Promise<string> {
+/** A login's v1 key, as the CLI makes it: SHA-256 hex of the Wilma address, the lower-case username and the password. */
+export async function sessionKeyV1(baseUrl: string, username: string, password: string): Promise<string> {
   const text = `${baseUrl.replace(/\/$/, "")}\n${username.toLowerCase()}\n${password}`;
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  const key = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  return isTestWilma(baseUrl) ? TEST_KEY + key : key;
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /** wilma-client's transport: one exchange through the native command or the bridge. */

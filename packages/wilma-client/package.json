@@ -1,6 +1,6 @@
 {
   "name": "@wilm-ai/wilma-client",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Unofficial client for Wilma, the Finnish school information system: login (with two-step verification), schedule, homework, exams, messages and news.",
   "license": "MIT",
   "repository": {
@@ -39,7 +39,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm run build && node test/login.mjs && node test/logout.mjs && node test/core.mjs && node test/write.mjs && node test/parser-attendance.mjs && node test/parser-messages.mjs && node test/parser-news.mjs && node test/parser-schedule.mjs && node test/parser-students.mjs && node test/client-students.mjs && node test/client-schedule.mjs && node test/client-attendance.mjs && node test/client-news-resources.mjs && node test/network-error.mjs && node test/audit.mjs && node test/real-pages.mjs && node test/client-features.mjs",
+    "test": "pnpm run build && node test/login.mjs && node test/logout.mjs && node test/password-source.mjs && node test/core.mjs && node test/write.mjs && node test/parser-attendance.mjs && node test/parser-messages.mjs && node test/parser-news.mjs && node test/parser-schedule.mjs && node test/parser-students.mjs && node test/client-students.mjs && node test/client-schedule.mjs && node test/client-attendance.mjs && node test/client-news-resources.mjs && node test/network-error.mjs && node test/audit.mjs && node test/real-pages.mjs && node test/client-features.mjs",
     "test:live": "tsc -p tsconfig.json && node test/live.spec.mjs",
     "fixtures:anonymize": "node scripts/anonymize-fixture.mjs"
   },

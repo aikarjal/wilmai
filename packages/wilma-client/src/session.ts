@@ -78,6 +78,27 @@ export class SessionEndedError extends APIError {
   }
 }
 
+/**
+ * The password, or where to get it: a function called only when Wilma needs a
+ * new login (e.g. reading a keychain), not while a saved session works.
+ */
+export type PasswordSource = string | (() => Promise<string>);
+
+/**
+ * Wilma needed a new login and the password couldn't be had (the function
+ * given as the password failed: a keychain locked, declined or missing the
+ * entry). Not a refusal by Wilma, so it never stops the client for good;
+ * the next request tries again. `reason` and `cause` come from the failure.
+ */
+export class CredentialsUnavailableError extends Error {
+  reason: string;
+  constructor(message: string, options: { reason?: string; cause?: unknown } = {}) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
+    this.name = "CredentialsUnavailableError";
+    this.reason = options.reason ?? "unavailable";
+  }
+}
+
 /** How long Wilma may go silent (before answering, or mid-body) before a request fails. */
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_REDIRECTS = 10;
@@ -103,7 +124,8 @@ interface SessionAuth {
   /** Wilma ended the session (as opposed to never logged in, or logged out on purpose). */
   endedByWilma: boolean;
   username?: string;
-  password?: string;
+  /** Empty after logout() ("logged out on purpose": never logs in again by itself). */
+  password?: PasswordSource;
   onMfa?: (formkey: string) => Promise<string>;
   /** Getting a live session back (a shared one, or a login), shared by every request that noticed. */
   relogin: Promise<void> | null;
@@ -172,7 +194,7 @@ export class WilmaSession {
    * fails with SessionEndedError. Returns false when the state holds no
    * session to resume.
    */
-  resumeState(state: string, username?: string, password?: string): boolean {
+  resumeState(state: string, username?: string, password?: PasswordSource): boolean {
     let jar: CookieJar;
     try {
       jar = CookieJar.deserializeSync(JSON.parse(state));
@@ -386,6 +408,9 @@ export class WilmaSession {
     const ended = holdsSession(auth.cookieJar, this.baseUrl) ? await this.endSession() : false;
     auth.cookieJar.removeAllCookiesSync();
     auth.loggedIn = false;
+    // Logged out on purpose: not "ended by Wilma", so the next request neither
+    // logs in again nor continues a session another program saved.
+    auth.endedByWilma = false;
     auth.username = undefined;
     auth.password = undefined;
     return ended;
@@ -566,6 +591,32 @@ export class WilmaSession {
   }
 
   /**
+   * The password for a new login. A function given as the password is called
+   * here, only now; its answer replaces it (as a login does). If it fails, the
+   * session is "ended by Wilma" (never "logged out", never failed for good)
+   * and the error is a CredentialsUnavailableError.
+   */
+  private async resolvePassword(): Promise<string> {
+    const auth = this.auth;
+    const source = auth.password;
+    if (typeof source !== "function") return source ?? "";
+    try {
+      const password = await source();
+      if (typeof password !== "string" || !password) throw new Error("No password was returned");
+      // logout() may have cleared it meanwhile: then it stays cleared.
+      if (auth.password === source) auth.password = password;
+      return password;
+    } catch (err) {
+      auth.loggedIn = false;
+      auth.endedByWilma = true;
+      auth.onEvent?.("ended");
+      if (err instanceof CredentialsUnavailableError) throw err;
+      const reason = typeof (err as { reason?: unknown })?.reason === "string" ? (err as { reason: string }).reason : undefined;
+      throw new CredentialsUnavailableError(err instanceof Error ? err.message : String(err), { reason, cause: err });
+    }
+  }
+
+  /**
    * A live session after Wilma ended this one, once for everyone sharing this
    * login even if many requests notice at the same time: the newest session
    * another program saved (no login), else a login when this client may log
@@ -582,13 +633,16 @@ export class WilmaSession {
           auth.onEvent?.("ended");
           throw new SessionEndedError();
         }
+        // Get the password before changing anything: if it can't be had, the
+        // session stays "ended by Wilma" and the next request tries again.
+        const password = await this.resolvePassword();
         auth.loggedIn = false;
         // Start from a clean jar: a leftover session cookie must not make a
         // failed login look successful.
         auth.cookieJar.removeAllCookiesSync();
         if (this.debug) console.error("[wilmai] session cancelled or expired; logging in again");
         try {
-          await this.login(auth.username!, auth.password!);
+          await this.login(auth.username!, password);
         } catch (err) {
           if (err instanceof MfaRequiredError && auth.onMfa) {
             await this.answerMfa(err.formkey, auth.onMfa);

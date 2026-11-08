@@ -265,8 +265,16 @@ export function parseCliArgs(argv: string[]): ParsedCommand {
     case "logout":
       return parsed(null, args);
     case "config":
-      if (args[0] !== "clear" || args.length > 1) throw usage('Expected "wilma config clear".');
-      return parsed("clear");
+      if (args[0] === "clear" && args.length === 1) return parsed("clear");
+      if (args[0] === "secrets") {
+        const [, setting, ...extra] = args;
+        noMore(extra);
+        if (setting !== undefined && !["file", "auto", "keychain"].includes(setting)) {
+          throw usage('Expected "wilma config secrets [file|auto|keychain]".');
+        }
+        return parsed("secrets", setting === undefined ? [] : [setting]);
+      }
+      throw usage('Expected "wilma config clear" or "wilma config secrets [file|auto|keychain]".');
     case "find-school":
       if (!args.length) throw usage('Expected "wilma find-school <city or school>".');
       return parsed(null, args);

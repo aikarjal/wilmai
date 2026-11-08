@@ -150,6 +150,27 @@ try {
   assert.ok(usedCodes.length > codesBeforeCli, "a fresh code for the new login");
   await client.close();
 
+  // With the keychain turned on: the password and the key move into one entry, the file keeps neither,
+  // and a new login (the session ended) takes both from that entry.
+  const keychainPath = join(tempDirectory, "keychain.json");
+  const keychainEnv = { ...env, WILMAI_KEYCHAIN_BACKEND: `fake:${keychainPath}` };
+  const runWithKeychain = (args) =>
+    new Promise((r, j) => execFile(process.execPath, [cliPath, ...args], { env: keychainEnv }, (e, so, se) => (e ? j(new Error(se || e.message)) : r(so))));
+  const moved = JSON.parse(await runWithKeychain(["config", "secrets", "auto", "--json"]));
+  assert.equal(moved.moved[0].outcome, "moved");
+  assert.equal(moved.logins[0].hasTotp, true, "listed with its key, without reading the keychain");
+  const inKeychain = JSON.parse(await readFile(configPath, "utf8")).profiles[0];
+  assert.equal(inKeychain.totpSecretObfuscated, undefined, "the key left the file");
+  assert.equal(inKeychain.passwordObfuscated, undefined, "so did the password");
+  const entry = JSON.parse(JSON.parse(await readFile(keychainPath, "utf8")).entries[inKeychain.secretId]);
+  assert.equal(entry.password, "pw");
+  assert.ok(entry.totpSecret.includes(SECRET), "the key is in the entry");
+  currentSid = "someone-else";
+  const codesBeforeKeychain = usedCodes.length;
+  const viaKeychain = JSON.parse(await runWithKeychain(["students"]));
+  assert.equal(viaKeychain.students[0].name, "Mfa Lapsi");
+  assert.ok(usedCodes.length > codesBeforeKeychain, "a code made from the key in the keychain entry");
+
   console.log(`mfa${STRICT ? " (strict: reused codes rejected)" : ""}: all assertions passed (${usedCodes.length} codes sent; ${reusedCode ? "a reused code was " + (STRICT ? "rejected and retried" : "accepted") : "no code reused"})`);
 } finally {
   wilma.close();

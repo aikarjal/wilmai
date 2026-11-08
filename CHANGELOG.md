@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.5.0 (unreleased)
+
+_Releases: wilma-cli 2.5.0, wilma-client 1.10.0. Not published yet._
+
+**In short:** saved passwords can live in the operating system's keychain instead of WilmAI's file, if you turn it on. The file stays the default. ([#27](https://github.com/aikarjal/wilmai/issues/27), design in `packages/wilma-cli/docs/secret-store.md`.)
+
+### Added
+
+- **Passwords in the keychain: `wilma config secrets auto|keychain|file`.** `auto` keeps the password and authenticator key in the keychain where there is one and in the file where there isn't (headless Linux, CI); `keychain` refuses to save anywhere else; `file` moves them back. Changing it moves the saved logins and their sessions without logging in again or asking for a code. `wilma config secrets` (and `--json`) shows where each login's password is and whether this computer has a keychain WilmAI can use. On macOS it goes through `/usr/bin/security`, so a Node.js upgrade doesn't make macOS ask for the Mac password; on Windows it's Credential Manager, on a Linux desktop the Secret Service (through the optional `@napi-rs/keyring`).
+- **`WILMAI_SECRET_STORE=file|auto|keychain`** decides where new logins go for one process, for tools that run the CLI. It never moves saved logins.
+- **Keychain errors scripts and assistants can act on:** `secret_missing` (log in again), `secret_refused` (locked or declined) and `secret_unavailable` (no keychain this copy can use), with exit code 4. The MCP tools tell the assistant not to start a new login for the last two.
+- **wilma-client: a password that's read only when needed.** `WilmaClient.resume()` takes the password as a function too; it's called only when Wilma has ended the session. A failure is a `CredentialsUnavailableError`, and unlike a refused password it doesn't stop the client for good.
+
+### Changed
+
+- **A saved session is found without the password.** For keychain logins the session file's key no longer includes the password (today's key is a SHA-256 of it), so commands use the saved session without reading the keychain, and the file holds nothing derived from the password. File logins keep today's key.
+- **Where a login is saved is decided before Wilma is contacted.** A login that can't be saved (the keychain refuses) no longer costs a Wilma login, the browser session or an authenticator code, and the session is kept only once the login is saved.
+- **A saved login whose password can't be read is reported** instead of being skipped (which looked like "not logged in" and opened a second login).
+- **`wilma config clear`** also deletes the keychain entries the config knows, and works on a damaged config.
+- **The interactive menu** saves its changes onto a fresh read of the config, so it can't undo what another process saved meanwhile.
+
+### Fixed
+
+- **wilma-client: a logged-out client continued another program's session.** After Wilma had ended a session and the client was then logged out, its next request took over a session another WilmAI program had saved. `logout()` now always stays logged out.
+
 ## 2.4.0 (2026-11-03)
 
 _Releases: wilma-cli 2.4.0; the `wilma` skill and plugin 2.4.0. wilma-client stays 1.9.0._

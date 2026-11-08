@@ -1,0 +1,36 @@
+# The opt-in keychain backend against a real Windows Credential Manager
+# (packages/wilma-cli/docs/secret-store.md, Validation): the CLI's store and
+# the CLI end to end, then WilmAI Home's Rust code reading an entry the CLI
+# wrote. macOS and Linux run locally (`pnpm --filter @wilm-ai/wilma-cli
+# test:keychain`, a Linux desktop or Docker with gnome-keyring). Run by hand,
+# or on pull requests that touch the keychain code.
+name: Keychain
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - packages/wilma-cli/src/secret-*.ts
+      - packages/wilma-cli/test/keychain-real.mjs
+      - apps/home/src-tauri/src/lib.rs
+      - apps/home/scripts/keychain-interop.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @wilm-ai/wilma-client build && pnpm --filter @wilm-ai/wilma-cli build
+      - name: The CLI against Credential Manager
+        run: node packages/wilma-cli/test/keychain-real.mjs --run
+      - name: Home reads the entry the CLI wrote
+        run: node apps/home/scripts/keychain-interop.mjs

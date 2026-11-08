@@ -432,10 +432,13 @@ function heldAnswer(fakes: ReturnType<typeof family>, when: (url: URL, wire: Wir
   let reached!: () => void;
   const arrived = new Promise<void>((resolve) => (reached = resolve));
   let held = false;
-  /** The shared session file's writes (the login's key each). */
+  /** The shared session file's writes (the login each). */
   const shared: string[] = [];
   overrideBridge(async (path, init) => {
-    if (path === "session/set") shared.push(String((init.body as { key?: string }).key));
+    if (path === "session/set") {
+      const { login } = init.body as { login: { baseUrl: string; username: string } };
+      shared.push(`${login.baseUrl} ${login.username}`);
+    }
     const result = await bridge(path, init);
     const wire = init.body as WireRequest;
     if (path === "wilma" && !held && when(new URL(wire.url), wire)) {

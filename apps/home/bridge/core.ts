@@ -166,58 +166,80 @@ export async function forwardToJev(key: unknown, body: unknown) {
 
 async function cliModules(repoRoot: string) {
   const dist = (p: string) => pathToFileURL(resolve(repoRoot, p)).href;
-  const [config, credentials, sessions, client] = await Promise.all([
+  const [config, credentials, sessions, keys, client] = await Promise.all([
     import(dist("packages/wilma-cli/dist/config.js")),
     import(dist("packages/wilma-cli/dist/credentials.js")),
     import(dist("packages/wilma-cli/dist/session-store.js")),
+    import(dist("packages/wilma-cli/dist/session-keys.js")),
     import(dist("packages/wilma-client/dist/index.js")),
   ]);
   // Sessions this bridge saves are the app's (the sign-in history says who started one).
   sessions.nameSessionOwner?.("home");
-  return { config, credentials, sessions, client };
+  return { config, credentials, sessions, keys, client };
 }
 
-/** Same key as the CLI's session pool, so the app and the CLI share one Wilma session. */
-function poolKey(profile: { baseUrl: string; username: string; password: string }): string {
+/** A file login's v1 key (the CLI's: address, username and password), so a page signed in with it shares its session. */
+function v1KeyOf(profile: { baseUrl: string; username: string; password: string }): string {
   return createHash("sha256")
     .update(`${profile.baseUrl.replace(/\/$/, "")}\n${profile.username.toLowerCase()}\n${profile.password}`)
     .digest("hex");
 }
 
+/** The parts of the CLI's ActiveAccount used here. */
+interface CliAccount {
+  profile: { baseUrl: string; username: string; password: string };
+  totpSecret?: string;
+  /** A keychain login's password and authenticator key, read only when needed (its profile's password is empty). */
+  secrets?: () => Promise<{ password: string; totpSecret?: string | null }>;
+  hasTotp?: boolean;
+  keys?: { sessionKey: string };
+  stored?: { tenantName?: string; students?: unknown[]; secrets?: string };
+}
+
 export async function cliAccounts(repoRoot: string) {
   const { config, credentials } = await cliModules(repoRoot);
-  const accounts = await credentials.resolveAccounts(await config.loadConfig());
-  return (accounts as { profile: { baseUrl: string; username: string; password: string }; stored?: { tenantName?: string; students?: unknown[] } }[]).map(
-    (a, index) => ({
-      index,
-      baseUrl: a.profile.baseUrl,
-      username: a.profile.username,
-      tenantName: a.stored?.tenantName ?? null,
-      students: a.stored?.students ?? [],
-      // The shared session's key (not the password), so a page signed in with this login can share its session.
-      key: poolKey(a.profile),
-    })
-  );
+  const accounts: CliAccount[] = await credentials.resolveAccounts(await config.loadConfig());
+  return accounts.map((a, index) => ({
+    index,
+    baseUrl: a.profile.baseUrl,
+    username: a.profile.username,
+    tenantName: a.stored?.tenantName ?? null,
+    students: a.stored?.students ?? [],
+    keychain: a.stored?.secrets === "keychain",
+    // A file login's v1 key (not the password); a keychain login's session needs none.
+    v1Key: a.stored?.secrets ? undefined : v1KeyOf(a.profile),
+  }));
 }
 
 /**
  * The CLI's saved session for one login (or a new login with its saved
  * password when Wilma has ended it), handed to the page as wilma-client's
- * session state. The password itself never leaves this process.
+ * session state. The password itself never leaves this process; a keychain
+ * login's is read only for that new login.
  */
 export async function cliSession(repoRoot: string, index: number) {
   const { config, credentials, sessions, client } = await cliModules(repoRoot);
-  const accounts = await credentials.resolveAccounts(await config.loadConfig());
+  const accounts: CliAccount[] = await credentials.resolveAccounts(await config.loadConfig());
   const account = accounts[index];
   if (!account) throw new HttpError(404, "No such CLI login");
   const profile = { ...account.profile, studentNumber: null };
-  const key = poolKey(profile);
-  const mfa = credentials.mfaCallbackFor(account.totpSecret);
+  // The CLI's key for it now: v1 for a file login, v2 for a keychain login.
+  const key = account.keys?.sessionKey ?? v1KeyOf(profile);
+  const read = account.secrets;
+  const password = read ? async () => (await read()).password : profile.password;
+  // A keychain login's codes come from the same read as its password, one code generator for the whole login.
+  let codes: Promise<((formkey: string) => Promise<string>) | undefined> | null = null;
+  const fromKeychain = async (formkey: string) => {
+    const code = await (codes ??= read!().then((s) => credentials.mfaCallbackFor(s.totpSecret)));
+    if (!code) throw new HttpError(409, "Wilma asks for a two-step code, and the CLI has no authenticator key for this login.");
+    return code(formkey);
+  };
+  const mfa = read ? (account.hasTotp ? fromKeychain : undefined) : credentials.mfaCallbackFor(account.totpSecret);
   const saved: string | null = await sessions.fileSessionStore.load(key);
   const savedInfo: { savedAt: number; by: string | null } | null = saved ? await sessions.sessionInfo?.(key) : null;
-  let wilma = saved ? client.WilmaClient.resume(profile, saved, mfa) : null;
+  let wilma = saved ? client.WilmaClient.resume({ ...profile, password }, saved, mfa) : null;
   let loggedIn = !wilma;
-  wilma ??= await client.WilmaClient.login(profile, mfa);
+  wilma ??= await client.WilmaClient.login({ ...profile, password: typeof password === "string" ? password : await password() }, mfa);
   wilma.onLogin(() => (loggedIn = true));
   // Reading the children checks the session (and logs in again if Wilma ended it).
   const students = await wilma.students();
@@ -229,8 +251,8 @@ export async function cliSession(repoRoot: string, index: number) {
     tenantName: account.stored?.tenantName ?? null,
     students,
     state,
-    /** The shared session's key (the CLI's), for continuing sessions other WilmAI programs save. */
-    key,
+    /** A file login's v1 key, for continuing sessions other WilmAI programs save (the bridge works out the key each time). */
+    v1Key: account.stored?.secrets ? undefined : v1KeyOf(profile),
     /** A session another program saved, continued (null: this bridge logged in). */
     continued: loggedIn ? null : { savedAt: savedInfo?.savedAt ?? null, by: savedInfo?.by ?? null },
   };
@@ -238,18 +260,37 @@ export async function cliSession(repoRoot: string, index: number) {
 
 const SESSION_KEY = /^[0-9a-f]{64}$/;
 
+/**
+ * A login's key in the shared session file now, from the CLI's config as it is at this read or write: v2 while the
+ * CLI keeps the login in the keychain, else the page's v1 key (null: nothing to share under). As the desktop app's
+ * native side does.
+ */
+async function sessionKeyOf(repoRoot: string, login: unknown): Promise<string | null> {
+  const { baseUrl, username, v1Key } = (login ?? {}) as { baseUrl?: unknown; username?: unknown; v1Key?: unknown };
+  if (typeof baseUrl !== "string" || typeof username !== "string") throw new HttpError(400, "Not a WilmAI login");
+  if (v1Key !== undefined && (typeof v1Key !== "string" || !SESSION_KEY.test(v1Key))) throw new HttpError(400, "Not a WilmAI session key");
+  const { config, keys } = await cliModules(repoRoot);
+  const address = (url: string) => url.replace(/\/$/, "");
+  const profiles: { tenantUrl: string; username: string; secrets?: string }[] = (await config.loadConfig()).profiles;
+  // v2 for any login whose password isn't in the CLI's file (the keychain, or a store a newer CLI knows), as the CLI does.
+  const keychain = profiles.some((p) => Boolean(p.secrets) && address(p.tenantUrl) === address(baseUrl) && p.username.toLowerCase() === username.toLowerCase());
+  return keychain ? keys.sessionKeyV2(baseUrl, username) : (v1Key ?? null);
+}
+
 /** WilmAI's shared session file (the CLI's), read and written with the CLI's own code. */
-export async function sharedSessionGet(repoRoot: string, key: unknown): Promise<{ state: string | null; savedAt: number | null; by: string | null }> {
-  if (typeof key !== "string" || !SESSION_KEY.test(key)) throw new HttpError(400, "Not a WilmAI session key");
+export async function sharedSessionGet(repoRoot: string, login: unknown): Promise<{ state: string | null; savedAt: number | null; by: string | null }> {
+  const key = await sessionKeyOf(repoRoot, login);
+  if (!key) return { state: null, savedAt: null, by: null };
   const { sessions } = await cliModules(repoRoot);
   const state: string | null = await sessions.fileSessionStore.load(key);
   const info = state ? await sessions.sessionInfo?.(key) : null;
   return { state, savedAt: info?.savedAt ?? null, by: info?.by ?? null };
 }
 
-export async function sharedSessionSet(repoRoot: string, key: unknown, state: unknown): Promise<{ ok: true }> {
-  if (typeof key !== "string" || !SESSION_KEY.test(key)) throw new HttpError(400, "Not a WilmAI session key");
+export async function sharedSessionSet(repoRoot: string, login: unknown, state: unknown): Promise<{ ok: true }> {
   if (typeof state !== "string" || state.length > 65536 || !state.includes("Wilma2SID")) throw new HttpError(400, "Not a WilmAI session");
+  const key = await sessionKeyOf(repoRoot, login);
+  if (!key) return { ok: true };
   const { sessions } = await cliModules(repoRoot);
   await sessions.fileSessionStore.save(key, state);
   return { ok: true };

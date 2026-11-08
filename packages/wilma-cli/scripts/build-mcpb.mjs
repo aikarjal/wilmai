@@ -4,7 +4,8 @@
 //
 //   pnpm --filter @wilm-ai/wilma-cli build:mcpb  ->  packages/wilma-cli/build/wilmai.mcpb
 import { execFileSync } from "node:child_process";
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -29,6 +30,8 @@ await build({
   format: "esm",
   target: "node18",
   legalComments: "none",
+  // The keychain on Windows: a native module, shipped next to the server below (not bundled).
+  external: ["@napi-rs/keyring"],
   // Some dependencies are CommonJS and call require() at runtime.
   banner: { js: "import { createRequire as __wilmaiCreateRequire } from 'node:module'; const require = __wilmaiCreateRequire(import.meta.url);" },
 });
@@ -40,6 +43,22 @@ await writeFile(
   JSON.stringify({ name: "wilmai-mcpb", version: pkg.version, private: true, type: "module" }, null, 2) + "\n"
 );
 await copyFile(join(root, "mcpb", "icon.png"), join(out, "icon.png"));
+
+// Keychain support for Claude Desktop on Windows: @napi-rs/keyring and its Windows binaries in the bundle's
+// node_modules. macOS needs nothing (it goes through /usr/bin/security). Fetched from npm at the pinned version,
+// since only this computer's platform package is installed.
+const keyringVersion = pkg.optionalDependencies?.["@napi-rs/keyring"];
+if (keyringVersion) {
+  const scope = join(out, "node_modules", "@napi-rs");
+  for (const name of ["keyring", "keyring-win32-x64-msvc", "keyring-win32-arm64-msvc"]) {
+    const tmp = await mkdtemp(join(tmpdir(), "wilmai-mcpb-"));
+    execFileSync("npm", ["pack", `@napi-rs/${name}@${keyringVersion}`, "--silent", "--pack-destination", tmp], { stdio: ["ignore", "ignore", "inherit"] });
+    const tarball = (await readdir(tmp)).find((f) => f.endsWith(".tgz"));
+    await mkdir(join(scope, name), { recursive: true });
+    execFileSync("tar", ["-xzf", join(tmp, tarball), "-C", join(scope, name), "--strip-components", "1"]);
+    await rm(tmp, { recursive: true, force: true });
+  }
+}
 
 // Ask the bundled server for its tools.
 const transport = new StdioClientTransport({

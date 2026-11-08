@@ -13,13 +13,13 @@
   "icons": [
     { "src": "https://wilm.ai/icon.png", "mimeType": "image/png", "sizes": ["512x512"] }
   ],
-  "version": "2.4.0",
+  "version": "2.5.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@wilm-ai/wilma-cli",
-      "version": "2.4.0",
+      "version": "2.5.0",
       "runtimeHint": "npx",
       "transport": { "type": "stdio" },
       "packageArguments": [{ "type": "positional", "value": "mcp" }]

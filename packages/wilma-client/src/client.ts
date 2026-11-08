@@ -1,4 +1,4 @@
-import { WilmaSession, MfaRequiredError, APIError, type SharedSession, type SessionEvent } from "./session.js";
+import { WilmaSession, MfaRequiredError, APIError, type PasswordSource, type SharedSession, type SessionEvent } from "./session.js";
 import type {
   Exam,
   GradebookEntry,
@@ -62,6 +62,9 @@ export interface ClientOptions {
   sharedSession?: SharedSession;
 }
 
+/** A profile for WilmaClient.resume(): the password may be a function called only for a new login. */
+export type ResumeProfile = Omit<WilmaProfile, "password"> & { password: PasswordSource };
+
 export class WilmaClient {
   private session: WilmaSession;
 
@@ -95,8 +98,13 @@ export class WilmaClient {
    * A client on a session saved earlier with exportSession(), without logging
    * in. If Wilma has ended that session, the first request logs in again by
    * itself. Returns null when the saved state has no session.
+   *
+   * The password may be a function (e.g. reading a keychain): it is called
+   * only when Wilma needs a new login, never while the saved session works.
+   * If it fails, the request fails with CredentialsUnavailableError and the
+   * next request tries again.
    */
-  static resume(profile: WilmaProfile, state: string, onMfaRequired?: MfaCallback, options: ClientOptions = {}): WilmaClient | null {
+  static resume(profile: ResumeProfile, state: string, onMfaRequired?: MfaCallback, options: ClientOptions = {}): WilmaClient | null {
     const session = new WilmaSession(profile.baseUrl, {
       studentNumber: profile.studentNumber ?? null,
       debug: profile.debug ?? false,

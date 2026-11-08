@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import {
   APIError,
   AuthenticationError,
+  CredentialsUnavailableError,
   MfaRequiredError,
   NetworkError,
   WilmaClient,
@@ -19,7 +20,7 @@ import {
   type TenantInfo,
   type WilmaProfile,
 } from "@wilm-ai/wilma-client";
-import { clearConfig, getConfigPath, loadConfig, obfuscateSecret, revealSecret, saveConfig, savedStudent, type StoredProfile } from "./config.js";
+import { clearConfig, editConfig, getConfigPath, loadConfig, revealSecret, saveConfig, savedStudent, type StoredProfile } from "./config.js";
 import {
   WilmaAccess,
   WilmaAiError,
@@ -30,11 +31,14 @@ import {
   type FetchedAttachment,
   type StudentRef,
 } from "./agent-data.js";
-import { createAccess, logoutAccounts, removeLogin } from "./access.js";
+import { createAccess, logoutAccounts, removeLogin, saveVerifiedLogin } from "./access.js";
 import { parseCliArgs, type Flags, type ParsedCommand } from "./cli-args.js";
 import { commandHelp, generalHelp } from "./cli-help.js";
 import { compactText, formatText, messageLine, newsLine } from "./cli-output.js";
-import { ENV_VARS, isMfaFailure, mfaCallbackFor, resolveAccounts, saveLogin, verifyLoginSession } from "./credentials.js";
+import { ENV_VARS, accountFor, chooseSecretStore, isMfaFailure, mfaCallbackFor, resolveAccounts, saveTotpSecret, verifyLoginSession } from "./credentials.js";
+import { deleteKnownEntries, moveLoginToFile, moveLoginToKeychain, removeStrayTempFiles, runBackgroundMoves, whereSecretsAre, type MoveResult } from "./secret-moves.js";
+import { abandonedKeychainCalls, effectiveSecretStore, keychainKind, keychainProblem, readBackLoginSecrets, SecretStoreError, secretErrorMessage, type SecretStoreSetting } from "./secret-store.js";
+import type { SessionKeys } from "./session-keys.js";
 import { createUniqueDownloadFile } from "./downloads.js";
 import { HOME, homeText } from "./home.js";
 import { openBrowser, startLoginServer } from "./login-server.js";
@@ -167,19 +171,90 @@ async function runCommand(argv: string[]) {
     case "update":
       await handleUpdate();
       return;
-    case "config":
+    case "config": {
+      if (action === "secrets") {
+        await handleSecrets(args[0] as SecretStoreSetting | undefined, out);
+        return;
+      }
+      // The documented way out of a damaged config: read what can be read, delete the keychain entries it knows, then the files.
+      const notDeleted = await deleteKnownEntries(await readFile(getConfigPath(), "utf8").catch(() => null));
       await clearConfig();
       await clearSessions();
-      out.data({ status: "cleared", configPath: getConfigPath() }, () => `Cleared saved logins and sessions (${getConfigPath()}).`);
+      out.data(
+        { status: "cleared", configPath: getConfigPath(), ...(notDeleted.length ? { keychainEntriesNotDeleted: notDeleted.length } : {}) },
+        () =>
+          `Cleared saved logins and sessions (${getConfigPath()}).` +
+          (notDeleted.length ? `\n${notDeleted.length} keychain entr${notDeleted.length === 1 ? "y" : "ies"} named ai.wilm.wilma-cli couldn't be deleted; remove them in your keychain app.` : "")
+      );
       return;
+    }
     default:
       try {
         await runDataCommand(parsed, out);
       } finally {
         // Also after an error: the session is still good for the next command.
         await flushSessions();
+        await runBackgroundMoves();
       }
   }
+}
+
+/** `wilma config secrets [file|auto|keychain]`: where saved passwords are kept, or a change of it (moving the logins). */
+async function handleSecrets(setting: SecretStoreSetting | undefined, out: Output) {
+  let moved: MoveResult[] | undefined;
+  let note: string | undefined;
+  if (setting) {
+    const problem = setting === "file" ? null : await keychainProblem();
+    if (setting === "keychain" && problem) {
+      throw new SecretStoreError("unavailable", `There's no keychain WilmAI can use on this computer (${problem}). Nothing was changed.`);
+    }
+    await editConfig((config) => {
+      config.secretStore = setting;
+    });
+    const config = await loadConfig();
+    moved = [];
+    if (setting === "file") {
+      for (const p of config.profiles) if (p.secrets || config.keychainLogins?.[p.id]) moved.push(await moveLoginToFile(p.id));
+    } else if (problem) {
+      note = `There's no keychain WilmAI can use on this computer (${problem}). Saved passwords stay in WilmAI's file.`;
+    } else {
+      for (const p of config.profiles) if (!p.secrets) moved.push(await moveLoginToKeychain(p.id));
+      if (moved.some((m) => m.outcome === "moved")) {
+        await removeStrayTempFiles();
+        note = "Older copies of WilmAI's file (backups, synced dotfiles) may still hold the passwords; changing your Wilma password makes them useless.";
+      }
+    }
+    if (moved.some((m) => m.outcome === "failed")) process.exitCode = 4;
+  }
+  const config = await loadConfig();
+  const problem = await keychainProblem();
+  const envOverride = process.env.WILMAI_SECRET_STORE?.trim() || null;
+  const logins = whereSecretsAre(config).map(({ id: _id, ...rest }) => rest);
+  const result = {
+    setting: effectiveSecretStore(config.secretStore, {}),
+    ...(envOverride ? { envOverride } : {}),
+    keychain: { kind: keychainKind(), usable: !problem, ...(problem ? { problem } : {}) },
+    logins,
+    ...(moved ? { moved: moved.map(({ id: _id, ...m }) => m) } : {}),
+    ...(note ? { note } : {}),
+  };
+  out.data(result, () => {
+    const place = (store: string) => (store === "keychain" ? `the ${keychainKind()}` : store === "file" ? "WilmAI's file" : "somewhere this version doesn't know");
+    const lines = [
+      `New logins are saved in: ${result.setting === "file" ? "WilmAI's file" : result.setting === "keychain" ? `the ${keychainKind()}` : `the ${keychainKind()} where it can be used, else WilmAI's file`} (setting: ${result.setting}${envOverride ? `; WILMAI_SECRET_STORE=${envOverride} for this process` : ""}).`,
+      `Keychain on this computer: ${problem ? `can't be used (${problem})` : `${keychainKind()}, can be used`}.`,
+    ];
+    if (logins.length) {
+      lines.push("Saved logins:");
+      for (const login of logins) lines.push(`  ${login.username} @ ${login.wilma}: ${place(login.store)}${login.hasTotp ? ", with an authenticator key" : ""}`);
+    }
+    for (const m of moved ?? []) {
+      if (m.outcome === "moved") lines.push(`Moved ${m.username} @ ${m.wilma} to ${m.to === "keychain" ? `the ${keychainKind()}` : "WilmAI's file"}.${m.message ? ` ${m.message}` : ""}`);
+      else if (m.outcome !== "already") lines.push(`Not moved: ${m.username} @ ${m.wilma}: ${m.message ?? m.outcome}`);
+    }
+    if (note) lines.push(note);
+    return lines.join("\n");
+  });
 }
 
 /** Data commands: every child by default, the same results as the MCP tools. */
@@ -273,13 +348,17 @@ async function handleFindSchool(query: string, out: Output) {
 }
 
 async function runInteractive(config: { profiles: StoredProfile[]; lastProfileId?: string | null }) {
-  const mfa = createInteractiveMfa(() => saveConfig(config));
+  const mfa = createInteractiveMfa();
+  let first = true;
   while (true) {
-    const profile = await chooseProfile(config, mfa);
-    if (!profile) {
+    // A fresh read on every pass: a login just added here, or a login another process moved, shows as it is now.
+    const chosen = await chooseProfile(first ? config : await loadConfig(), mfa);
+    first = false;
+    if (!chosen) {
       return;
     }
-    const access = new WilmaAccess({ profile: { ...profile, studentNumber: null }, mfa: mfa.callback });
+    const { profile } = chosen;
+    const access = new WilmaAccess({ profile: { ...profile, studentNumber: null }, password: chosen.password, keys: chosen.keys, mfa: mfa.callback });
     const student = profile.studentNumber ?? undefined;
     const show = (command: string, result: unknown, action: string | null = null) => {
       console.clear();
@@ -399,10 +478,13 @@ async function selectMessageToRead(access: WilmaAccess, student: string | undefi
   console.log(formatText("messages", "read", await access.message({ id: Number(selected), student })));
 }
 
+/** A login picked in interactive mode: its profile, and for a keychain login the lazy password and its keys. */
+type ChosenLogin = { profile: WilmaProfile; password?: () => Promise<string>; keys?: SessionKeys };
+
 async function chooseProfile(
   config: { profiles: StoredProfile[]; lastProfileId?: string | null },
   mfa: InteractiveMfa
-): Promise<WilmaProfile | null> {
+): Promise<ChosenLogin | null> {
   const onMfa = mfa.callback;
   if (config.profiles.length) {
     const choices = config.profiles.map((p) => ({
@@ -425,29 +507,28 @@ async function chooseProfile(
       }
       mfa.profile = stored;
       mfa.typedSecret = null;
-      const secret = revealSecret(stored.passwordObfuscated);
-      if (!secret) {
-        throw new Error("Stored password could not be decoded");
-      }
-      const selectedStudent = await chooseStudentFromProfile(stored, {
-        baseUrl: stored.tenantUrl,
-        username: stored.username,
-        password: secret,
-      }, onMfa);
+      // A keychain login's password is read only if Wilma needs a new login.
+      const account = accountFor(stored);
+      const login: ChosenLogin = {
+        profile: account.profile,
+        password: account.secrets ? async () => (await account.secrets!()).password : undefined,
+        keys: account.keys,
+      };
+      const selectedStudent = await chooseStudentFromProfile(stored, login, onMfa);
       if (!selectedStudent) {
         return null;
       }
-      stored.lastUsedAt = new Date().toISOString();
-      stored.lastStudentNumber = selectedStudent?.studentNumber ?? null;
-      stored.lastStudentName = selectedStudent?.name ?? null;
-      config.lastProfileId = stored.id;
-      await saveConfig(config);
-      return {
-        baseUrl: stored.tenantUrl,
-        username: stored.username,
-        password: secret,
-        studentNumber: selectedStudent?.studentNumber ?? undefined,
-      };
+      // Onto a fresh read: another process may have changed the config (moved this login, saved another).
+      await editConfig((fresh) => {
+        const target = fresh.profiles.find((p) => p.id === stored.id);
+        if (!target) return false;
+        target.lastUsedAt = new Date().toISOString();
+        target.lastStudentNumber = selectedStudent?.studentNumber ?? null;
+        target.lastStudentName = selectedStudent?.name ?? null;
+        if (stored.students) target.students = stored.students;
+        fresh.lastProfileId = stored.id;
+      });
+      return { ...login, profile: { ...login.profile, studentNumber: selectedStudent?.studentNumber ?? undefined } };
     }
   }
 
@@ -461,33 +542,33 @@ async function chooseProfile(
   // Codes for a new login can't come from another saved login's key.
   mfa.profile = undefined;
   mfa.typedSecret = null;
+  // Where the password goes is settled before Wilma is contacted.
+  const choice = await chooseSecretStore(await loadConfig(), tenant.url, username);
   const newProfile = { baseUrl: tenant.url, username, password: passwordValue };
   const verified = await WilmaClient.login(newProfile, onMfa);
   const students = await verified.students();
-  // The commands that follow continue this session instead of logging in again.
-  adoptSession(newProfile, verified);
   const student = await chooseStudent(students);
   if (!student) return null;
 
   // Same rules as `wilma login`: one entry per account, whatever the username's case.
-  const stored = await saveLogin(config, {
-    tenantUrl: tenant.url,
-    tenantName: tenant.name,
-    username,
-    password: passwordValue,
-    totpSecret: mfa.typedSecret,
-    students,
+  // The commands that follow continue this session instead of logging in again.
+  const stored = await saveVerifiedLogin(
+    { tenantUrl: tenant.url, tenantName: tenant.name, username, password: passwordValue, totpSecret: mfa.typedSecret, students },
+    verified,
+    choice
+  );
+  if (stored.note) console.log(stored.note);
+  await editConfig((fresh) => {
+    const target = fresh.profiles.find((p) => p.id === stored.id);
+    if (!target) return false;
+    target.lastStudentNumber = student.studentNumber;
+    target.lastStudentName = student.name;
   });
-  stored.lastStudentNumber = student.studentNumber;
-  stored.lastStudentName = student.name;
-  await saveConfig(config);
   mfa.profile = stored;
 
   return {
-    baseUrl: stored.tenantUrl,
-    username,
-    password: passwordValue,
-    studentNumber: student.studentNumber,
+    profile: { baseUrl: stored.tenantUrl, username, password: passwordValue, studentNumber: student.studentNumber },
+    keys: accountFor(stored).keys,
   };
 }
 
@@ -573,11 +654,11 @@ async function chooseStudent(students: StudentInfo[]): Promise<StudentInfo | nul
 
 async function chooseStudentFromProfile(
   stored: StoredProfile,
-  baseProfile: { baseUrl: string; username: string; password: string },
+  login: ChosenLogin,
   onMfa?: MfaCallback
 ): Promise<StudentInfo | null> {
   let students: StudentInfo[] = [];
-  const fresh = await new WilmaAccess({ profile: baseProfile, mfa: onMfa }).students().catch((err) => {
+  const fresh = await new WilmaAccess({ profile: login.profile, password: login.password, keys: login.keys, mfa: onMfa }).students().catch((err) => {
     if (stored.students?.length) return [];
     throw err;
   });
@@ -637,15 +718,17 @@ async function handleLogin(args: string[], out: Output) {
     } else throw new WilmaAiError("invalid_argument", `Unknown login option "${arg}". See wilma help login.`);
   }
 
-  const report = (stored: StoredProfile) => {
+  const report = (stored: StoredProfile & { note?: string }) => {
     const students = (stored.students ?? []).map((s) => s.name);
+    const secrets = stored.secrets === "keychain" ? "keychain" : "file";
     if (out.json) {
-      out.data({ status: "ok", wilma: stored.tenantName ?? stored.tenantUrl, username: stored.username, students, configPath: getConfigPath() });
+      out.data({ status: "ok", wilma: stored.tenantName ?? stored.tenantUrl, username: stored.username, students, configPath: getConfigPath(), secrets, ...(stored.note ? { note: stored.note } : {}) });
       return;
     }
     console.log(`Logged in to ${stored.tenantName ?? stored.tenantUrl} as ${stored.username}.`);
     if (students.length) console.log(`Children: ${students.join(", ")}`);
-    console.log(`Saved to ${getConfigPath()}`);
+    console.log(secrets === "keychain" ? `Saved to ${getConfigPath()}; the password is in the ${keychainKind()}.` : `Saved to ${getConfigPath()}`);
+    if (stored.note) console.log(stored.note);
   };
 
   // Non-interactive: flags (with env fallback) — for agents and scripts.
@@ -661,17 +744,11 @@ async function handleLogin(args: string[], out: Output) {
     }
     const tenant = await resolveTenant(tenantQuery);
     const totpSecret = flags.totpSecret ?? process.env[ENV_VARS.totpSecret] ?? null;
+    // Where the password goes is settled before Wilma is contacted (a login that can't be saved costs nothing).
+    const choice = await chooseSecretStore(await loadConfig(), tenant.url, username);
     const { client, students } = await verifyLoginSession({ tenantUrl: tenant.url, username, password, totpSecret });
     // The next commands continue this session: no second login (or code).
-    adoptSession({ baseUrl: normalizeTenantUrl(tenant.url), username, password }, client);
-    const stored = await saveLogin(await loadConfig(), {
-      tenantUrl: tenant.url,
-      tenantName: tenant.name,
-      username,
-      password,
-      totpSecret,
-      students,
-    });
+    const stored = await saveVerifiedLogin({ tenantUrl: tenant.url, tenantName: tenant.name, username, password, totpSecret, students }, client, choice);
     report(stored);
     await flushSessions();
     return;
@@ -751,11 +828,12 @@ async function handleAccounts(action: string | null, args: string[], out: Output
     const { removed, ...session } = await removeLogin(findSavedLogin(config.profiles, args.join(" ")).id);
     const result = { status: "removed", wilma: removed.tenantName ?? removed.tenantUrl, username: removed.username, ...session };
     out.data(result, () =>
-      session.session === "ended"
+      (session.session === "ended"
         ? `Removed ${removed.username} @ ${result.wilma} and ended its Wilma session.`
         : session.session === "not_ended"
           ? `Removed ${removed.username} @ ${result.wilma}. Its Wilma session couldn't be ended (${session.message}); Wilma ends it when it expires.`
-          : `Removed ${removed.username} @ ${result.wilma}.`
+          : `Removed ${removed.username} @ ${result.wilma}.`) +
+      (session.keychainEntryLeft ? `\nIts saved password couldn't be deleted from the keychain (${session.keychainEntryLeft}); \`wilma config clear\` tries again.` : "")
     );
     return;
   }
@@ -924,7 +1002,17 @@ interface InteractiveMfa {
   typedSecret: string | null;
 }
 
-function createInteractiveMfa(saveProfile: () => Promise<void>): InteractiveMfa {
+/** A saved login's authenticator key: from the file, or (a keychain login) read from its entry now. */
+async function savedTotpSecret(profile: StoredProfile | undefined): Promise<string | null> {
+  if (!profile) return null;
+  if (profile.secrets === "keychain" && profile.secretId) {
+    if (!profile.hasTotp) return null;
+    return (await readBackLoginSecrets(profile.secretId))?.totpSecret ?? null;
+  }
+  return revealSecret(profile.totpSecretObfuscated);
+}
+
+function createInteractiveMfa(): InteractiveMfa {
   let lastCode: string | null = null;
   let lastCodeTime = 0;
   let lastCodeFor: StoredProfile | undefined;
@@ -940,9 +1028,7 @@ function createInteractiveMfa(saveProfile: () => Promise<void>): InteractiveMfa 
       lastFormkey = formkey;
 
       // A saved or just-typed key generates codes (a retry waits for the next one).
-      const secret = state.profile?.totpSecretObfuscated
-        ? revealSecret(state.profile.totpSecretObfuscated)
-        : state.typedSecret;
+      const secret = (await savedTotpSecret(state.profile)) ?? state.typedSecret;
       if (secret) {
         if (!generators.has(secret)) generators.set(secret, mfaCallbackFor(secret)!);
         return generators.get(secret)!(formkey);
@@ -972,8 +1058,9 @@ function createInteractiveMfa(saveProfile: () => Promise<void>): InteractiveMfa 
         if (!secretInput) throw new Error("MFA cancelled");
         const parsed = parseTotpSecret(secretInput);
         if (state.profile) {
-          state.profile.totpSecretObfuscated = obfuscateSecret(secretInput);
-          await saveProfile();
+          // Into the keychain entry for a keychain login, never the file.
+          await saveTotpSecret(state.profile.id, secretInput);
+          state.profile = (await loadConfig()).profiles.find((p) => p.id === state.profile!.id) ?? state.profile;
         } else {
           // A new login: saved together with the login once it succeeds.
           state.typedSecret = secretInput;
@@ -1083,8 +1170,24 @@ function jsonSafe(value: string): string {
 }
 
 
+/** A keychain failure, whether the CLI read the keychain itself or the client did while logging in again. */
+function secretFailure(err: unknown): SecretStoreError | null {
+  if (err instanceof SecretStoreError) return err;
+  if (err instanceof CredentialsUnavailableError) {
+    if (err.cause instanceof SecretStoreError) return err.cause;
+    const reason = (["missing", "refused", "unavailable"] as const).find((r) => r === err.reason) ?? "unavailable";
+    return new SecretStoreError(reason, err.message || secretErrorMessage(reason));
+  }
+  return null;
+}
+
 /** An error as agents and scripts get it: a stable code, a message, and the exit code. */
 function describeError(err: unknown): { code: string; message: string; hint?: string; cause?: string; details?: Record<string, unknown>; exitCode: number } {
+  const secret = secretFailure(err);
+  if (secret) {
+    // Exit code 4: the password is saved, but this computer didn't hand it over (or it's gone: then log in again).
+    return { code: `secret_${secret.reason}`, message: secret.message, exitCode: 4 };
+  }
   if (err instanceof WilmaAiError) {
     const exitCode = err.code === "invalid_argument" || err.code === "unknown_command" ? 2 : err.code === "not_logged_in" ? 3 : 1;
     return { code: err.code, message: err.message, details: err.details, exitCode };
@@ -1124,7 +1227,10 @@ function describeError(err: unknown): { code: string; message: string; hint?: st
   return { code: "error", message, exitCode: 1 };
 }
 
-main().catch((err) => {
+main().then(() => {
+  // A keychain call that timed out can't be cancelled (Windows, Linux) and would keep the process alive: finish once the output is written.
+  if (abandonedKeychainCalls()) process.stdout.write("", () => process.exit(process.exitCode ?? 0));
+}).catch((err) => {
   if (isPromptCancel(err)) {
     process.exit(0);
   }

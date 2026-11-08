@@ -165,6 +165,13 @@ export const FI_FORMS: Record<string, string> = {
   "That saved login isn't there any more.": "Tallennettua kirjautumista ei enää löydy.",
   "The saved login has no readable password.": "Tallennetusta kirjautumisesta ei saada salasanaa.",
   "The saved authenticator key isn't valid.": "Tallennettu todennusavain ei kelpaa.",
+  // The CLI's login kept in the keychain (src-tauri/src/lib.rs)
+  "The password the WilmAI CLI saved for this Wilma isn't in the keychain any more. Log in again with the CLI (`wilma login`), or type the password here.":
+    "WilmAI CLI:n tälle Wilmalle tallentamaa salasanaa ei enää ole avainnipussa. Kirjaudu uudelleen CLI:llä (`wilma login`) tai kirjoita salasana tähän.",
+  "The keychain on this computer didn't hand over the password the WilmAI CLI saved. If the computer is locked or asking for a password, unlock it, then try again.":
+    "Tämän tietokoneen avainnippu ei antanut WilmAI CLI:n tallentamaa salasanaa. Jos tietokone on lukittu tai kysyy salasanaa, avaa lukitus ja yritä sitten uudelleen.",
+  "A newer WilmAI saved this login's password where this version of WilmAI Home can't read it. Update WilmAI Home, or type the password here.":
+    "Uudempi WilmAI tallensi tämän kirjautumisen salasanan paikkaan, josta tämä WilmAI Homen versio ei sitä lue. Päivitä WilmAI Home tai kirjoita salasana tähän.",
   // Settings: sign-in history
   "Sign-in history": "Kirjautumishistoria",
   "Wilma keeps one session per account: signing in anywhere (the phone, a browser, a WilmAI program) ends the others. This shows what happened to this app's session.":

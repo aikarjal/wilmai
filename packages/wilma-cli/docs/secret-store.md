@@ -212,8 +212,11 @@ and the lower-cased username. No password.
   would keep a client holding the old one, and its next login would be
   refused (and count towards a lockout). The MCP server reads the config on
   every tool call, so it picks up the new stamp at once.
-- Pool entries whose client has failed for good (`auth.failed`) are dropped,
-  for every login: today only a client that fails while being created is.
+- A client that has failed for good (`auth.failed`) stays in the pool. (The
+  first draft dropped it; building it showed that would retry a password
+  Wilma refused on every tool call, which can lock the account. A changed
+  password already gets a new pool key: v1 contains the password, and a
+  keychain login's stamp changes.)
 - "A changed password starts a fresh session" stays true: `wilma login`
   saves the session it just verified, which replaces the entry.
 
@@ -434,8 +437,9 @@ Error codes for scripts and assistants, with their own exit code:
 ### 12. Rollout
 
 1. **wilma-cli 2.4.1**, no keychain yet: a login that can't be read is
-   reported, not skipped; failed pool clients dropped; `external` in the
-   MCPB build; interactive mode saving on a fresh load.
+   reported, not skipped; `external` in the MCPB build; interactive mode
+   saving on a fresh load. (Built as part of 2.5.0; shipping it first only
+   helps if older installs update before anyone turns the keychain on.)
 2. **wilma-client 1.10.0**: the password callback, `CredentialsUnavailableError`,
    `logout()` resetting `endedByWilma`.
 3. **WilmAI Home**: the session key rule, worked out at every session-file
@@ -596,6 +600,75 @@ server reads the config on every tool call); Home changes to it (section 9).
 Programs that know only v1 can't share a keychain login's session, so turning
 the keychain on needs Home's next release and CLI 2.5.0 wherever this config
 is read.
+
+## Implementation notes (8 November 2026)
+
+Built and tested locally (not published). What the build changed or
+confirmed:
+
+- **macOS `security -i`** takes the command on stdin and the value as hex
+  (`-X`); quotes, backslashes and non-ASCII read back exactly; a failure exits
+  non-zero with the reason on stderr; "not found" is exit 44.
+- **Never change a macOS item in place.** `add-generic-password -U` on an
+  existing item makes macOS ask for authorization to change its content: a
+  dialog nobody answers in a background run. Until it's answered, that
+  keychain answers everything else with "Unable to obtain authorization"
+  (exit 152), while reading a missing item still answers 44. Found by the
+  real-keychain test (the fakes can't show it). Saving now deletes the entry
+  and adds it again, as Parent Recap's ADR 0009 does; a read that finds
+  nothing in that instant tries once more before it says "missing".
+- **A locked login keychain** gives the same exit 152 at once, or, when macOS
+  can show its dialog, waits for it. The 10-second kill covers the second
+  case. Both come out as `secret_refused`.
+- **The real-keychain test on macOS** can run against a temporary keychain
+  file (`WILMAI_REAL_KEYCHAIN_TEST=temp`, test hook `WILMAI_KEYCHAIN_PATH`):
+  made, unlocked and deleted by the test, with the user's search list left
+  alone. It checks each entry trusts `/usr/bin/security` and no `node`.
+- **Background moves in the MCP server** run once when it starts, not after
+  every tool call. CLI commands run them after each command.
+- **The extension** (`build:mcpb`) fetches `@napi-rs/keyring` and its two
+  Windows packages with `npm pack` at the pinned version: 2.6 MB in all.
+- **Test hooks**, not documented for users: `WILMAI_KEYCHAIN_BACKEND`
+  (`fake:<file>`, `macos`, `keyring`), `WILMAI_KEYCHAIN_SERVICE`,
+  `WILMAI_KEYCHAIN_TIMEOUT_MS`.
+- **The session-key rule, as built**: v2 for any login whose password isn't
+  in the CLI's file (the keychain, or a store a newer WilmAI knows), v1
+  otherwise. The CLI, Home and Home's dev bridge use the same rule.
+- **Home** sends the login (address, username, and its v1 key when it knows
+  the password) with every session-file read and write; the Rust side reads
+  the CLI's config each time and picks v2 or v1. If the config exists but
+  can't be read, nothing is read or written. A password typed in Home for a
+  CLI keychain login signs in but isn't kept (nor a key made from it); where
+  Home would have kept it, the login switches to the CLI's saved login, so
+  "Stay signed in" reads the keychain. Home's Windows read path is compiled
+  and unit-tested on macOS, not yet run against Credential Manager.
+- **A review of the CLI and client code** found eight problems, now fixed:
+  timed-out writes, deletes and checks are counted too, so a command exits
+  when its output is written; interactive mode reads the config on every
+  pass; the environment variable no longer moves a saved file login;
+  removing a login keeps an entry it couldn't delete recorded and says so;
+  `saveLogin` saves onto a fresh read after its keychain calls; the library's
+  real error wording is matched; `wilma config clear` finds the entries a
+  damaged config names; a move always gives a new stamp.
+- **Tests**: `test/secret-store.mjs` (the CLI end to end against a fake Wilma
+  and a fake keychain: moves both ways, sessions without keychain reads, the
+  three errors, the login order, repairs, the read states),
+  `test/mfa.mjs` (a two-step login from the keychain entry), wilma-client's
+  `test/password-source.mjs`, and the opt-in `pnpm test:keychain` against
+  this computer's keychain (service `ai.wilm.wilma-cli.test`).
+
+## Validation (8 November 2026)
+
+| Check | Result |
+| --- | --- |
+| macOS, the login keychain (`pnpm test:keychain`) | Passed: write, read, replace (delete and add), delete through `/usr/bin/security`; the same through `@napi-rs/keyring`; the CLI end to end (login to the keychain, saved session without a read, a new login reading it, moving back). No test items left |
+| macOS, a temporary keychain (`pnpm test:keychain:temp`) | Passed, and each entry trusts `/usr/bin/security` and no `node` |
+| macOS, Home reading the CLI's entry | Passed: an entry the CLI wrote (real service, random id) read by Home's Rust code, password and key intact; deleted after (`cargo test -- --ignored reads_an_entry_the_cli_wrote`) |
+| Linux desktop (Docker: D-Bus, gnome-keyring unlocked) | Passed: the real-keychain test through the Secret Service, the CLI end to end, nothing left |
+| Linux headless (no D-Bus session) | Passed: "no Secret Service here"; `keychain` refuses with `secret_unavailable` (exit 4) and changes nothing; `auto` keeps the file and says so |
+| The CLI suite | 10 of 10 on macOS and on Linux (Docker) |
+| Windows (Credential Manager; Home reading the CLI's entry with `keyring` 3.6) | Not run yet. `.github/workflows/keychain.yml` runs both on a Windows runner (by hand, or on a pull request touching the keychain code); on a Windows computer: `pnpm --filter @wilm-ai/wilma-cli test:keychain`, then `node apps/home/scripts/keychain-interop.mjs` |
+| macOS, the same interop script | Passed (`node apps/home/scripts/keychain-interop.mjs`) |
 
 ## Open questions
 

@@ -83,18 +83,26 @@ export interface SavedSession {
   account: AccountInfo;
   /** wilma-client's exportSession(): the login's cookies ("" when Wilma ended it). */
   state: string;
-  /** The login's key in WilmAI's shared session file (see sharedSessionFor). */
-  sharedKey?: string;
+  /**
+   * The login's v1 key in WilmAI's shared session file, when the app knew its password. Not the key itself: that's
+   * worked out at every read and write (see SharedLogin), since the CLI may keep the login in the keychain (v2).
+   */
+  v1Key?: string;
 }
 
-/** Sessions saved before the app used wilma-client kept bare cookie pairs. */
-function upgradeSession(saved: (SavedSession & { cookies?: [string, string][] }) | undefined): SavedSession | null {
+/**
+ * Sessions saved before the app used wilma-client kept bare cookie pairs. Ones saved before the key was worked out at
+ * each read and write kept it as `sharedKey`: always a v1 key then.
+ */
+function upgradeSession(saved: (SavedSession & { cookies?: [string, string][]; sharedKey?: string }) | undefined): SavedSession | null {
   if (!saved?.account) return null;
-  if (typeof saved.state === "string") return saved;
-  if (!Array.isArray(saved.cookies)) return null;
+  const { cookies, sharedKey, ...session } = saved;
+  if (sharedKey && !session.v1Key) session.v1Key = sharedKey;
+  if (typeof session.state === "string") return session;
+  if (!Array.isArray(cookies)) return null;
   const domain = new URL(saved.account.baseUrl).hostname;
-  const cookies = saved.cookies.map(([key, value]) => ({ key, value, domain, path: "/", hostOnly: true }));
-  return { account: saved.account, state: JSON.stringify({ cookies }) };
+  const pairs = cookies.map(([key, value]) => ({ key, value, domain, path: "/", hostOnly: true }));
+  return { account: saved.account, state: JSON.stringify({ cookies: pairs }), ...(session.v1Key ? { v1Key: session.v1Key } : {}) };
 }
 
 const SETTINGS_KEY = "wilmai.settings";
@@ -309,10 +317,15 @@ export function forgetPasswordsIfAsked() {
   if (!keepsPassword(settings) && (Object.keys(settings.passwords).length || settings.wilmaPassword)) updateSettings({ wilmaPassword: "", passwords: {} });
 }
 
-/** Remember a login's password (when passwords are kept), or forget it (null). */
+/**
+ * Remember a login's password (when passwords are kept), or forget it (null). A login that signs in with the WilmAI
+ * CLI's saved login keeps no password here: the CLI keeps it (in the keychain, for one it keeps there), so one typed
+ * for it is forgotten instead.
+ */
 export function rememberPasswordOf(account: AccountInfo, password: string | null) {
   const { settings, snapshot } = state;
   const key = accountKey(account)!;
+  if (account.via === "cli") password = null;
   if (password !== null && !keepsPassword(settings)) return;
   const { [key]: _, ...rest } = settings.passwords;
   updateSettings({ passwords: password === null ? rest : { ...rest, [key]: password }, ...(key === accountKey(snapshot?.account) ? { wilmaPassword: "" } : {}) });
@@ -464,7 +477,12 @@ export function saveSession(session: SavedSession | null) {
 export async function savedLinkedSessions(): Promise<Record<string, SavedSession>> {
   await writes; // One just ended or kept is read as written.
   const saved = await get<Record<string, SavedSession>>("linkedSessions").catch(() => undefined);
-  return Object.fromEntries(Object.entries(saved ?? {}).flatMap(([key, s]) => (upgradeSession(s) ? [[key, s]] : [])));
+  return Object.fromEntries(
+    Object.entries(saved ?? {}).flatMap(([key, s]) => {
+      const session = upgradeSession(s);
+      return session ? [[key, session]] : [];
+    })
+  );
 }
 
 /** Keep one of those sessions (null: forget it), or forget them all (no account). */

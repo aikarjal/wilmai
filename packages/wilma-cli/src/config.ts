@@ -8,8 +8,19 @@ export interface StoredProfile {
   tenantUrl: string;
   tenantName?: string | null;
   username: string;
-  passwordObfuscated: string;
+  /** Scrambled password: a login kept in this file (absent for a keychain login). */
+  passwordObfuscated?: string;
   totpSecretObfuscated?: string | null;
+  /** "keychain": the password and authenticator key are in the OS keychain, entry `secretId`. Absent: in this file. */
+  secrets?: "keychain" | string;
+  /** The login's keychain entry (random; also kept in CliConfig.keychainLogins). */
+  secretId?: string;
+  /** Random, new whenever the login's secrets change; not secret. Part of a keychain login's pool key. */
+  credentialsStamp?: string;
+  /** Whether an authenticator key is saved (so listings don't read the keychain). */
+  hasTotp?: boolean;
+  /** When moving the login to the keychain last failed (background moves wait a day). */
+  moveFailedAt?: string;
   /** The children the login lists; `role` says whose login it is for each (a guardian's, or the student's own). */
   students?: SavedStudent[];
   /** Student numbers of children unticked on the login page (a profile Wilma lists twice): not read. */
@@ -33,6 +44,10 @@ export function savedStudent(s: SavedStudent): SavedStudent {
 export interface CliConfig {
   profiles: StoredProfile[];
   lastProfileId?: string | null;
+  /** Where new secrets go: "file" (default), "auto" or "keychain" (`wilma config secrets`). */
+  secretStore?: string;
+  /** Every keychain entry this config made, by login id, written before the entry itself. */
+  keychainLogins?: Record<string, string>;
 }
 
 const SALT = "wilmai::";
@@ -118,6 +133,26 @@ export async function saveConfig(config: CliConfig): Promise<void> {
   await rename(tmp, path);
 }
 
+/**
+ * Change the saved config from a fresh read, so a save never overwrites what
+ * another process wrote meanwhile (moves, logins, refreshed child lists).
+ * `edit` returns false to leave the file as it is.
+ */
+export async function editConfig(edit: (config: CliConfig) => boolean | void | Promise<boolean | void>): Promise<CliConfig> {
+  const config = await loadConfig();
+  if ((await edit(config)) !== false) await saveConfig(config);
+  return config;
+}
+
+/** The config as far as it can be read, or null (for `wilma config clear`, the way out of a damaged file). */
+export async function loadConfigLenient(): Promise<CliConfig | null> {
+  try {
+    return await loadConfig();
+  } catch {
+    return null;
+  }
+}
+
 export async function clearConfig(): Promise<void> {
   const path = getConfigPath();
   await rm(path, { force: true });
@@ -127,7 +162,8 @@ export function obfuscateSecret(value: string): string {
   return Buffer.from(SALT + value, "utf-8").toString("base64");
 }
 
-export function revealSecret(value: string): string | null {
+export function revealSecret(value: string | null | undefined): string | null {
+  if (!value) return null;
   try {
     const decoded = Buffer.from(value, "base64").toString("utf-8");
     if (!decoded.startsWith(SALT)) {

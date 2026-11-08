@@ -14,7 +14,7 @@ pnpm add -g @wilm-ai/wilma-cli
 ```bash
 wilma login
 ```
-Opens a one-time login page in your browser: pick your school's Wilma and log in. The login is saved to `~/.config/wilmai/config.json`.
+Opens a one-time login page in your browser: pick your school's Wilma and log in. The login is saved to `~/.config/wilmai/config.json` (the password can go to the keychain instead: see Config).
 
 Without a browser: `wilma login --tenant <url|city> --username <name>` with the password in `WILMA_PASSWORD` or piped via `--password-stdin`. Or set `WILMA_TENANT`, `WILMA_USERNAME`, `WILMA_PASSWORD` (and `WILMA_TOTP_SECRET`) and skip the saved login.
 
@@ -79,6 +79,7 @@ wilma find-school <city or school>
 ## Other
 ```bash
 wilma update                       # when a newer version is out, a command says so on stderr, at most once a day (WILMAI_NO_UPDATE_CHECK=1 turns it off)
+wilma config secrets               # where saved passwords are kept; `wilma config secrets auto` moves them to the keychain
 wilma config clear                 # deletes every saved login and session
 wilma home                         # where to download WilmAI Home, the Wilma app for Mac and Windows
 wilma --version
@@ -94,6 +95,22 @@ If your Wilma account has MFA/TOTP enabled:
 
 ## Config
 Logins are saved in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`; override with `WILMAI_CONFIG_PATH`) and the current Wilma sessions in `wilmai-sessions.json` next to it, both readable only by you. `wilma logout` ends the sessions and deletes them, keeping the logins; `wilma config clear` deletes both.
+
+### Passwords in the keychain (optional)
+By default the password and authenticator key are in that file too, scrambled (not encrypted), like aws, npm or kubectl keep theirs. To keep them in the operating system's keychain instead:
+
+```bash
+wilma config secrets auto       # the keychain where there is one, the file where there isn't
+wilma config secrets keychain   # the keychain only; saving fails where there is none
+wilma config secrets file       # back to the file
+wilma config secrets            # where each login's password is now
+```
+
+Changing the setting moves the saved logins without logging in again. The keychain is the macOS Keychain (through `/usr/bin/security`, so no prompts after a Node.js upgrade), Windows Credential Manager, or a Linux desktop's Secret Service (headless Linux has none: `auto` keeps the file there). `WILMAI_SECRET_STORE=file|auto|keychain` decides where new logins go for one process, for tools that run the CLI; it never moves saved logins.
+
+What stays in files: the rest of the login (Wilma, username, children) and the current Wilma sessions, which give the same access as the password while they last (Wilma ends them after a few hours). The keychain keeps the password out of backups, synced dotfiles and anything that reads files; it doesn't protect against a program running as you, which can ask the keychain too. On Windows, saved credentials roam with a roaming profile. Older copies of the config (backups, synced dotfiles) still hold the password; changing the Wilma password makes them useless. A keychain entry left behind by a config deleted by hand is named `ai.wilm.wilma-cli` in Keychain Access or Credential Manager.
+
+Errors: `secret_missing` (the entry is gone: `wilma login`), `secret_refused` (the keychain is locked or said no), `secret_unavailable` (no keychain this copy can use), all with exit code 4. The Linux binaries of the optional `@napi-rs/keyring` dependency statically link libdbus (`AFL-2.1 OR GPL-2.0-or-later`).
 
 ## Troubleshooting: TLS errors on a managed laptop
 
@@ -125,6 +142,6 @@ In JSON, transport failures have the code `network`, with the underlying `cause`
 ```
 
 ## Notes
-- Credentials and TOTP secrets are stored with lightweight obfuscation (not encryption) in a file only your user can read.
+- Credentials and TOTP secrets are stored with lightweight obfuscation (not encryption) in a file only your user can read, or in the OS keychain with `wilma config secrets auto` (see Config).
 - Bulletin links are fetched only from public websites (never local or private network addresses), without your Wilma login.
 - Commands cover every child; `--student <number|name>` narrows to one.

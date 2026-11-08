@@ -71,12 +71,12 @@ export function bridge(): Plugin {
         return send(res, 200, await cliSession(REPO_ROOT, Number(index) || 0));
       }
       if (path === "/bridge/session/get" && req.method === "POST") {
-        const { key } = await readJson<{ key: unknown }>(req);
-        return send(res, 200, await sharedSessionGet(REPO_ROOT, key));
+        const { login } = await readJson<{ login: unknown }>(req);
+        return send(res, 200, await sharedSessionGet(REPO_ROOT, login));
       }
       if (path === "/bridge/session/set" && req.method === "POST") {
-        const { key, state } = await readJson<{ key: unknown; state: unknown }>(req);
-        return send(res, 200, await sharedSessionSet(REPO_ROOT, key, state));
+        const { login, state } = await readJson<{ login: unknown; state: unknown }>(req);
+        return send(res, 200, await sharedSessionSet(REPO_ROOT, login, state));
       }
       throw new HttpError(404, "No such bridge route");
     } catch (err) {

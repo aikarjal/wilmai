@@ -26,8 +26,13 @@ export interface SessionStore {
   remove(key: string): Promise<void>;
 }
 
-/** `by`: which WilmAI program saved it ("cli", "mcp", "home"), so a parent can see who started a session. */
-type Saved = Record<string, { state: string; savedAt: number; by?: string }>;
+/**
+ * `by`: which WilmAI program saved it ("cli", "mcp", "home"), so a parent can
+ * see who started a session. `login`: the saved login's id, set while moving a
+ * login between the file and the keychain, so a leftover entry under the old
+ * key can be found again without the password.
+ */
+type Saved = Record<string, { state: string; savedAt: number; by?: string; login?: string }>;
 
 let savedBy = "cli";
 
@@ -83,6 +88,32 @@ async function writeAll(all: Saved): Promise<void> {
   const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
   await writeFile(tmp, JSON.stringify(all), { encoding: "utf-8", mode: 0o600 });
   await rename(tmp, path);
+}
+
+/**
+ * Copy a login's saved session to another key (moving the login between the
+ * file and the keychain), keeping when and by whom it was saved, and tag both
+ * entries with the login's id. Nothing to copy (none, or expired): false.
+ */
+export async function copySession(from: string, to: string, login: string): Promise<boolean> {
+  if (process.env.WILMAI_NO_SESSION_CACHE === "1") return false;
+  const all = await readAll();
+  const entry = all[from];
+  if (!entry || typeof entry.state !== "string" || Date.now() - entry.savedAt > SESSION_TTL_MS) return false;
+  all[from] = { ...entry, login };
+  all[to] = { ...entry, login };
+  await writeAll(all);
+  return true;
+}
+
+/** Delete the entries tagged with a login's id except `keep` (what a move interrupted before its last step left). */
+export async function removeTaggedSessions(login: string, keep: string): Promise<number> {
+  const all = await readAll();
+  const gone = Object.keys(all).filter((key) => key !== keep && all[key]?.login === login);
+  if (!gone.length) return 0;
+  for (const key of gone) delete all[key];
+  await writeAll(all);
+  return gone.length;
 }
 
 /** When one login's session was saved, and by which program (null when there's none to try). */
