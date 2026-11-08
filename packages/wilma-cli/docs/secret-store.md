@@ -666,8 +666,8 @@ confirmed:
 | macOS, Home reading the CLI's entry | Passed: an entry the CLI wrote (real service, random id) read by Home's Rust code, password and key intact; deleted after (`cargo test -- --ignored reads_an_entry_the_cli_wrote`) |
 | Linux desktop (Docker: D-Bus, gnome-keyring unlocked) | Passed: the real-keychain test through the Secret Service, the CLI end to end, nothing left |
 | Linux headless (no D-Bus session) | Passed: "no Secret Service here"; `keychain` refuses with `secret_unavailable` (exit 4) and changes nothing; `auto` keeps the file and says so |
-| The CLI suite | 10 of 10 on macOS and on Linux (Docker) |
-| Windows (Credential Manager; Home reading the CLI's entry with `keyring` 3.6) | Not run yet. `.github/workflows/keychain.yml` runs both on a Windows runner (by hand, or on a pull request touching the keychain code); on a Windows computer: `pnpm --filter @wilm-ai/wilma-cli test:keychain`, then `node apps/home/scripts/keychain-interop.mjs` |
+| The CLI suite | 10 of 10 on macOS, on Linux (Docker), and in CI on Node 20 and 22 |
+| Windows (Credential Manager; Home reading the CLI's entry with `keyring` 3.6) | Passed on a GitHub Windows runner (`.github/workflows/keychain.yml`, PR #28): the store and the CLI end to end against Credential Manager, and Home's Rust code reading the entry the CLI wrote with `@napi-rs/keyring`, so the two libraries share entries. On the way: the test now takes the CLI's path with `fileURLToPath` (Windows paths), and Home's `ps`-based runtime test is Unix only, so Home's tests compile on Windows |
 | macOS, the same interop script | Passed (`node apps/home/scripts/keychain-interop.mjs`) |
 
 ## Open questions
