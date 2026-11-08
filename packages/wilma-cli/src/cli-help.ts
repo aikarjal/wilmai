@@ -134,7 +134,7 @@ const COMMAND_HELP: Record<string, CommandHelp> = {
   config: {
     usage: ["wilma config clear", "wilma config secrets [file|auto|keychain]"],
     about:
-      "`clear` deletes every saved login and session on this computer (and their keychain entries). `secrets` shows where saved passwords are kept, or changes it: `file` (the default, WilmAI's own file readable only by you), `keychain` (the macOS Keychain, Windows Credential Manager or a Linux desktop's Secret Service; refuses to save anywhere else) or `auto` (the keychain where there is one, the file where there isn't). Changing it moves the saved logins without logging in again. WILMAI_SECRET_STORE sets where new logins go for one process.",
+      "`clear` deletes every saved login and session on this computer (and their keychain entries). `secrets` shows where saved passwords are kept, or changes it: `file` (the default, WilmAI's own file readable only by you), `keychain` (the macOS Keychain, Windows Credential Manager or a Linux desktop's Secret Service; refuses to save anywhere else) or `auto` (the keychain where there is one, the file where there isn't). Changing it moves the saved logins without logging in again. On a server or for unattended runs keep `file`, also on a Mac used as a server: there `auto` picks the Keychain, which can be locked after a restart or over SSH, and a new Wilma login then fails until someone unlocks it. WILMAI_SECRET_STORE sets where new logins go for one process.",
     examples: ["wilma config secrets", "wilma config secrets auto", "wilma config secrets file", "wilma config clear"],
     output: "secrets: { setting, envOverride, keychain: { kind, usable, problem }, logins: [{ wilma, username, store: \"file\" | \"keychain\", hasTotp }], moved? }",
   },

@@ -307,10 +307,13 @@ const en: Dictionary = {
           <p>
             In one folder on your computer, <code>~/.config/wilmai</code>: the login, and
             the current Wilma session so your assistant doesn&apos;t have to log in again
-            every time. Only your user account can read them. To remove both, delete that
-            folder, or run <code>wilma config clear</code> in a terminal. If your assistant
-            runs on its own cloud computer, the login lives in that assistant&apos;s secret
-            settings instead.
+            every time. Only your user account can read them. If you&apos;d rather keep the
+            password in your computer&apos;s keychain (the macOS Keychain, Windows Credential
+            Manager or a Linux desktop&apos;s keyring), run <code>wilma config secrets auto</code>{" "}
+            once in a terminal; the login moves there without logging in again. To remove
+            it all, run <code>wilma config clear</code>, which also removes WilmAI&apos;s
+            keychain entries. If your assistant runs on its own cloud computer, the login
+            lives in that assistant&apos;s secret settings instead.
           </p>
         )
       },
@@ -601,8 +604,12 @@ const fi: Dictionary = {
           <p>
             Yhdessä kansiossa omalla koneellasi, <code>~/.config/wilmai</code>: tunnukset
             ja voimassa oleva Wilma-istunto, jotta avustajan ei tarvitse kirjautua joka
-            kerta uudelleen. Vain oma käyttäjätilisi voi lukea niitä. Voit poistaa molemmat
-            poistamalla kansion tai ajamalla terminaalissa <code>wilma config clear</code>.
+            kerta uudelleen. Vain oma käyttäjätilisi voi lukea niitä. Jos haluat salasanan
+            mieluummin tietokoneesi avainnippuun (macOS:n Avainnippu, Windowsin
+            Tunnistetietojen hallinta tai Linux-työpöydän avainnippu), aja kerran
+            terminaalissa <code>wilma config secrets auto</code>; tunnukset siirtyvät sinne
+            ilman uutta kirjautumista. Voit poistaa kaiken komennolla{" "}
+            <code>wilma config clear</code>, joka poistaa myös WilmAI:n tiedot avainnipusta.
             Jos avustajasi toimii omalla pilvikoneellaan, tunnukset ovat sen sijaan avustajan
             salaisuusasetuksissa.
           </p>

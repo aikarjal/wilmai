@@ -149,6 +149,29 @@ const whereNote = {
   }
 };
 
+// Where the login is kept, for the desktop apps (the FAQ below has the keychain option).
+const loginNote = {
+  en: "Your Wilma login stays on this computer, in a file only your account can read. To keep the password in your computer's keychain instead, see “Where does my Wilma login live?” in the FAQ below.",
+  fi: "Wilma-tunnuksesi pysyvät tällä koneella tiedostossa, jota vain käyttäjätilisi voi lukea. Jos haluat salasanan mieluummin tietokoneesi avainnippuun, katso alta UKK:sta ”Missä Wilma-tunnukseni säilyvät?”."
+};
+
+// The opt-in keychain (wilma-cli 2.5+), folded under the terminal guides.
+function keychainOption(command: string): Record<Lang, SetupVariant> {
+  return {
+    en: {
+      title: "Keep the password in the keychain?",
+      body: "WilmAI keeps your Wilma login in a file only your account can read. To keep the password in your computer's keychain instead (the macOS Keychain, Windows Credential Manager or a Linux desktop's keyring), run this once: the login moves there without logging in again. On a server, or a computer that runs agents when nobody is logged in (a Mac too), keep the file: a locked keychain would stop them.",
+      action: { kind: "command", text: command }
+    },
+    fi: {
+      title: "Salasana avainnippuun?",
+      body: "WilmAI pitää Wilma-tunnuksesi tiedostossa, jota vain käyttäjätilisi voi lukea. Jos haluat salasanan mieluummin tietokoneesi avainnippuun (macOS:n Avainnippu, Windowsin Tunnistetietojen hallinta tai Linux-työpöydän avainnippu), aja tämä kerran: tunnukset siirtyvät sinne ilman uutta kirjautumista. Palvelimella tai koneella, jolla agentit toimivat kenenkään olematta kirjautuneena (myös Macilla), pidä tiedosto: lukittu avainnippu pysäyttäisi ne.",
+      action: { kind: "command", text: command }
+    }
+  };
+}
+const NPX_KEYCHAIN = "npx -y @wilm-ai/wilma-cli@2 config secrets auto";
+
 export const agents: Agent[] = [
   {
     id: "claude",
@@ -167,7 +190,7 @@ export const agents: Agent[] = [
           { title: "Open the file", body: "Claude asks whether to install WilmAI. Click Install." },
           { title: "Ask Claude about school", body: firstAsk.en }
         ],
-        notes: [whereNote.claude.en]
+        notes: [whereNote.claude.en, loginNote.en]
       },
       fi: {
         name: "Claude Desktop",
@@ -181,7 +204,7 @@ export const agents: Agent[] = [
           { title: "Avaa tiedosto", body: "Claude kysyy, asennetaanko WilmAI. Valitse Install." },
           { title: "Kysy Claudelta koulusta", body: firstAsk.fi }
         ],
-        notes: [whereNote.claude.fi]
+        notes: [whereNote.claude.fi, loginNote.fi]
       }
     }
   },
@@ -203,7 +226,7 @@ export const agents: Agent[] = [
           { title: "Allow the installation", body: "ChatGPT asks first. Allow it." },
           { title: "Ask about school in Work", body: firstAsk.en }
         ],
-        notes: [whereNote.chatgpt.en]
+        notes: [whereNote.chatgpt.en, loginNote.en]
       },
       fi: {
         name: "ChatGPT Desktop",
@@ -218,7 +241,7 @@ export const agents: Agent[] = [
           { title: "Salli asennus", body: "ChatGPT kysyy ensin. Salli se." },
           { title: "Kysy koulusta Work-tilassa", body: firstAsk.fi }
         ],
-        notes: [whereNote.chatgpt.fi]
+        notes: [whereNote.chatgpt.fi, loginNote.fi]
       }
     }
   },
@@ -241,6 +264,9 @@ export const agents: Agent[] = [
             title: "Ask about school",
             body: "Try: “Every weekday at 7, send me a school briefing for both kids.”"
           }
+        ],
+        notes: [
+          "If the bot runs on your own computer, WilmAI keeps the login in its own file, readable only by your account. Keep it that way, a Mac too: don't move it to the keychain there. A keychain can be locked when nobody is logged in, and the briefings would stop."
         ]
       },
       fi: {
@@ -257,6 +283,9 @@ export const agents: Agent[] = [
             title: "Kysy koulusta",
             body: "Kokeile: ”Lähetä minulle joka arkiaamu klo 7 kooste molempien lasten koulupäivästä.”"
           }
+        ],
+        notes: [
+          "Jos botti toimii omalla koneellasi, WilmAI pitää kirjautumisen omassa tiedostossaan, jota vain käyttäjätilisi voi lukea. Pidä se niin, myös Macilla: älä siirrä sitä siellä avainnippuun. Avainnippu voi olla lukittu, kun kukaan ei ole kirjautuneena, ja koosteet pysähtyisivät."
         ]
       }
     }
@@ -324,7 +353,10 @@ export const agents: Agent[] = [
             body: "Reply to a briefing with what to skip or always mention. It remembers."
           }
         ],
-        notes: ["The skills on ClawHub: https://clawhub.ai/aikarjal/skills/wilma and https://clawhub.ai/aikarjal/skills/wilma-triage"],
+        notes: [
+          "The skills on ClawHub: https://clawhub.ai/aikarjal/skills/wilma and https://clawhub.ai/aikarjal/skills/wilma-triage",
+          "WilmAI keeps the login in its own file, readable only by your account. Keep it that way on the computer OpenClaw runs on, a Mac too: don't move it to the keychain there. A keychain can be locked when nobody is logged in, and the morning briefing would stop."
+        ],
         others: [
           {
             title: "Prefer the terminal?",
@@ -349,7 +381,10 @@ export const agents: Agent[] = [
             body: "Vastaa koosteeseen, mitä jättää pois tai mainita aina. Se muistaa sen."
           }
         ],
-        notes: ["Taidot ClawHubissa: https://clawhub.ai/aikarjal/skills/wilma ja https://clawhub.ai/aikarjal/skills/wilma-triage"],
+        notes: [
+          "Taidot ClawHubissa: https://clawhub.ai/aikarjal/skills/wilma ja https://clawhub.ai/aikarjal/skills/wilma-triage",
+          "WilmAI pitää kirjautumisen omassa tiedostossaan, jota vain käyttäjätilisi voi lukea. Pidä se niin koneella, jolla OpenClaw toimii, myös Macilla: älä siirrä sitä siellä avainnippuun. Avainnippu voi olla lukittu, kun kukaan ei ole kirjautuneena, ja aamukooste pysähtyisi."
+        ],
         others: [
           {
             title: "Terminaali tuntuu omimmalta?",
@@ -376,7 +411,8 @@ export const agents: Agent[] = [
             action: { kind: "command", text: CLAUDE_CODE_COMMAND }
           },
           { title: "Ask Claude about school", body: firstAsk.en }
-        ]
+        ],
+        others: [keychainOption(NPX_KEYCHAIN).en]
       },
       fi: {
         name: "Claude Code",
@@ -389,7 +425,8 @@ export const agents: Agent[] = [
             action: { kind: "command", text: CLAUDE_CODE_COMMAND }
           },
           { title: "Kysy Claudelta koulusta", body: firstAsk.fi }
-        ]
+        ],
+        others: [keychainOption(NPX_KEYCHAIN).fi]
       }
     }
   },
@@ -409,7 +446,8 @@ export const agents: Agent[] = [
             action: { kind: "command", text: CODEX_COMMANDS }
           },
           { title: "Ask Codex about school", body: firstAsk.en }
-        ]
+        ],
+        others: [keychainOption(NPX_KEYCHAIN).en]
       },
       fi: {
         name: "Codex",
@@ -422,7 +460,8 @@ export const agents: Agent[] = [
             action: { kind: "command", text: CODEX_COMMANDS }
           },
           { title: "Kysy Codexilta koulusta", body: firstAsk.fi }
-        ]
+        ],
+        others: [keychainOption(NPX_KEYCHAIN).fi]
       }
     }
   },
@@ -451,7 +490,8 @@ export const agents: Agent[] = [
             body: "Run wilma on its own for an interactive menu, or wilma --help for every command.",
             action: { kind: "command", text: "wilma summary\nwilma schedule tomorrow\nwilma exams" }
           }
-        ]
+        ],
+        others: [keychainOption("wilma config secrets auto").en]
       },
       fi: {
         name: "Terminaali",
@@ -473,7 +513,8 @@ export const agents: Agent[] = [
             body: "Pelkkä wilma avaa valikon, ja wilma --help listaa kaikki komennot.",
             action: { kind: "command", text: "wilma summary\nwilma schedule tomorrow\nwilma exams" }
           }
-        ]
+        ],
+        others: [keychainOption("wilma config secrets auto").fi]
       }
     }
   }

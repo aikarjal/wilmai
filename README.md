@@ -50,9 +50,9 @@ WilmAI connects Wilma, the system Finnish schools use for schedules, homework, e
 
 ## What you get
 
-- **19 MCP tools.** Summary, schedule, homework, exams, grades and the gradebook, lesson notes and absences, messages with replies, news with attachments, printouts, and a logout. One call covers every child, across every Wilma the family uses.
+- **20 MCP tools.** Summary, schedule, homework, exams, grades and the gradebook, lesson notes and absences, class and teachers, messages with replies, news with attachments, printouts, and a logout. One call covers every child, across every Wilma the family uses.
 - **A CLI for people and agents.** Text in a terminal, JSON when a program reads it: the same JSON as the MCP tools. `wilma summary --since yesterday` returns only what's new, for daily runs.
-- **It all runs on your computer.** No WilmAI server, no account, no telemetry. It logs in only to your school's Wilma and can't send messages or change anything there. The password goes into a local login page, never into a chat.
+- **It all runs on your computer.** No WilmAI server, no account, no telemetry. It logs in only to your school's Wilma and can't send messages or change anything there. The password goes into a local login page, never into a chat, and is kept in a file only you can read or, if you prefer, in your computer's keychain.
 - **Agent skills.** `wilma` teaches an agent the tools and commands; `wilma-triage` turns them into a morning briefing that flags what needs doing and puts exams in the family calendar.
 - **Any school on Wilma.** The login page finds your school's Wilma by city or school name. Two-step verification and families with several Wilmas work.
 - **Students can use it too.** With their own Wilma login, a student asks about their own lessons, homework and exams.
@@ -121,7 +121,7 @@ Or give an agent a routine: "Every weekday at 7, post a school briefing for both
 wilma login
 ```
 
-Opens a one-time page on `127.0.0.1` in your browser. Pick your school's Wilma, log in, and the verified login is saved to `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`; override with `WILMAI_CONFIG_PATH`). The password is entered on that page — never in an agent's chat.
+Opens a one-time page on `127.0.0.1` in your browser. Pick your school's Wilma, log in, and the verified login is saved to `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`; override with `WILMAI_CONFIG_PATH`). The password is entered on that page — never in an agent's chat — and kept in that file, or in your computer's keychain if you choose (see [Credentials & Privacy](#credentials--privacy)).
 
 Children on different Wilmas (say, a city school and a private school or lukio)? Press **Add another school's Wilma** on the same page, or run `wilma login` again. The page works like WilmAI Home's: one row per Wilma with its children, where you can untick a child Wilma lists twice, log in again or remove a Wilma. Every saved login is used together: every command covers all your children. `wilma accounts` lists the saved logins and `wilma accounts remove <number>` removes one. If a parent's login and a child's own login on the same Wilma are both saved (with `wilma login --tenant`), that child is read through the parent's.
 
@@ -211,7 +211,7 @@ Working on WilmAI or releasing it: [DEVELOPING.md](DEVELOPING.md). Tests: [TESTI
 - **In your language.** The app is in English, Finnish or Swedish, and with AI on it translates messages, bulletins and teachers' notes as they arrive, into Finnish, Swedish, English, Ukrainian or Arabic.
 - **For a student too.** Sign in with a student's own Wilma account and choose "A student": the app then reads things from the student's side.
 - **AI is optional.** No AI (the default), OpenAI with your own API key (usually tens of cents a month; the app stops at a monthly limit you set), or local AI on an Apple Silicon Mac with 16 GB of memory, where nothing goes to an AI service.
-- **Stays on your computer.** No WilmAI server and no tracking. Your Wilma password goes only to your school's Wilma; the app keeps it (scrambled) only if you turn on staying signed in.
+- **Stays on your computer.** No WilmAI server and no tracking. Your Wilma password goes only to your school's Wilma; the app keeps it only if you turn on staying signed in, and then in your computer's keychain (the macOS Keychain or Windows Credential Manager), like your OpenAI key.
 - **Updates itself.** New versions arrive in the app, signed with the project's update key; you choose when to install them.
 
 Mac (Apple Silicon, macOS 13.3 or later) and Windows 10 or 11. The installers aren't signed by Apple or Microsoft yet, so the first start needs one extra step: on a Mac, System Settings → Privacy & Security → Open Anyway (the install window has a link); on Windows, More info → Run anyway. On Windows, notifications and local AI aren't there yet.
@@ -255,7 +255,19 @@ Two things that make this hard to recognise:
 
 ## Credentials & Privacy
 
-Your Wilma login is stored locally in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`), readable only by your user account. The password is obfuscated (not encrypted) for convenience — this is a personal productivity tool, not a vault. The current Wilma session is kept next to it (`wilmai-sessions.json`, same protection, at most 6 hours) so commands don't log in each time; set `WILMAI_NO_SESSION_CACHE=1` to turn that off. `wilma logout` ends the session in Wilma and removes it, keeping the login; `wilma config clear` removes both.
+Your Wilma login is stored locally in `~/.config/wilmai/config.json` (or `$XDG_CONFIG_HOME/wilmai/config.json`), readable only by your user account. By default the password is in that file too, obfuscated (not encrypted): one file, the same on every platform, and it works on servers and in unattended runs.
+
+**Prefer the keychain?** Since 2.5.0 the CLI can keep the password and the authenticator key in your operating system's keychain instead: the macOS Keychain, Windows Credential Manager, or a Linux desktop's Secret Service.
+
+```bash
+wilma config secrets auto   # the keychain where there is one, the file where there isn't
+wilma config secrets        # where each saved login's password is now
+wilma config secrets file   # back to the file
+```
+
+Switching moves your saved logins without logging in again. On a server, a cloud computer or anything that runs unattended (cron, CI, an agent's own computer), keep the file: with nobody logged in, a keychain can be locked. That includes a Mac used as a server, such as a Mac mini running an agent: on a Mac `auto` always picks the Keychain, which can be locked after a restart or over SSH, and the next new Wilma login would then fail. WilmAI Home keeps its passwords and your OpenAI key in the keychain by itself. Details: [packages/wilma-cli/README.md](packages/wilma-cli/README.md#passwords-in-the-keychain-optional).
+
+The current Wilma session is kept next to the config (`wilmai-sessions.json`, readable only by you, at most 6 hours) so commands don't log in each time; set `WILMAI_NO_SESSION_CACHE=1` to turn that off. `wilma logout` ends the session in Wilma and removes it, keeping the login; `wilma config clear` removes both, and any keychain entries.
 
 The CLI, the MCP server and the Claude Desktop extension have no server behind them: they log in only to your school's Wilma. Besides Wilma, they open links from school bulletins when you ask for an attachment (only public websites, never with your Wilma login), and once a day they ask npm whether a newer version is out (not when started through `npx`, which fetches the newest version itself; `WILMAI_NO_UPDATE_CHECK=1` turns it off). When an AI assistant uses WilmAI, the school information it reads goes to that assistant's provider, the same as pasting it into a chat; your password does not.
 

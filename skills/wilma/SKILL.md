@@ -1,6 +1,6 @@
 ---
 name: wilma
-version: 2.4.0
+version: 2.5.0
 description: Access Finland's Wilma school system from AI agents, for parents (and students with their own login). Fetch schedules, homework, exams, grades and the gradebook, lesson notes (merkinnät) and absence summaries, messages with replies, news, printouts and linked news resources — through the WilmAI MCP tools (`wilma_*`) when connected, or the wilma CLI. Start with a summary, drill into messages and news, and fetch linked attachments. Requires wilma-cli 2.0+.
 metadata:
   {
@@ -23,7 +23,7 @@ metadata:
           ],
         "credentials":
           {
-            "note": "Requires a Wilma login: either the local config file (~/.config/wilmai/config.json or $XDG_CONFIG_HOME/wilmai/config.json) created by `wilma login`, or WILMA_TENANT / WILMA_USERNAME / WILMA_PASSWORD (and WILMA_TOTP_SECRET for two-step verification) set in the agent's secret settings.",
+            "note": "Requires a Wilma login: either the local config file (~/.config/wilmai/config.json or $XDG_CONFIG_HOME/wilmai/config.json) created by `wilma login`, with the password in that file (the default) or in the OS keychain if the user chose `wilma config secrets auto`, or WILMA_TENANT / WILMA_USERNAME / WILMA_PASSWORD (and WILMA_TOTP_SECRET for two-step verification) set in the agent's secret settings.",
           },
       },
   }
@@ -78,6 +78,15 @@ The user logs in once; the login is saved on their computer.
 - **Children on different Wilmas** (e.g. a city school and a private school): the user adds each login on the login page ("Add another school's Wilma") or with another `wilma login`. All saved logins are used together; children then carry a `wilma` field naming their Wilma. `wilma accounts` lists the logins, with `role: "student"` for a student's own login. A child the user unticked on the login page (a profile Wilma lists twice) isn't read, and `wilma accounts` lists it under `hidden`. When a parent's and a child's own login on the same Wilma are both saved, the child is read through the parent's (wilma-cli 2.4+).
 
 Commands continue the last Wilma session instead of logging in each time (each login would log the parent out of Wilma in their own browser), so running several commands in a row is fine.
+
+### Where the password is kept (wilma-cli 2.5+)
+
+By default the saved password is in WilmAI's config file, readable only by the user's account. A user can keep it in the operating system's keychain instead (the macOS Keychain, Windows Credential Manager, a Linux desktop's Secret Service): `wilma config secrets auto` moves the saved logins there without logging in again, `wilma config secrets` shows where each one is, and `wilma config secrets file` moves them back.
+
+- **Suggest the keychain only on a computer a person uses and logs in to**, and only if they want it. It's their choice; the file works everywhere.
+- **On a server, keep the file.** That includes a cloud computer, a computer that runs you or other agents unattended, and **a Mac used as a server**: on a Mac, `auto` always picks the Keychain, and the Keychain can be locked after a restart before anyone has logged in, or over a remote (SSH) session. Saved sessions keep working, but the next new Wilma login then fails with `secret_refused`, and nobody is there to unlock it. Don't run `wilma config secrets auto` or `keychain` there.
+- **If a command fails with `secret_refused` or `secret_unavailable` (exit code 4):** the password is still saved, so don't start a new login yourself, and never ask for the computer's password or the Wilma password in the chat. For `secret_refused`, ask the user to unlock the keychain (on a Mac: sign in at that computer's own screen), then try again. On a computer that runs unattended, then run `wilma config secrets file`: it moves the password back to the file without a new Wilma login, so it can't happen again. While the keychain is still locked (or with `secret_unavailable`, where there's no keychain to read), that command can't move the password ("Not moved", exit code 4), but it does send new logins to the file: the user then runs `wilma login` once, and the login is saved in the file.
+- `WILMAI_SECRET_STORE=file|auto|keychain` decides where new logins go for one process; it never moves saved logins.
 
 If the user wants to use Wilma in their browser, or asks you to log out, run `wilma logout` or call `wilma_logout` (wilma-cli 2.2+). It ends WilmAI's Wilma session and keeps the saved login. Don't run other Wilma commands after that unless the user asks: the next one logs in again, and that logs them out of Wilma in the browser.
 
@@ -190,7 +199,7 @@ With the MCP tools, `wilma_get_news_attachment` returns the file itself (text in
 
 ## Errors
 
-Errors are JSON too: `{ "status": "error", "code": "…", "message": "…" }` (sometimes with `hint` and `cause`). Exit code 2 means a usage error (`invalid_argument`, `unknown_command` — fix the command; `wilma help <command>`), 3 means `not_logged_in` (see Logging in), 1 anything else: `unknown_student`, `ambiguous_student`, `not_found`, `login_failed` (the saved password no longer works — ask the user to run `wilma login` again), `mfa_required` / `mfa_failed`, `network`, `wilma_error`.
+Errors are JSON too: `{ "status": "error", "code": "…", "message": "…" }` (sometimes with `hint` and `cause`). Exit code 2 means a usage error (`invalid_argument`, `unknown_command` — fix the command; `wilma help <command>`), 3 means `not_logged_in` (see Logging in), 1 anything else: `unknown_student`, `ambiguous_student`, `not_found`, `login_failed` (the saved password no longer works — ask the user to run `wilma login` again), `mfa_required` / `mfa_failed`, `network`, `wilma_error`. Exit code 4 means the password is in the keychain and couldn't be had (wilma-cli 2.5+): `secret_missing` (the entry is gone — ask the user to run `wilma login`), `secret_refused` (the keychain is locked or said no) or `secret_unavailable` (no keychain this copy can use). For the last two, don't start a new login yourself: the password is saved. Tell the user what the message says, and follow "If a command fails with `secret_refused`" under Where the password is kept.
 
 ## MFA (two-step verification)
 If the Wilma account has MFA/TOTP enabled, logins need the authenticator setup key (a base32 key or `otpauth://` URI) so they can run unattended:
