@@ -25,7 +25,6 @@ export const FI_DATA: Record<string, string> = {
   "Wilma didn't accept that username and password.": "Wilma ei hyväksynyt käyttäjätunnusta ja salasanaa.",
   "{error} Sign in again with your password.": "{error} Kirjaudu uudelleen salasanallasi.",
   "Wilma didn't accept that code. Type the newest code from your authenticator app.": "Wilma ei hyväksynyt koodia. Kirjoita uusin koodi todennussovelluksestasi.",
-  "The CLI's login has no Wilma session.": "CLI:n kirjautumisella ei ole voimassa olevaa Wilma-istuntoa.",
   "Wilma ended the session. Sign in again to refresh; everything already here stays.": "Wilma päätti istunnon. Kirjaudu uudelleen, niin tiedot päivittyvät. Kaikki jo haettu pysyy tallessa.",
 
   // engine.ts: sync steps

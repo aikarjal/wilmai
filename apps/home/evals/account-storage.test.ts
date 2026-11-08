@@ -226,7 +226,9 @@ test("a reply received after reset cannot restore erased usage or AI answers", a
   const started = new Promise<void>((resolve) => arrived = resolve);
   let finish!: () => void;
   const pending = new Promise<void>((resolve) => finish = resolve);
-  overrideBridge(async () => {
+  overrideBridge(async (path) => {
+    // The reset's own calls (the shared session file) answer at once; OpenAI's reply is the late one.
+    if (path !== "openai") return { ok: true };
     arrived(); await pending;
     return { status: 200, body: JSON.stringify({ output: [{ content: [{ type: "output_text", text: '{"action":{"quote":null,"title":null,"deadline":null},"events":[]}' }] }], usage: { input_tokens: 1000, output_tokens: 200 } }) };
   });

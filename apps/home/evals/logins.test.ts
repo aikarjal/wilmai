@@ -7,8 +7,10 @@ import "./shim.ts";
 import "fake-indexeddb/auto";
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { accountKey, activateAccount, forgetPasswordsIfAsked, getState, knownFamilies, passwordOf, savedLinkedSessions, updateSettings } from "../src/data/store.ts";
+import { set } from "idb-keyval";
+import { accountKey, activateAccount, forgetPasswordsIfAsked, getState, knownFamilies, passwordOf, rememberPasswordOf, savedLinkedSessions, savedSession, setState, updateSettings } from "../src/data/store.ts";
 import { addWilma, changeLogin, forgetThisFamily, getBack, leaveDemo, openMessage, removeWilma, resetApp, setChildShown, signInAll, signInDemo, signInWithPassword, signOut, signOutWilma, syncNow } from "../src/data/engine.ts";
 import { familyChild, familyChildren, familyId, loginOfChild, loginOfId, logins, screenFor, slotFor, wilmaIdOf, wilmaNumber, wilmaPage } from "../src/data/logins.ts";
 import { buildFeed } from "../src/data/feed.ts";
@@ -33,8 +35,7 @@ function fakeWilmas(fakes: Record<string, Fake>) {
   const answer = (url: string, status: number, body = "", more: Partial<WireResponse> = {}): WireResponse => ({ status, url, location: null, setCookie: [], contentType: "text/html", body, ...more });
   return async (path: string, init: { body?: unknown }): Promise<unknown> => {
     if (path === "session/get") return { state: null };
-    if (path === "session/set") return { ok: true };
-    if (path === "cli/accounts") return { accounts: [] };
+    if (path === "session/set" || path === "session/remove") return { ok: true };
     if (path !== "wilma") return { error: `No ${path} here`, status: 404 };
     const wire = init.body as WireRequest;
     const url = new URL(wire.url);
@@ -129,7 +130,7 @@ test("two Wilmas with the same numbers read side by side, and the app shows only
   updateSettings({ ...DEFAULT_SETTINGS });
   const { north, south, east } = family();
   try {
-    assert.equal(await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian"), null);
+    assert.equal(await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian"), null);
     assert.equal(getState().phase, "ready");
     await syncNow();
     const alone = Object.keys(getState().snapshot!.messages).length;
@@ -216,7 +217,7 @@ test("staying signed in, a Wilma signs in again by itself, and pauses when that 
   updateSettings({ ...DEFAULT_SETTINGS });
   const { south } = family();
   try {
-    await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian");
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
     await addWilma(SOUTH, "parent", "fictional-south");
     await syncNow();
     updateSettings({ staySignedIn: true });
@@ -247,7 +248,7 @@ test("a Wilma the parent signs out of stays out until they sign in, even staying
   updateSettings({ ...DEFAULT_SETTINGS, staySignedIn: true });
   const { south } = family();
   try {
-    await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian");
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
     await addWilma(SOUTH, "parent", "fictional-south");
     await syncNow();
     await signOutWilma(1);
@@ -271,7 +272,7 @@ test("signing out keeps the family on the Wilma page: one click signs every Wilm
   updateSettings({ ...DEFAULT_SETTINGS, staySignedIn: true });
   const { north, south } = family();
   try {
-    await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian");
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
     await addWilma(SOUTH, "parent", "fictional-south");
     await syncNow();
     const first = getState().snapshot!.account;
@@ -300,7 +301,7 @@ test("signing out keeps the family on the Wilma page: one click signs every Wilm
     // With no family on the page, signing in with the added Wilma's login brings the same family back.
     await signOut();
     activateAccount(null);
-    await signInWithPassword(SOUTH, "parent", "fictional-south", undefined, false, "guardian");
+    await signInWithPassword(SOUTH, "parent", "fictional-south", false, "guardian");
     assert.deepEqual(getState().snapshot!.account, first, "the same family");
     assert.equal(getState().phase, "signed-out", "the first Wilma isn't in yet");
     assert.deepEqual(await signInAll(), { 0: { ok: true } });
@@ -327,7 +328,7 @@ test("Change user with one Wilma signs in another account: its own family, and t
   updateSettings({ ...DEFAULT_SETTINGS, staySignedIn: false });
   const { north, south } = family();
   try {
-    await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian");
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
     const first = accountKey(getState().snapshot!.account);
     await signOut();
     // The same login (in any case, spaces around): just signed in, with the password kept.
@@ -366,7 +367,7 @@ test("Change user on one of two Wilmas takes that Wilma's place: the same school
   updateSettings({ ...DEFAULT_SETTINGS, staySignedIn: false });
   const { south, east } = family();
   try {
-    await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian");
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
     await addWilma(SOUTH, "parent", "fictional-south");
     const first = accountKey(getState().snapshot!.account);
     await signOut();
@@ -400,7 +401,7 @@ test("asking for the password each time: kept passwords aren't used, and go only
   updateSettings({ ...DEFAULT_SETTINGS, staySignedIn: true, rememberPassword: true });
   family();
   try {
-    await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian");
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
     const account = getState().snapshot!.account;
     assert.equal(passwordOf(account), "fictional-north");
     // Tried on the way to another choice: not used meanwhile, and back once a choice keeps passwords again.
@@ -458,7 +459,7 @@ test("a Wilma signed out while the app signs it in again by itself stays out, it
   updateSettings({ ...DEFAULT_SETTINGS, staySignedIn: true });
   const fakes = family();
   try {
-    await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian");
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
     await addWilma(SOUTH, "parent", "fictional-south");
     await syncNow();
     const south = logins(getState().snapshot!).find((l) => l.slot === 1)!.account;
@@ -489,7 +490,7 @@ test("the sample family picked while a sign-in is on its way: the sign-in doesn'
   try {
     const hold = heldAnswer(fakes, loginPost("north.inschool.fi"));
     // Cancelled the moment the sample family is picked: what it comes to is read at the end.
-    const outcome = signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian").then(() => "signed in", (err: Error) => err.name);
+    const outcome = signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian").then(() => "signed in", (err: Error) => err.name);
     await hold.arrived;
     await signInDemo();
     hold.release();
@@ -509,7 +510,7 @@ test("the parent signing a Wilma in while the app does it by itself: the parent'
   updateSettings({ ...DEFAULT_SETTINGS, staySignedIn: true });
   const fakes = family();
   try {
-    await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian");
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
     await addWilma(SOUTH, "parent", "fictional-south");
     await syncNow();
     const hold = heldAnswer(fakes, loginPost("south.inschool.fi"));
@@ -535,7 +536,7 @@ test("the app doesn't sign a Wilma in by itself while the parent is signing it i
   updateSettings({ ...DEFAULT_SETTINGS, staySignedIn: false });
   const fakes = family();
   try {
-    await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian");
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
     await addWilma(SOUTH, "parent", "fictional-south");
     await syncNow();
     fakes.south.alive = null;
@@ -563,7 +564,7 @@ test("a Wilma that doesn't show a guardian its bulletins still has everything el
   const fakes = family();
   fakes.south.refusesNews = true;
   try {
-    await signInWithPassword(NORTH, "parent", "fictional-north", undefined, false, "guardian");
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
     await addWilma(SOUTH, "parent", "fictional-south");
     await syncNow();
     const snap = getState().snapshot!;
@@ -573,6 +574,76 @@ test("a Wilma that doesn't show a guardian its bulletins still has everything el
     assert.equal(fromSouth(snap.news), 0, "and it has no bulletins");
     assert.ok(Object.keys(snap.news).length > 0, "the other Wilma's bulletins are there");
     assert.ok(snap.perChild[familyChild(1, "1234")]?.overview, "its front page is read");
+  } finally {
+    overrideBridge(null);
+    await resetApp();
+  }
+});
+
+/** The bridge calls the app makes besides Wilma's: the paths, and the shared session file's (with the login each). */
+function watched(fakes: ReturnType<typeof family>) {
+  const bridge = fakeWilmas({ "north.inschool.fi": fakes.north, "south.inschool.fi": fakes.south, "east.inschool.fi": fakes.east });
+  const paths: string[] = [];
+  const shared: { path: string; login: { baseUrl: string; username: string; v1Key?: string } }[] = [];
+  overrideBridge(async (path, init) => {
+    if (path !== "wilma") paths.push(path);
+    if (path.startsWith("session/")) shared.push({ path, login: (init.body as { login: (typeof shared)[number]["login"] }).login });
+    return bridge(path, init);
+  });
+  return { paths, shared };
+}
+
+const v1Of = (baseUrl: string, username: string, password: string) => createHash("sha256").update(`${baseUrl}\n${username.toLowerCase()}\n${password}`).digest("hex");
+
+test("a Wilma signed in with the WilmAI CLI's saved login before 0.4.0 asks for its password once, and keeps it", async () => {
+  await resetApp();
+  updateSettings({ ...DEFAULT_SETTINGS, staySignedIn: true, rememberPassword: true });
+  const fakes = family();
+  try {
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
+    // As 0.3 left such a login: "cli", no password of its own here.
+    const was = getState().snapshot!;
+    const cli: AccountInfo = { ...was.account, via: "cli" };
+    rememberPasswordOf(was.account, null);
+    setState({ snapshot: { ...was, account: cli, logins: logins(was).map((l) => ({ ...l, account: cli })) } });
+    const { paths } = watched(fakes);
+    fakes.north.alive = null;
+    await syncNow(); // Wilma ended it: staying signed in has no password to sign in with
+    await getBack();
+    assert.equal(getState().phase, "signed-out");
+    assert.equal(getState().loginStatus[0]?.failed ?? null, null, "not a failure: it waits for the parent");
+    assert.deepEqual(await signInAll(), { 0: { password: true } }, "the Wilma page asks for the password");
+    assert.equal(fakes.north.requests.filter((r) => r === "POST /login").length, 1, "no login without it");
+    assert.deepEqual(await signInAll({ 0: "fictional-north" }), { 0: { ok: true } });
+    const account = getState().snapshot!.account;
+    assert.equal(account.via, "password", "a password login from now on");
+    assert.equal(passwordOf(account), "fictional-north", "kept, as chosen");
+    assert.deepEqual(paths.filter((p) => !p.startsWith("session/")), [], "nothing asked of the CLI");
+  } finally {
+    overrideBridge(null);
+    await resetApp();
+  }
+});
+
+test("the shared session file: both labels while the password is known, the v1 label kept with the session, both removed on signing out", async () => {
+  await resetApp();
+  updateSettings({ ...DEFAULT_SETTINGS, staySignedIn: true });
+  const fakes = family();
+  const { shared } = watched(fakes);
+  try {
+    await signInWithPassword(NORTH, "parent", "fictional-north", false, "guardian");
+    const v1 = v1Of(NORTH, "parent", "fictional-north");
+    const saves = shared.filter((x) => x.path === "session/set");
+    assert.ok(saves.length > 0, "the app's new session saved for the other programs");
+    assert.deepEqual(saves.at(-1)!.login, { baseUrl: NORTH, username: "parent", v1Key: v1 }, "v2 from the Wilma and username, and v1");
+    assert.equal((await savedSession())?.v1Key, v1, "the v1 label kept with the session, for the next start");
+    // A session from before 0.4.0 kept the label as sharedKey.
+    await set("session", { ...(await savedSession())!, v1Key: undefined, sharedKey: v1 });
+    assert.equal((await savedSession())?.v1Key, v1);
+
+    shared.length = 0;
+    await signOutWilma(0);
+    assert.deepEqual(shared.filter((x) => x.path === "session/remove").map((x) => x.login), [{ baseUrl: NORTH, username: "parent", v1Key: v1 }], "both labels");
   } finally {
     overrideBridge(null);
     await resetApp();

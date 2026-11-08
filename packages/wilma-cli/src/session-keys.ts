@@ -6,8 +6,8 @@ import { createHash } from "node:crypto";
  *
  * - v1, file and environment logins (as always): SHA-256 of the address,
  *   username and password, so a changed password starts a fresh session.
- * - v2, keychain logins: SHA-256 of "wilmai-session-v2", the address and the
- *   username. No password: the session is found without reading the
+ * - v2, every login over time: SHA-256 of "wilmai-session-v2", the address
+ *   and the username. No password: the session is found without reading a
  *   keychain, and the file holds nothing derived from the password.
  */
 
@@ -21,19 +21,28 @@ export function sessionKeyV2(baseUrl: string, username: string): string {
   return createHash("sha256").update(`wilmai-session-v2\n${address(baseUrl)}\n${username.toLowerCase()}`).digest("hex");
 }
 
-/** Where a login's session lives: the session-file key, and the key of its client in a process's pool. */
+/**
+ * Where a login's session lives: the session-file keys it is saved under (all
+ * of them) and looked up under (the newest entry wins), and the key of its
+ * client in a process's pool.
+ *
+ * The labels overlap while v1 is retired (docs/secret-store.md, the plan):
+ * file and environment logins use v2 and v1, so programs that only know v1
+ * (CLI 2.4.0 and older, an old Claude Desktop extension, Home 0.3.1 and older)
+ * keep sharing their session; keychain logins use v2 only.
+ */
 export interface SessionKeys {
-  sessionKey: string;
-  /** Differs from sessionKey for keychain logins: the credentials stamp, so a new password makes a new client. */
+  sessionKeys: string[];
+  /** In-memory only: v1 for a file login (a new password makes a new client), v2 plus the credentials stamp for a keychain login. */
   poolKey: string;
 }
 
 export function fileLoginKeys(baseUrl: string, username: string, password: string): SessionKeys {
-  const key = sessionKeyV1(baseUrl, username, password);
-  return { sessionKey: key, poolKey: key };
+  const v1 = sessionKeyV1(baseUrl, username, password);
+  return { sessionKeys: [sessionKeyV2(baseUrl, username), v1], poolKey: v1 };
 }
 
 export function keychainLoginKeys(baseUrl: string, username: string, credentialsStamp: string | null | undefined): SessionKeys {
-  const key = sessionKeyV2(baseUrl, username);
-  return { sessionKey: key, poolKey: `${key}|${credentialsStamp ?? ""}` };
+  const v2 = sessionKeyV2(baseUrl, username);
+  return { sessionKeys: [v2], poolKey: `${v2}|${credentialsStamp ?? ""}` };
 }

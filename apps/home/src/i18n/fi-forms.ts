@@ -161,17 +161,14 @@ export const FI_FORMS: Record<string, string> = {
   "The local bridge isn't running. Start it with `pnpm dev`.": "Paikallinen silta ei ole käynnissä. Käynnistä se komennolla `pnpm dev`.",
   "Bridge answered {status}": "Silta vastasi koodilla {status}",
 
-  // Sign-in: one click with the CLI's saved login
-  "That saved login isn't there any more.": "Tallennettua kirjautumista ei enää löydy.",
-  "The saved login has no readable password.": "Tallennetusta kirjautumisesta ei saada salasanaa.",
-  "The saved authenticator key isn't valid.": "Tallennettu todennusavain ei kelpaa.",
-  // The CLI's login kept in the keychain (src-tauri/src/lib.rs)
-  "The password the WilmAI CLI saved for this Wilma isn't in the keychain any more. Log in again with the CLI (`wilma login`), or type the password here.":
-    "WilmAI CLI:n tälle Wilmalle tallentamaa salasanaa ei enää ole avainnipussa. Kirjaudu uudelleen CLI:llä (`wilma login`) tai kirjoita salasana tähän.",
-  "The keychain on this computer didn't hand over the password the WilmAI CLI saved. If the computer is locked or asking for a password, unlock it, then try again.":
-    "Tämän tietokoneen avainnippu ei antanut WilmAI CLI:n tallentamaa salasanaa. Jos tietokone on lukittu tai kysyy salasanaa, avaa lukitus ja yritä sitten uudelleen.",
-  "A newer WilmAI saved this login's password where this version of WilmAI Home can't read it. Update WilmAI Home, or type the password here.":
-    "Uudempi WilmAI tallensi tämän kirjautumisen salasanan paikkaan, josta tämä WilmAI Homen versio ei sitä lue. Päivitä WilmAI Home tai kirjoita salasana tähän.",
+  // Where the passwords and the OpenAI key are kept (the keychain, desktop app), and a login made with the CLI's saved login before
+  "*Your password goes only to your school's Wilma.* The app remembers it in this computer's keychain, so signing in again is one click.": "*Salasanasi menee vain koulusi Wilmaan.* Sovellus muistaa sen tämän koneen avainnipussa, joten uudelleen kirjautuminen on yksi klikkaus.",
+  "Kept in the macOS Keychain on this computer.": "Säilytetään macOS:n Avainnipussa tällä koneella.",
+  "Kept in Windows Credential Manager on this computer.": "Säilytetään Windowsin Tunnistetietojen hallinnassa tällä koneella.",
+  "Kept in the system keyring on this computer.": "Säilytetään järjestelmän avainnipussa tällä koneella.",
+  "Kept in the app's own data for now, scrambled but not encrypted: the keychain couldn't be used. The app tries it again when it next starts.": "Säilytetään toistaiseksi sovelluksen omissa tiedoissa peitettynä, ei salattuna: avainnippua ei voitu käyttää. Sovellus yrittää sitä uudelleen, kun se seuraavan kerran käynnistyy.",
+  "Passwords:": "Salasanat:",
+  "WilmAI Home doesn't use the WilmAI CLI's saved login any more. Type this Wilma's password once.": "WilmAI Home ei enää käytä WilmAI CLI:n tallentamaa kirjautumista. Kirjoita tämän Wilman salasana kerran.",
   // Settings: sign-in history
   "Sign-in history": "Kirjautumishistoria",
   "Wilma keeps one session per account: signing in anywhere (the phone, a browser, a WilmAI program) ends the others. This shows what happened to this app's session.":
@@ -203,7 +200,6 @@ export const FI_FORMS: Record<string, string> = {
   "Stay signed in": "Pysy kirjautuneena",
   "Signing in again didn't work: {why} Sign in once yourself to start again.": "Uudelleenkirjautuminen ei onnistunut: {why} Kirjaudu kerran itse, niin se alkaa taas.",
   "so signing in again is one click.": "joten uudelleen kirjautuminen on yksi klikkaus.",
-  "The WilmAI CLI's saved login isn't on this computer any more.": "WilmAI CLI:n tallennettua kirjautumista ei enää ole tällä koneella.",
   "Wilma asked for a two-step code.": "Wilma pyysi kaksivaiheisen tunnistuksen koodia.",
   "Wilma ended the session, and signing in again didn't work: {why}": "Wilma päätti istunnon, eikä uudelleenkirjautuminen onnistunut: {why}",
   "Wilma ended the session again soon after: it seems to be in use elsewhere. The app signs in again at {time}.":
@@ -347,7 +343,6 @@ export const FI_FORMS: Record<string, string> = {
   "Ask me for the password each time": "Kysy salasanaa joka kerta",
   "Nothing is kept on this computer. Choose this on a shared computer.": "Tälle koneelle ei säilytetä mitään. Valitse tämä yhteiskäyttöisellä koneella.",
   "Passwords go only to each school's Wilma.": "Salasanat lähetetään vain kunkin koulun Wilmaan.",
-  "Passwords are kept on this computer, scrambled but not encrypted.": "Salasanat säilytetään tällä koneella peitettyinä, ei salattuina.",
   "All your children, from every school's Wilma.": "Kaikki lapsesi, jokaisen koulun Wilmasta.",
   "The password for {schools} is kept from the next time you sign in.": "Salasana ({schools}) säilytetään, kun seuraavan kerran kirjaudut.",
   "The passwords for {schools} are kept from the next time you sign in.": "Salasanat ({schools}) säilytetään, kun seuraavan kerran kirjaudut.",

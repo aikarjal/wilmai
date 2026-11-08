@@ -387,8 +387,10 @@ pub fn run() {
             secret_get,
             shared_session_get,
             shared_session_set,
-            cli_logins,
-            cli_login_secret,
+            shared_session_remove,
+            secrets_read,
+            secrets_write,
+            secrets_delete,
             update_manifest,
             app_edition,
             restart_after_update,
@@ -425,20 +427,24 @@ pub fn run() {
  * file only this user can read. `by` names the program that saved it
  * ("cli", "mcp", "home"), so the app can tell which one started a session.
  *
- * Keys are the CLI's (packages/wilma-cli/src/session-keys.ts):
- * - v1, as always: SHA-256 hex of the Wilma address, the lower-case username
- *   and the password. The app makes it from the password it has and sends it
- *   with the login.
- * - v2, while the CLI keeps the login's password in the keychain: SHA-256 hex
- *   of "wilmai-session-v2", the address and the lower-case username.
- * The CLI can move a login between its file and the keychain while the app is
- * open, so the key is worked out here from the CLI's config at every read and
- * write, never kept (docs/secret-store.md in the CLI, machine 4).
+ * A login's session has two labels while the old one is retired, as in the
+ * CLI (packages/wilma-cli/src/session-keys.ts; docs/secret-store.md there,
+ * machine 4):
+ * - v2: SHA-256 hex of "wilmai-session-v2", the Wilma address (no trailing
+ *   slash) and the lower-case username, made here from the login;
+ * - v1: SHA-256 hex of the address, the lower-case username and the password.
+ *   The window makes it while it has the password and keeps it with its saved
+ *   session; older WilmAI programs know only this one.
+ * The app saves under v2, and under v1 when it has it; it looks under both and
+ * takes the newer entry; signing a login out or forgetting it removes both.
+ * Nothing here reads the CLI's settings: the same keys work however the CLI
+ * keeps its password.
  */
 const SESSION_TTL_MS: u64 = 6 * 60 * 60 * 1000;
 const MAX_STATE_BYTES: usize = 64 * 1024;
 
-/// The CLI's config file: WILMAI_CONFIG_PATH, else $XDG_CONFIG_HOME/wilmai or ~/.config/wilmai (config.json).
+/// Where the CLI's config file would be (only its folder is used: the session file is next to it). WILMAI_CONFIG_PATH,
+/// else $XDG_CONFIG_HOME/wilmai or ~/.config/wilmai.
 fn config_file() -> Option<std::path::PathBuf> {
     use std::path::PathBuf;
     if let Ok(config) = std::env::var("WILMAI_CONFIG_PATH") {
@@ -461,41 +467,27 @@ fn now_ms() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
-fn lower_hex(text: &str, len: usize) -> bool {
-    text.len() == len && text.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-}
-
 fn valid_session_key(key: &str) -> bool {
-    lower_hex(key, 64)
+    key.len() == 64 && key.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
-/// A Wilma address as the CLI writes it into keys: without one trailing slash.
+fn sha256_hex(text: &str) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// A Wilma address as the CLI writes it into keys: without a trailing slash.
 fn wilma_address(url: &str) -> &str {
     url.strip_suffix('/').unwrap_or(url)
 }
 
-/// The v2 key: no password, so the session is found without reading the keychain.
+/// The v2 label: no password in it, so it's the same whoever keeps the password, and wherever.
 fn session_key_v2(base_url: &str, username: &str) -> String {
-    use sha2::{Digest, Sha256};
-    let digest = Sha256::digest(format!("wilmai-session-v2\n{}\n{}", wilma_address(base_url), username.to_lowercase()).as_bytes());
-    digest.iter().map(|b| format!("{b:02x}")).collect()
+    sha256_hex(&format!("wilmai-session-v2\n{}\n{}", wilma_address(base_url), username.to_lowercase()))
 }
 
-/// Whether the CLI's config has this login (address, trailing slash aside; username in any case) with its password
-/// outside its file: in the keychain, or a store a newer CLI knows. The CLI keys those sessions by v2 too.
-fn is_keychain_login(config: &str, base_url: &str, username: &str) -> bool {
-    let Ok(config) = serde_json::from_str::<serde_json::Value>(config) else { return false };
-    let username = username.to_lowercase();
-    config.get("profiles").and_then(|p| p.as_array()).is_some_and(|profiles| {
-        profiles.iter().any(|p| {
-            p["secrets"].as_str().is_some_and(|store| !store.is_empty())
-                && p["tenantUrl"].as_str().is_some_and(|url| wilma_address(url) == wilma_address(base_url))
-                && p["username"].as_str().is_some_and(|name| name.to_lowercase() == username)
-        })
-    })
-}
-
-/// A login in the shared session file: its Wilma and username, and the v1 key when the app knows the password.
+/// A login in the shared session file, as the window sends it: its Wilma and username, and its v1 label when the window
+/// had the password.
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct SessionLogin {
@@ -505,26 +497,18 @@ struct SessionLogin {
     v1_key: Option<String>,
 }
 
-/// The login's key now: v2 while the CLI keeps it in the keychain, else the v1 key (none: the app can't share its session).
-fn session_key(config: &str, login: &SessionLogin) -> Result<Option<String>, String> {
-    if is_keychain_login(config, &login.base_url, &login.username) {
-        return Ok(Some(session_key_v2(&login.base_url, &login.username)));
+/// The login's labels: v2, then v1 when the window has it.
+fn session_keys(login: &SessionLogin) -> Result<Vec<String>, String> {
+    if login.base_url.trim().is_empty() || login.username.trim().is_empty() {
+        return Err("Not a WilmAI login".into());
     }
+    let mut keys = vec![session_key_v2(&login.base_url, &login.username)];
     match login.v1_key.as_deref() {
-        Some(key) if valid_session_key(key) => Ok(Some(key.to_owned())),
-        Some(_) => Err("Not a WilmAI session key".into()),
-        None => Ok(None),
+        Some(key) if valid_session_key(key) => keys.push(key.to_owned()),
+        Some(_) => return Err("Not a WilmAI session key".into()),
+        None => {}
     }
-}
-
-/// The CLI's config as it is now: empty when there's none, an error when it's there but can't be read (nothing is written then).
-fn cli_config_now() -> Result<String, String> {
-    let Some(path) = config_file() else { return Ok(String::new()) };
-    match std::fs::read_to_string(path) {
-        Ok(content) => Ok(content),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
-        Err(e) => Err(format!("The WilmAI CLI's settings couldn't be read: {e}")),
-    }
+    Ok(keys)
 }
 
 /// One login's saved session: its state, when it was saved, and which WilmAI program saved it (newer programs say).
@@ -537,8 +521,7 @@ struct SharedEntry {
 }
 
 /// The session saved under `key`, if it's recent enough to try.
-fn read_session(content: &str, key: &str, now: u64) -> Option<SharedEntry> {
-    let all: serde_json::Value = serde_json::from_str(content).ok()?;
+fn read_session(all: &serde_json::Value, key: &str, now: u64) -> Option<SharedEntry> {
     let entry = all.get(key)?;
     let saved_at = entry.get("savedAt")?.as_u64()?;
     if now.saturating_sub(saved_at) > SESSION_TTL_MS {
@@ -549,36 +532,41 @@ fn read_session(content: &str, key: &str, now: u64) -> Option<SharedEntry> {
     Some(SharedEntry { state, saved_at, by })
 }
 
-/// The file's new content with `state` saved under `key` (old entries dropped).
-fn write_session(content: &str, key: &str, state: &str, now: u64) -> String {
+/// The newest session under any of the login's labels that's recent enough to try (on a tie, the first label's).
+fn read_newest(content: &str, keys: &[String], now: u64) -> Option<SharedEntry> {
+    let all: serde_json::Value = serde_json::from_str(content).ok()?;
+    keys.iter().filter_map(|key| read_session(&all, key, now)).fold(None, |newest, entry| match newest {
+        Some(newest) if newest.saved_at >= entry.saved_at => Some(newest),
+        _ => Some(entry),
+    })
+}
+
+/// The file's new content with `state` saved under every label (old entries dropped).
+fn write_session(content: &str, keys: &[String], state: &str, now: u64) -> String {
     let mut all = match serde_json::from_str::<serde_json::Value>(content) {
         Ok(serde_json::Value::Object(map)) => map,
         _ => serde_json::Map::new(),
     };
     all.retain(|_, entry| entry.get("savedAt").and_then(|v| v.as_u64()).is_some_and(|at| now.saturating_sub(at) <= SESSION_TTL_MS));
-    all.insert(key.to_owned(), serde_json::json!({ "state": state, "savedAt": now, "by": "home" }));
+    for key in keys {
+        all.insert(key.to_owned(), serde_json::json!({ "state": state, "savedAt": now, "by": "home" }));
+    }
     serde_json::Value::Object(all).to_string()
 }
 
-#[tauri::command]
-async fn shared_session_get(login: SessionLogin) -> Result<Option<SharedEntry>, String> {
-    let Some(key) = session_key(&cli_config_now()?, &login)? else { return Ok(None) };
-    let Some(path) = sessions_path() else { return Ok(None) };
-    match std::fs::read_to_string(&path) {
-        Ok(content) => Ok(read_session(&content, &key, now_ms())),
-        Err(_) => Ok(None),
+/// The file's new content without the login's labels; None when it has none of them (nothing to write).
+fn remove_sessions(content: &str, keys: &[String]) -> Option<String> {
+    let serde_json::Value::Object(mut all) = serde_json::from_str::<serde_json::Value>(content).ok()? else { return None };
+    let before = all.len();
+    for key in keys {
+        all.remove(key);
     }
+    (all.len() != before).then(|| serde_json::Value::Object(all).to_string())
 }
 
-#[tauri::command]
-async fn shared_session_set(login: SessionLogin, state: String) -> Result<(), String> {
+/// Replace the session file: temp file + rename, like the CLI, so another program never reads half a file.
+fn replace_sessions_file(path: &std::path::Path, next: &str) -> Result<(), String> {
     use std::io::Write;
-    if state.len() > MAX_STATE_BYTES || !state.contains("Wilma2SID") {
-        return Err("Not a WilmAI session".into());
-    }
-    // No key (a login whose password the app never had, kept in the CLI's file): nothing to share it under.
-    let Some(key) = session_key(&cli_config_now()?, &login)? else { return Ok(()) };
-    let path = sessions_path().ok_or("No home folder")?;
     let dir = path.parent().ok_or("No folder for sessions")?;
     // Only this user may read the folder and the file (on Windows, the user's profile already keeps others out).
     let mut folder = std::fs::DirBuilder::new();
@@ -589,9 +577,6 @@ async fn shared_session_set(login: SessionLogin, state: String) -> Result<(), St
         folder.mode(0o700);
     }
     folder.create(dir).map_err(|e| e.to_string())?;
-    let content = std::fs::read_to_string(&path).unwrap_or_default();
-    let next = write_session(&content, &key, &state, now_ms());
-    // Temp file + rename, like the CLI: another program never reads half a file.
     let tmp = dir.join(format!("wilmai-sessions.json.{}.{}.tmp", std::process::id(), now_ms()));
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create_new(true);
@@ -603,208 +588,159 @@ async fn shared_session_set(login: SessionLogin, state: String) -> Result<(), St
     let mut file = options.open(&tmp).map_err(|e| e.to_string())?;
     file.write_all(next.as_bytes()).map_err(|e| e.to_string())?;
     drop(file);
-    std::fs::rename(&tmp, &path).map_err(|e| e.to_string())
+    std::fs::rename(&tmp, path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn shared_session_get(login: SessionLogin) -> Result<Option<SharedEntry>, String> {
+    let keys = session_keys(&login)?;
+    let Some(path) = sessions_path() else { return Ok(None) };
+    match std::fs::read_to_string(&path) {
+        Ok(content) => Ok(read_newest(&content, &keys, now_ms())),
+        Err(_) => Ok(None),
+    }
+}
+
+#[tauri::command]
+async fn shared_session_set(login: SessionLogin, state: String) -> Result<(), String> {
+    if state.len() > MAX_STATE_BYTES || !state.contains("Wilma2SID") {
+        return Err("Not a WilmAI session".into());
+    }
+    let keys = session_keys(&login)?;
+    let path = sessions_path().ok_or("No home folder")?;
+    let content = std::fs::read_to_string(&path).unwrap_or_default();
+    replace_sessions_file(&path, &write_session(&content, &keys, &state, now_ms()))
+}
+
+/// The login signed out or forgotten here: its session goes from the file under both labels.
+#[tauri::command]
+async fn shared_session_remove(login: SessionLogin) -> Result<(), String> {
+    let keys = session_keys(&login)?;
+    let Some(path) = sessions_path() else { return Ok(()) };
+    let Ok(content) = std::fs::read_to_string(&path) else { return Ok(()) };
+    match remove_sessions(&content, &keys) {
+        Some(next) => replace_sessions_file(&path, &next),
+        None => Ok(()),
+    }
 }
 
 /*
- * The WilmAI CLI's saved logins on this computer (its config.json), for the
- * sign-in page's one-click "Continue as". The list carries no secrets. One
- * login's password (and two-step key) is read only when the app signs in with
- * it, and only for a Wilma on the tenant list; it goes no further than this
- * app's own login to that Wilma. The CLI keeps them lightly obfuscated
- * (base64 of "wilmai::" + the secret), not encrypted; the file is readable by
- * this user only.
+ * The app's own secrets in the system keychain: the remembered Wilma passwords
+ * and the OpenAI key (src/data/store.ts). One entry, service
+ * "ai.wilm.home.secrets", account "secrets" (no username in it), value the
+ * window's JSON, ASCII only (it escapes the rest). The window reads it once at
+ * start and writes it whole after a change; Reset app deletes it. Nothing here
+ * reads another program's entries (the Jev key's old place aside, `secret`).
  *
- * A login can instead be in the system keychain ("secrets": "keychain"): one
- * entry per login, service ai.wilm.wilma-cli, account the login's random
- * "secretId", value JSON {"password", "totpSecret"} (non-ASCII escaped). The
- * config then says only whether there's an authenticator key ("hasTotp"). The
- * entry is read only when Wilma needs a new login, never to list the logins
- * or to find a shared session. Any other "secrets" is a store a newer WilmAI
- * made.
+ * - macOS: /usr/bin/security in a child process, killed after ten seconds.
+ *   The item trusts /usr/bin/security only (-T), so it's read without macOS
+ *   asking for the Mac's password, whatever this app's signature or version.
+ *   The value goes in as hex on stdin (`security -i`), never on a command
+ *   line. Saving deletes the item and adds it again, never changes it in place
+ *   (-U): changing an item's content makes macOS ask for authorization, and
+ *   until someone answers, that keychain refuses everything (exit 152).
+ * - Windows (and Linux): the keyring crate, Credential Manager (the Secret
+ *   Service on Linux).
  */
-const CLI_SECRET_PREFIX: &str = "wilmai::";
-const CLI_KEYCHAIN_SERVICE: &str = "ai.wilm.wilma-cli";
+const SECRETS_SERVICE: &str = "ai.wilm.home.secrets";
+const SECRETS_ACCOUNT: &str = "secrets";
+/// Credential Manager keeps at most 2,560 bytes in one entry.
+const MAX_SECRETS_BYTES: usize = 2560;
 /// How long the keychain may take to answer; after that it counts as refused (on a Mac the child process is killed).
 const KEYCHAIN_TIMEOUT: Duration = Duration::from_secs(10);
-const KEYCHAIN_MISSING: &str = "The password the WilmAI CLI saved for this Wilma isn't in the keychain any more. Log in again with the CLI (`wilma login`), or type the password here.";
-const KEYCHAIN_REFUSED: &str = "The keychain on this computer didn't hand over the password the WilmAI CLI saved. If the computer is locked or asking for a password, unlock it, then try again.";
-const NEWER_STORE: &str = "A newer WilmAI saved this login's password where this version of WilmAI Home can't read it. Update WilmAI Home, or type the password here.";
 
-#[derive(Serialize, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-struct SavedLogin {
-    id: String,
-    base_url: String,
-    username: String,
-    tenant_name: Option<String>,
-    has_totp: bool,
-    /// The CLI keeps this login's password in the keychain (its shared session's key is then v2).
-    keychain: bool,
+/// One keychain entry: its service and account, and (a test hook, macOS) a keychain file instead of the default one.
+#[derive(Clone, Debug)]
+struct SecretEntry {
+    service: String,
+    account: String,
+    keychain_file: Option<String>,
 }
 
-#[derive(Serialize, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-struct LoginSecret {
-    password: String,
-    totp_secret: Option<String>,
-}
-
-fn reveal_cli_secret(value: &str) -> Option<String> {
-    use base64::Engine;
-    let bytes = base64::engine::general_purpose::STANDARD.decode(value.trim()).ok()?;
-    String::from_utf8(bytes).ok()?.strip_prefix(CLI_SECRET_PREFIX).map(str::to_owned)
-}
-
-/// The config's logins for known Wilmas, the last one used first (like the CLI).
-fn saved_profiles(content: &str) -> Vec<serde_json::Value> {
-    let Ok(config) = serde_json::from_str::<serde_json::Value>(content) else { return vec![] };
-    let last = config.get("lastProfileId").and_then(|v| v.as_str()).unwrap_or_default().to_owned();
-    let mut profiles: Vec<serde_json::Value> = config
-        .get("profiles")
-        .and_then(|p| p.as_array())
-        .cloned()
-        .unwrap_or_default()
-        .into_iter()
-        // A password in the file, or a store named (the keychain, or one a newer WilmAI made: said when it's used).
-        .filter(|p| p["id"].is_string() && p["username"].is_string() && (p["passwordObfuscated"].is_string() || p["secrets"].is_string()))
-        .filter(|p| p["tenantUrl"].as_str().is_some_and(is_known_wilma))
-        .collect();
-    profiles.sort_by_key(|p| p["id"].as_str() != Some(last.as_str()));
-    profiles
-}
-
-fn is_known_wilma(url: &str) -> bool {
-    reqwest::Url::parse(url).is_ok_and(|u| u.scheme() == "https" && u.host_str().is_some_and(|h| wilma_hosts().contains(h)))
-}
-
-fn to_saved_login(profile: &serde_json::Value) -> SavedLogin {
-    let keychain = profile["secrets"].as_str() == Some("keychain");
-    SavedLogin {
-        id: profile["id"].as_str().unwrap_or_default().to_owned(),
-        base_url: profile["tenantUrl"].as_str().unwrap_or_default().trim_end_matches('/').to_owned(),
-        username: profile["username"].as_str().unwrap_or_default().to_owned(),
-        tenant_name: profile["tenantName"].as_str().map(str::to_owned),
-        // A keychain login says so in the config, so listing it doesn't read the keychain.
-        has_totp: if keychain {
-            profile["hasTotp"].as_bool().unwrap_or(false)
-        } else {
-            profile["totpSecretObfuscated"].as_str().is_some_and(|s| !s.is_empty())
-        },
-        keychain,
+impl SecretEntry {
+    fn home() -> Self {
+        SecretEntry { service: SECRETS_SERVICE.into(), account: SECRETS_ACCOUNT.into(), keychain_file: None }
     }
 }
 
-fn read_cli_config() -> String {
-    config_file().and_then(|path| std::fs::read_to_string(path).ok()).unwrap_or_default()
+/// Names go into `security`'s command text as they are: letters, digits, dots and dashes only.
+fn valid_entry_name(name: &str) -> bool {
+    !name.is_empty() && name.len() <= 64 && !name.starts_with('-') && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-')
 }
 
-#[tauri::command]
-async fn cli_logins() -> Vec<SavedLogin> {
-    saved_profiles(&read_cli_config()).iter().map(to_saved_login).collect()
+/// A keychain file for the tests: an absolute path with nothing to quote.
+fn valid_keychain_file(path: &str) -> bool {
+    path.starts_with('/') && !path.contains(['"', '\\', '\n', '\r'])
 }
 
-/// Where one saved login's secrets are: in the config (read now), or in the keychain entry named by its secretId.
+fn check_entry(entry: &SecretEntry) -> Result<(), String> {
+    let file_ok = entry.keychain_file.as_deref().is_none_or(valid_keychain_file);
+    if valid_entry_name(&entry.service) && valid_entry_name(&entry.account) && file_ok {
+        Ok(())
+    } else {
+        Err("Not a WilmAI Home keychain entry".into())
+    }
+}
+
+/// What the window keeps there: printable ASCII (it escapes everything else), short enough for Credential Manager.
+fn valid_secret_value(value: &str) -> bool {
+    !value.is_empty() && value.len() <= MAX_SECRETS_BYTES && value.bytes().all(|b| (0x20..0x7f).contains(&b))
+}
+
+/// Why the keychain didn't do it.
 #[derive(Debug, PartialEq)]
-enum SavedSecret {
-    File(LoginSecret),
-    Keychain(String),
+enum KeychainError {
+    /// Locked, declined, no answer in time, or it said no.
+    Refused(String),
+    /// No keychain to use here.
+    Unavailable(String),
 }
 
-fn saved_secret(config: &str, id: &str) -> Result<SavedSecret, String> {
-    let profiles = saved_profiles(config);
-    let profile = profiles.iter().find(|p| p["id"].as_str() == Some(id)).ok_or("That saved login isn't there any more.")?;
-    match profile["secrets"].as_str() {
-        None => {
-            let password = profile["passwordObfuscated"].as_str().and_then(reveal_cli_secret).ok_or("The saved login has no readable password.")?;
-            let totp_secret = profile["totpSecretObfuscated"].as_str().filter(|s| !s.is_empty()).and_then(reveal_cli_secret);
-            Ok(SavedSecret::File(LoginSecret { password, totp_secret }))
+impl std::fmt::Display for KeychainError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KeychainError::Refused(why) => write!(f, "The keychain didn't do it: {why}"),
+            KeychainError::Unavailable(why) => write!(f, "No keychain to use here: {why}"),
         }
-        Some("keychain") => Ok(SavedSecret::Keychain(profile["secretId"].as_str().unwrap_or_default().to_owned())),
-        Some(_) => Err(NEWER_STORE.into()),
     }
 }
 
-#[tauri::command]
-async fn cli_login_secret(id: String) -> Result<LoginSecret, String> {
-    match saved_secret(&read_cli_config(), &id)? {
-        SavedSecret::File(secret) => Ok(secret),
-        SavedSecret::Keychain(secret_id) => read_keychain_login(secret_id).await,
-    }
-}
-
-/// The CLI makes each entry's name from 16 random bytes: 32 lowercase hex characters, nothing else.
-fn valid_secret_id(secret_id: &str) -> bool {
-    lower_hex(secret_id, 32)
-}
-
-/// Why a keychain entry couldn't be had.
+/// One finished run of a program.
 #[derive(Debug, PartialEq)]
-enum EntryError {
-    /// No such entry (deleted outside WilmAI), or not the CLI's format.
-    Missing,
-    /// Locked, declined, or no answer in time.
-    Refused,
-}
-
-fn entry_message(error: EntryError) -> String {
-    match error {
-        EntryError::Missing => KEYCHAIN_MISSING.into(),
-        EntryError::Refused => KEYCHAIN_REFUSED.into(),
-    }
-}
-
-/// The entry's value as the CLI writes it: {"password": "…", "totpSecret": "…" | null}.
-fn parse_cli_entry(value: &str) -> Option<LoginSecret> {
-    let entry: serde_json::Value = serde_json::from_str(value).ok()?;
-    let password = entry.get("password")?.as_str().filter(|p| !p.is_empty())?.to_owned();
-    let totp_secret = entry.get("totpSecret").and_then(|v| v.as_str()).filter(|s| !s.is_empty()).map(str::to_owned);
-    Some(LoginSecret { password, totp_secret })
-}
-
-/// A keychain login's password and authenticator key, read once, off the main thread (a prompt must not freeze the window).
-async fn read_keychain_login(secret_id: String) -> Result<LoginSecret, String> {
-    if !valid_secret_id(&secret_id) {
-        return Err(KEYCHAIN_MISSING.into());
-    }
-    let read = tauri::async_runtime::spawn_blocking(move || read_cli_entry(&secret_id));
-    // A native call that can't be stopped (Windows) is left to finish by itself; the parent hears now.
-    let value = match tokio::time::timeout(KEYCHAIN_TIMEOUT + Duration::from_secs(1), read).await {
-        Ok(Ok(result)) => result,
-        _ => Err(EntryError::Refused),
-    };
-    let value = value.map_err(entry_message)?;
-    parse_cli_entry(&value).ok_or_else(|| KEYCHAIN_MISSING.into())
-}
-
-/// What `security find-generic-password -w` came to: exit 0 the value and a newline, 44 no such entry, anything else refused.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
-fn security_answer(code: Option<i32>, stdout: &str) -> Result<String, EntryError> {
-    match code {
-        Some(0) => Ok(stdout.strip_suffix('\n').unwrap_or(stdout).to_owned()),
-        Some(44) => Err(EntryError::Missing),
-        _ => Err(EntryError::Refused),
-    }
+struct Run {
+    code: Option<i32>,
+    stdout: String,
+    stderr: String,
 }
 
-/// One run of a program with its output, killed after `timeout` (then None).
+/// One run of a program: `input` written to its stdin, which is then closed; its output read while it runs. Killed
+/// after `timeout` (then None).
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
-fn run_with_timeout(program: &str, args: &[&str], timeout: Duration) -> std::io::Result<Option<(Option<i32>, String)>> {
-    use std::io::Read;
+fn run_with_timeout(program: &str, args: &[String], input: &str, timeout: Duration) -> std::io::Result<Option<Run>> {
+    use std::io::{Read, Write};
     use std::process::{Command, Stdio};
-    let mut child = Command::new(program).args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn()?;
-    let mut stdout = child.stdout.take().expect("stdout is piped");
-    // Read while it runs, so a long answer can't fill the pipe and stall it.
-    let reader = std::thread::spawn(move || {
-        let mut out = Vec::new();
-        let _ = stdout.read_to_end(&mut out);
-        out
+    let mut child = Command::new(program).args(args).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+    let mut stdin = child.stdin.take().expect("stdin is piped");
+    let input = input.to_owned();
+    // From threads of their own, so a program that doesn't read, or writes a lot, can't stall this one.
+    let writer = std::thread::spawn(move || {
+        let _ = stdin.write_all(input.as_bytes());
     });
+    fn reader(mut pipe: impl Read + Send + 'static) -> std::thread::JoinHandle<String> {
+        std::thread::spawn(move || {
+            let mut out = Vec::new();
+            let _ = pipe.read_to_end(&mut out);
+            String::from_utf8_lossy(&out).into_owned()
+        })
+    }
+    let stdout = reader(child.stdout.take().expect("stdout is piped"));
+    let stderr = reader(child.stderr.take().expect("stderr is piped"));
     let deadline = std::time::Instant::now() + timeout;
     loop {
         if let Some(status) = child.try_wait()? {
-            let out = reader.join().unwrap_or_default();
-            return Ok(Some((status.code(), String::from_utf8_lossy(&out).into_owned())));
+            let _ = writer.join();
+            return Ok(Some(Run { code: status.code(), stdout: stdout.join().unwrap_or_default(), stderr: stderr.join().unwrap_or_default() }));
         }
         if std::time::Instant::now() >= deadline {
             let _ = child.kill();
@@ -815,34 +751,176 @@ fn run_with_timeout(program: &str, args: &[&str], timeout: Duration) -> std::io:
     }
 }
 
-/// macOS: through /usr/bin/security, as the CLI does. Its entries trust only that program, so they're handed over
-/// without asking for the Mac's password, whoever runs it.
+/// `security` arguments that read the entry's value alone (-w).
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn security_find_args(entry: &SecretEntry) -> Vec<String> {
+    let mut args: Vec<String> = vec!["find-generic-password".into(), "-s".into(), entry.service.clone(), "-a".into(), entry.account.clone(), "-w".into()];
+    args.extend(entry.keychain_file.clone());
+    args
+}
+
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn security_delete_args(entry: &SecretEntry) -> Vec<String> {
+    let mut args: Vec<String> = vec!["delete-generic-password".into(), "-s".into(), entry.service.clone(), "-a".into(), entry.account.clone()];
+    args.extend(entry.keychain_file.clone());
+    args
+}
+
+/// The line `security -i` reads on stdin to add the entry: the value as hex (nothing to quote), trusted by
+/// /usr/bin/security only. Never -U.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn security_add_command(entry: &SecretEntry, value: &str) -> String {
+    let hex: String = value.bytes().map(|b| format!("{b:02x}")).collect();
+    let file = entry.keychain_file.as_deref().map(|path| format!(" \"{path}\"")).unwrap_or_default();
+    format!("add-generic-password -s {} -a {} -l \"WilmAI Home\" -T /usr/bin/security -X {hex}{file}\n", entry.service, entry.account)
+}
+
+/// The last line `security` wrote to stderr, or its exit code.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn security_failure(run: &Run) -> KeychainError {
+    let said = run.stderr.trim().lines().last().unwrap_or_default();
+    KeychainError::Refused(if said.is_empty() { format!("security exited with {:?}", run.code) } else { said.to_owned() })
+}
+
+/// `find-generic-password -w`: exit 0 the value and a newline, 44 no such entry, anything else refused.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn security_read_answer(run: &Run) -> Result<Option<String>, KeychainError> {
+    match run.code {
+        Some(0) => Ok(Some(run.stdout.strip_suffix('\n').unwrap_or(&run.stdout).to_owned())),
+        Some(44) => Ok(None),
+        _ => Err(security_failure(run)),
+    }
+}
+
+/// `delete-generic-password`: exit 0 deleted, 44 there was none.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn security_delete_answer(run: &Run) -> Result<bool, KeychainError> {
+    match run.code {
+        Some(0) => Ok(true),
+        Some(44) => Ok(false),
+        _ => Err(security_failure(run)),
+    }
+}
+
+/// `security -i`: a command that failed can still exit 0, saying "returned -N" on stderr.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn security_add_answer(run: &Run) -> Result<(), KeychainError> {
+    let refused = run.stderr.split("returned -").skip(1).any(|rest| rest.starts_with(|c: char| c.is_ascii_digit()));
+    if run.code == Some(0) && !refused {
+        Ok(())
+    } else {
+        Err(security_failure(run))
+    }
+}
+
 #[cfg(target_os = "macos")]
-fn read_cli_entry(secret_id: &str) -> Result<String, EntryError> {
-    let args = ["find-generic-password", "-s", CLI_KEYCHAIN_SERVICE, "-a", secret_id, "-w"];
-    match run_with_timeout("/usr/bin/security", &args, KEYCHAIN_TIMEOUT) {
-        Ok(Some((code, stdout))) => security_answer(code, &stdout),
-        _ => Err(EntryError::Refused),
+fn security(args: &[String], input: &str) -> Result<Run, KeychainError> {
+    const SECURITY: &str = "/usr/bin/security";
+    match run_with_timeout(SECURITY, args, input, KEYCHAIN_TIMEOUT) {
+        Ok(Some(run)) => Ok(run),
+        Ok(None) => Err(KeychainError::Refused("no answer in time".into())),
+        Err(e) => Err(KeychainError::Unavailable(format!("{SECURITY}: {e}"))),
     }
 }
 
-/// The CLI's keychain entry for one login, and nothing else: the Jev key's `secret` stays the only other one.
-#[cfg(not(target_os = "macos"))]
-fn cli_entry(secret_id: &str) -> Result<keyring::Entry, String> {
-    if !valid_secret_id(secret_id) {
-        return Err(format!("Not a WilmAI keychain entry: {secret_id}"));
-    }
-    keyring::Entry::new(CLI_KEYCHAIN_SERVICE, secret_id).map_err(|e| e.to_string())
+#[cfg(target_os = "macos")]
+fn keychain_read(entry: &SecretEntry) -> Result<Option<String>, KeychainError> {
+    security_read_answer(&security(&security_find_args(entry), "")?)
 }
 
-/// Windows: Credential Manager through the keyring crate, the same entry the CLI's keyring library writes.
+#[cfg(target_os = "macos")]
+fn keychain_write(entry: &SecretEntry, value: &str) -> Result<(), KeychainError> {
+    security_delete_answer(&security(&security_delete_args(entry), "")?)?;
+    security_add_answer(&security(&["-i".into()], &security_add_command(entry, value))?)
+}
+
+#[cfg(target_os = "macos")]
+fn keychain_delete(entry: &SecretEntry) -> Result<bool, KeychainError> {
+    security_delete_answer(&security(&security_delete_args(entry), "")?)
+}
+
 #[cfg(not(target_os = "macos"))]
-fn read_cli_entry(secret_id: &str) -> Result<String, EntryError> {
-    match cli_entry(secret_id).map_err(|_| EntryError::Missing)?.get_password() {
-        Ok(value) => Ok(value),
-        Err(keyring::Error::NoEntry) => Err(EntryError::Missing),
-        Err(_) => Err(EntryError::Refused),
+fn keyring_entry(entry: &SecretEntry) -> Result<keyring::Entry, KeychainError> {
+    if entry.keychain_file.is_some() {
+        return Err(KeychainError::Unavailable("a keychain file is for macOS only".into()));
     }
+    keyring::Entry::new(&entry.service, &entry.account).map_err(|e| KeychainError::Unavailable(e.to_string()))
+}
+
+/// Windows and Linux: the value as bytes (Credential Manager's 2,560, where the password form would allow half).
+#[cfg(not(target_os = "macos"))]
+fn keychain_read(entry: &SecretEntry) -> Result<Option<String>, KeychainError> {
+    match keyring_entry(entry)?.get_secret() {
+        Ok(bytes) => String::from_utf8(bytes).map(Some).map_err(|_| KeychainError::Refused("not the app's entry".into())),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(KeychainError::Refused(e.to_string())),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn keychain_write(entry: &SecretEntry, value: &str) -> Result<(), KeychainError> {
+    keyring_entry(entry)?.set_secret(value.as_bytes()).map_err(|e| KeychainError::Refused(e.to_string()))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn keychain_delete(entry: &SecretEntry) -> Result<bool, KeychainError> {
+    match keyring_entry(entry)?.delete_credential() {
+        Ok(()) => Ok(true),
+        Err(keyring::Error::NoEntry) => Ok(false),
+        Err(e) => Err(KeychainError::Refused(e.to_string())),
+    }
+}
+
+/// One keychain call at a time.
+static KEYCHAIN: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// A keychain call off the main thread (a prompt must not freeze the window), one at a time. A native call that can't be
+/// stopped (Windows) is left to finish by itself; the window hears it was refused.
+async fn keychain_call<T: Send + 'static>(call: impl FnOnce() -> Result<T, KeychainError> + Send + 'static) -> Result<T, String> {
+    let task = tauri::async_runtime::spawn_blocking(move || {
+        let _one = KEYCHAIN.lock().unwrap_or_else(|e| e.into_inner());
+        call()
+    });
+    match tokio::time::timeout(KEYCHAIN_TIMEOUT + Duration::from_secs(2), task).await {
+        Ok(Ok(result)) => result.map_err(|e| e.to_string()),
+        _ => Err(KeychainError::Refused("no answer in time".into()).to_string()),
+    }
+}
+
+async fn read_secrets(entry: SecretEntry) -> Result<Option<String>, String> {
+    check_entry(&entry)?;
+    keychain_call(move || keychain_read(&entry)).await
+}
+
+async fn write_secrets(entry: SecretEntry, value: String) -> Result<(), String> {
+    check_entry(&entry)?;
+    if !valid_secret_value(&value) {
+        return Err("Not something the app keeps in the keychain".into());
+    }
+    keychain_call(move || keychain_write(&entry, &value)).await
+}
+
+async fn delete_secrets(entry: SecretEntry) -> Result<bool, String> {
+    check_entry(&entry)?;
+    keychain_call(move || keychain_delete(&entry)).await
+}
+
+/// The app's entry: its value, or None when there's none.
+#[tauri::command]
+async fn secrets_read() -> Result<Option<String>, String> {
+    read_secrets(SecretEntry::home()).await
+}
+
+/// Replace the app's entry with this value.
+#[tauri::command]
+async fn secrets_write(value: String) -> Result<(), String> {
+    write_secrets(SecretEntry::home(), value).await
+}
+
+/// Delete the app's entry (Reset app); false when there was none.
+#[tauri::command]
+async fn secrets_delete() -> Result<bool, String> {
+    delete_secrets(SecretEntry::home()).await
 }
 
 /*
@@ -929,19 +1007,6 @@ async fn update_manifest() -> Result<Option<Release>, String> {
 
 #[cfg(test)]
 mod tests {
-    /// Reads an entry the CLI really wrote (macOS: through /usr/bin/security; Windows: Credential Manager).
-    /// Opt-in: `WILMAI_INTEROP_SECRET_ID=<id> WILMAI_INTEROP_PASSWORD=<pw> cargo test -- --ignored reads_an_entry_the_cli_wrote`
-    /// after the CLI's store saved {password} under that id (packages/wilma-cli/test/keychain-real.mjs prints how).
-    #[test]
-    #[ignore]
-    fn reads_an_entry_the_cli_wrote() {
-        let id = std::env::var("WILMAI_INTEROP_SECRET_ID").expect("WILMAI_INTEROP_SECRET_ID");
-        let password = std::env::var("WILMAI_INTEROP_PASSWORD").expect("WILMAI_INTEROP_PASSWORD");
-        let read = tauri::async_runtime::block_on(read_keychain_login(id)).expect("Home reads the CLI's entry");
-        assert_eq!(read.password, password);
-        assert_eq!(read.totp_secret.as_deref(), Some("JBSWY3DPEHPK3PXP"));
-    }
-
     use super::*;
 
     #[test]
@@ -952,176 +1017,209 @@ mod tests {
         assert!(!hosts.contains("example.com"));
     }
 
+    const V1: &str = "c4cb441cdc450d3151d3de14dd1576b4aa3235ea224813cac8e8d9c982dd3507";
+    const V2: &str = "18e7bcf46ac5969e085d0b5eac867bbbf4ffe590073dce493c82445fd120f6d9";
+
+    fn login(v1_key: Option<&str>) -> SessionLogin {
+        SessionLogin { base_url: "https://example.inschool.fi".into(), username: "Matti.M".into(), v1_key: v1_key.map(str::to_owned) }
+    }
+
     #[test]
     fn shared_session_file_like_the_cli() {
-        let key = "a".repeat(64);
+        let keys = vec!["a".repeat(64)];
         let now = 10 * SESSION_TTL_MS;
-        let written = write_session(r#"{"old":{"state":"x","savedAt":1},"other":{"state":"keep","savedAt":0}}"#.replace(":0}", &format!(":{}}}", now - 1000)).as_str(), &key, "{\"cookies\":[]}", now);
+        let written = write_session(r#"{"old":{"state":"x","savedAt":1},"other":{"state":"keep","savedAt":0}}"#.replace(":0}", &format!(":{}}}", now - 1000)).as_str(), &keys, "{\"cookies\":[]}", now);
         let all: serde_json::Value = serde_json::from_str(&written).unwrap();
         assert!(all.get("old").is_none(), "entries older than six hours are dropped");
         assert_eq!(all["other"]["state"], "keep", "other logins are kept");
-        let entry = read_session(&written, &key, now + 1).unwrap();
+        let entry = read_newest(&written, &keys, now + 1).unwrap();
         assert_eq!((entry.state.as_str(), entry.by.as_deref()), ("{\"cookies\":[]}", Some("home")), "saved by this app");
-        assert_eq!(read_session(&written, &key, now + SESSION_TTL_MS + 1), None, "too old to try");
-        assert_eq!(read_session("not json", &key, now), None);
-        assert_eq!(write_session("garbage", &key, "s", now), format!("{{\"{key}\":{{\"by\":\"home\",\"savedAt\":{now},\"state\":\"s\"}}}}"));
+        assert_eq!(read_newest(&written, &keys, now + SESSION_TTL_MS + 1), None, "too old to try");
+        assert_eq!(read_newest("not json", &keys, now), None);
+        assert_eq!(write_session("garbage", &keys, "s", now), format!("{{\"{}\":{{\"by\":\"home\",\"savedAt\":{now},\"state\":\"s\"}}}}", keys[0]));
         assert!(valid_session_key(&"0123456789abcdef".repeat(4)));
         assert!(!valid_session_key("../etc"));
         assert!(!valid_session_key(&"A".repeat(64)), "the CLI writes lowercase hex");
     }
 
     #[test]
-    fn a_session_written_while_the_cli_moves_a_login_lands_under_its_key_now() {
+    fn session_keys_like_the_cli() {
+        assert_eq!(session_key_v2("https://example.inschool.fi/", "Matti.M"), V2, "no trailing slash, the username in lower case");
+        assert_eq!(session_key_v2("https://example.inschool.fi", "matti.m"), V2);
+        // v1 is made by the window (it has the password); the formula, for the record:
+        assert_eq!(sha256_hex("https://example.inschool.fi\nmatti.m\npw"), V1);
+        assert_eq!(session_keys(&login(Some(V1))).unwrap(), [V2, V1], "v2 first, then v1");
+        assert_eq!(session_keys(&login(None)).unwrap(), [V2], "no password, no v1");
+        assert!(session_keys(&login(Some("../etc/passwd"))).is_err());
+        assert!(session_keys(&login(Some(&V1.to_uppercase()))).is_err(), "the CLI writes lowercase hex");
+        assert!(session_keys(&SessionLogin { base_url: "https://example.inschool.fi".into(), username: " ".into(), v1_key: None }).is_err());
+        let wire: SessionLogin = serde_json::from_str(r#"{"baseUrl":"https://example.inschool.fi","username":"Matti.M","v1Key":"x"}"#).unwrap();
+        assert_eq!(wire.v1_key.as_deref(), Some("x"), "the window's field names");
+    }
+
+    #[test]
+    fn both_labels_saved_and_the_newer_read() {
         let now = 10 * SESSION_TTL_MS;
-        let v1 = "c4cb441cdc450d3151d3de14dd1576b4aa3235ea224813cac8e8d9c982dd3507";
-        let login = SessionLogin { base_url: "https://example.inschool.fi".into(), username: "Matti.M".into(), v1_key: Some(v1.into()) };
-        let file = r#"{"profiles":[{"id":"p","tenantUrl":"https://example.inschool.fi","username":"Matti.M","passwordObfuscated":"x"}]}"#;
-        let keychain = r#"{"profiles":[{"id":"p","tenantUrl":"https://example.inschool.fi","username":"Matti.M","secrets":"keychain","secretId":"0123456789abcdef0123456789abcdef"}]}"#;
-        let first = write_session("{}", &session_key(file, &login).unwrap().unwrap(), "{\"Wilma2SID\":1}", now);
-        let second = write_session(&first, &session_key(keychain, &login).unwrap().unwrap(), "{\"Wilma2SID\":2}", now);
-        let all: serde_json::Value = serde_json::from_str(&second).unwrap();
-        assert_eq!(all[v1]["state"], "{\"Wilma2SID\":1}");
-        assert_eq!(all[session_key_v2("https://example.inschool.fi", "Matti.M")]["state"], "{\"Wilma2SID\":2}", "the next write, after the move, under v2");
-        assert_eq!(read_session(&second, &session_key(keychain, &login).unwrap().unwrap(), now).unwrap().state, "{\"Wilma2SID\":2}");
-    }
+        let keys = session_keys(&login(Some(V1))).unwrap();
+        let written: serde_json::Value = serde_json::from_str(&write_session("{}", &keys, "{\"Wilma2SID\":1}", now)).unwrap();
+        assert_eq!((written[V2]["state"].as_str(), written[V1]["state"].as_str()), (Some("{\"Wilma2SID\":1}"), Some("{\"Wilma2SID\":1}")), "under both");
 
-    #[test]
-    fn reads_the_cli_logins() {
-        let secret = |s: &str| {
-            use base64::Engine;
-            base64::engine::general_purpose::STANDARD.encode(format!("wilmai::{s}"))
+        // An older program saved a newer session under v1 only; a keychain login of the CLI's, under v2 only.
+        let file = |v2_at: u64, v1_at: u64| {
+            serde_json::json!({
+                V2: { "state": "v2", "savedAt": v2_at, "by": "cli" },
+                V1: { "state": "v1", "savedAt": v1_at, "by": "mcp" },
+            })
+            .to_string()
         };
-        let config = serde_json::json!({
-            "lastProfileId": "b",
-            "profiles": [
-                { "id": "a", "tenantUrl": "https://helsinki.inschool.fi/", "username": "first", "passwordObfuscated": secret("pw1") },
-                { "id": "b", "tenantUrl": "https://espoo.inschool.fi", "tenantName": "Espoo", "username": "second", "passwordObfuscated": secret("pw2"), "totpSecretObfuscated": secret("JBSWY3DPEHPK3PXP") },
-                { "id": "c", "tenantUrl": "https://evil.example", "username": "x", "passwordObfuscated": secret("pw3") }
-            ]
-        })
-        .to_string();
-        let logins: Vec<SavedLogin> = saved_profiles(&config).iter().map(to_saved_login).collect();
-        assert_eq!(logins.len(), 2, "only Wilmas on the tenant list");
-        assert_eq!(logins[0].id, "b", "the last one used first");
-        assert!(logins[0].has_totp && !logins[1].has_totp);
-        assert!(!logins[0].keychain && !logins[1].keychain);
-        assert_eq!(logins[1].base_url, "https://helsinki.inschool.fi");
-        assert_eq!(reveal_cli_secret(&secret("pw2")).as_deref(), Some("pw2"));
-        assert_eq!(reveal_cli_secret("cGxhaW4="), None, "not the CLI's format");
-        assert!(saved_profiles("not json").is_empty());
-        assert_eq!(saved_secret(&config, "b").unwrap(), SavedSecret::File(LoginSecret { password: "pw2".into(), totp_secret: Some("JBSWY3DPEHPK3PXP".into()) }));
-        assert_eq!(saved_secret(&config, "c").unwrap_err(), "That saved login isn't there any more.");
-    }
+        assert_eq!(read_newest(&file(now - 10, now - 5), &keys, now).unwrap().state, "v1", "the newer wins");
+        assert_eq!(read_newest(&file(now - 5, now - 10), &keys, now).unwrap().state, "v2");
+        assert_eq!(read_newest(&file(now - 5, now - 5), &keys, now).unwrap().state, "v2", "a tie: v2");
+        assert_eq!(read_newest(&file(now - 5, now - 5), &keys[..1], now).unwrap().state, "v2", "without the password, v2 only");
+        assert_eq!(read_newest(&file(now - SESSION_TTL_MS - 1, now - 10), &keys, now).unwrap().state, "v1", "an expired one doesn't count");
 
-    const SECRET_ID: &str = "0123456789abcdef0123456789abcdef";
-
-    #[test]
-    fn lists_keychain_logins_without_reading_the_keychain() {
-        let config = serde_json::json!({
-            "secretStore": "keychain",
-            "keychainLogins": { "k": SECRET_ID },
-            "profiles": [
-                { "id": "k", "tenantUrl": "https://espoo.inschool.fi/", "username": "Parent", "secrets": "keychain", "secretId": SECRET_ID, "hasTotp": true, "credentialsStamp": "0123456789abcdef" },
-                { "id": "k2", "tenantUrl": "https://helsinki.inschool.fi", "username": "other", "secrets": "keychain", "secretId": SECRET_ID, "hasTotp": false },
-                { "id": "n", "tenantUrl": "https://helsinki.inschool.fi", "username": "newer", "secrets": "vault", "hasTotp": true },
-                { "id": "x", "tenantUrl": "https://helsinki.inschool.fi", "username": "nothing" }
-            ]
-        })
-        .to_string();
-        let logins: Vec<SavedLogin> = saved_profiles(&config).iter().map(to_saved_login).collect();
-        assert_eq!(logins.iter().map(|l| l.id.as_str()).collect::<Vec<_>>(), ["k", "k2", "n"], "a login with neither a password nor a store isn't listed");
-        assert_eq!(
-            logins[0],
-            SavedLogin { id: "k".into(), base_url: "https://espoo.inschool.fi".into(), username: "Parent".into(), tenant_name: None, has_totp: true, keychain: true }
-        );
-        assert!(!logins[1].has_totp, "hasTotp says it for a keychain login");
-        assert!(!logins[2].keychain && !logins[2].has_totp, "another store isn't the keychain, and its hasTotp isn't trusted");
-        assert_eq!(saved_secret(&config, "k").unwrap(), SavedSecret::Keychain(SECRET_ID.into()));
-        assert_eq!(saved_secret(&config, "n").unwrap_err(), NEWER_STORE, "saved by a newer WilmAI");
-    }
-
-    #[test]
-    fn reads_the_cli_keychain_entry_format() {
-        assert_eq!(parse_cli_entry(r#"{"password":"pää","totpSecret":null}"#), Some(LoginSecret { password: "pää".into(), totp_secret: None }), "non-ASCII comes escaped");
-        assert_eq!(parse_cli_entry(r#"{"password":"pw","totpSecret":"JBSWY3DPEHPK3PXP"}"#).unwrap().totp_secret.as_deref(), Some("JBSWY3DPEHPK3PXP"));
-        assert_eq!(parse_cli_entry(r#"{"password":"","totpSecret":null}"#), None, "no password");
-        assert_eq!(parse_cli_entry("pw"), None, "not the CLI's JSON");
-        assert_eq!(security_answer(Some(0), "{\"password\":\"pw\"}\n"), Ok("{\"password\":\"pw\"}".into()), "the trailing newline goes");
-        assert_eq!(security_answer(Some(44), ""), Err(EntryError::Missing), "errSecItemNotFound");
-        assert_eq!(security_answer(Some(51), ""), Err(EntryError::Refused), "declined or locked");
-        assert_eq!(security_answer(None, ""), Err(EntryError::Refused), "killed");
-        assert!(entry_message(EntryError::Missing).contains("isn't in the keychain any more"));
-        assert!(entry_message(EntryError::Refused).contains("unlock it, then try again"));
-    }
-
-    #[test]
-    fn only_the_cli_entry_names() {
-        assert!(valid_secret_id(SECRET_ID));
-        for bad in ["", "0123456789ABCDEF0123456789ABCDEF", "0123456789abcdef", "0123456789abcdef0123456789abcdef0", "../../../0123456789abcdef01234567", "-s other 89abcdef0123456789abcdef"] {
-            assert!(!valid_secret_id(bad), "{bad}");
-        }
-        #[cfg(not(target_os = "macos"))]
-        assert!(cli_entry("not-an-id").is_err());
+        let removed: serde_json::Value = serde_json::from_str(&remove_sessions(&format!(r#"{{"{V2}":{{}},"{V1}":{{}},"other":{{}}}}"#), &keys).unwrap()).unwrap();
+        assert_eq!(removed, serde_json::json!({ "other": {} }), "signing out takes both, nothing else");
+        assert_eq!(remove_sessions(r#"{"other":{}}"#, &keys), None, "nothing to write");
+        assert_eq!(remove_sessions("not json", &keys), None);
     }
 
     #[tokio::test]
-    async fn a_bad_secret_id_never_reaches_the_keychain() {
-        // Refused before any keychain call: a test can't touch the real keychain.
-        for bad in ["", "-a", "ABCDEF0123456789abcdef0123456789"] {
-            assert_eq!(read_keychain_login(bad.into()).await.unwrap_err(), KEYCHAIN_MISSING);
+    async fn shares_sessions_without_reading_the_cli_settings() {
+        // The CLI's settings are a folder here: reading them would fail. Only the session file next to them is used.
+        let mut id = [0u8; 8];
+        getrandom::getrandom(&mut id).unwrap();
+        let dir = std::env::temp_dir().join(format!("wilmai-home-test-{}", id.iter().map(|b| format!("{b:02x}")).collect::<String>()));
+        std::fs::create_dir_all(dir.join("config.json")).unwrap();
+        std::env::set_var("WILMAI_CONFIG_PATH", dir.join("config.json"));
+        let state = "{\"Wilma2SID\":\"x\"}".to_owned();
+        shared_session_set(login(Some(V1)), state.clone()).await.unwrap();
+        let file: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir.join("wilmai-sessions.json")).unwrap()).unwrap();
+        assert!(file.get(V1).is_some() && file.get(V2).is_some(), "under both labels");
+        assert_eq!(shared_session_get(login(None)).await.unwrap().unwrap().state, state, "found without the password");
+        shared_session_remove(login(Some(V1))).await.unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join("wilmai-sessions.json")).unwrap(), "{}", "both gone");
+        assert!(shared_session_set(login(None), "no session cookie".into()).await.is_err());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    fn entry(file: Option<&str>) -> SecretEntry {
+        SecretEntry { service: "ai.wilm.home.secrets".into(), account: "secrets".into(), keychain_file: file.map(str::to_owned) }
+    }
+
+    #[test]
+    fn the_security_command_text() {
+        let value = r#"{"v":1,"openaiKey":"sk-\"q\" \\ \u00e4"}"#;
+        let line = security_add_command(&entry(None), value);
+        let hex: String = value.bytes().map(|b| format!("{b:02x}")).collect();
+        assert_eq!(line, format!("add-generic-password -s ai.wilm.home.secrets -a secrets -l \"WilmAI Home\" -T /usr/bin/security -X {hex}\n"));
+        assert!(!line.contains("-U"), "never changed in place");
+        assert!(!line.contains("openaiKey"), "the value only as hex");
+        assert!(security_add_command(&entry(Some("/tmp/test.keychain-db")), "x").ends_with(" -X 78 \"/tmp/test.keychain-db\"\n"), "a keychain file last");
+        assert_eq!(security_find_args(&entry(None)), ["find-generic-password", "-s", "ai.wilm.home.secrets", "-a", "secrets", "-w"]);
+        assert_eq!(security_delete_args(&entry(Some("/tmp/k"))), ["delete-generic-password", "-s", "ai.wilm.home.secrets", "-a", "secrets", "/tmp/k"]);
+        assert!(!security_find_args(&entry(None)).iter().any(|a| a.contains("openaiKey")), "no value on a command line");
+    }
+
+    #[test]
+    fn reads_what_security_answers() {
+        let run = |code: Option<i32>, stdout: &str, stderr: &str| Run { code, stdout: stdout.into(), stderr: stderr.into() };
+        assert_eq!(security_read_answer(&run(Some(0), "{\"v\":1}\n", "")), Ok(Some("{\"v\":1}".into())), "the trailing newline goes");
+        assert_eq!(security_read_answer(&run(Some(44), "", "The specified item could not be found in the keychain.")), Ok(None));
+        assert!(matches!(security_read_answer(&run(Some(152), "", "User interaction is not allowed.")), Err(KeychainError::Refused(why)) if why.contains("interaction")));
+        assert!(matches!(security_read_answer(&run(Some(51), "", "")), Err(KeychainError::Refused(_))));
+        assert!(matches!(security_read_answer(&run(None, "", "")), Err(KeychainError::Refused(_))), "killed");
+        assert_eq!(security_delete_answer(&run(Some(0), "", "")), Ok(true));
+        assert_eq!(security_delete_answer(&run(Some(44), "", "")), Ok(false), "there was none");
+        assert!(security_delete_answer(&run(Some(152), "", "")).is_err());
+        assert_eq!(security_add_answer(&run(Some(0), "", "")), Ok(()));
+        assert!(security_add_answer(&run(Some(0), "", "add-generic-password: returned -25299")).is_err(), "-i says it on stderr");
+        assert!(security_add_answer(&run(Some(1), "", "")).is_err());
+        assert_eq!(security_add_answer(&run(Some(0), "", "a note that returned -x")), Ok(()), "only a number counts");
+    }
+
+    #[test]
+    fn only_the_apps_own_entry_names_and_values() {
+        assert!(check_entry(&SecretEntry::home()).is_ok());
+        assert!(check_entry(&entry(Some("/private/tmp/scratch/test.keychain-db"))).is_ok());
+        for bad in ["", "-s", "a b", "a\"b", "a\nb", "ai.wilm.home.secrets -a x", &"a".repeat(65)] {
+            assert!(!valid_entry_name(bad), "{bad:?}");
+            let mut e = entry(None);
+            e.account = bad.to_owned();
+            assert!(check_entry(&e).is_err(), "{bad:?}");
         }
+        for bad in ["relative.keychain", "/tmp/a\"b", "/tmp/a\nb", "/tmp/a\\b"] {
+            assert!(check_entry(&entry(Some(bad))).is_err(), "{bad:?}");
+        }
+        assert!(valid_secret_value(r#"{"v":1,"passwords":{"k":"p\u00e4"}}"#));
+        assert!(!valid_secret_value(""));
+        assert!(!valid_secret_value("pää"), "the window escapes everything past ASCII");
+        assert!(!valid_secret_value("a\nb"));
+        assert!(!valid_secret_value(&"a".repeat(MAX_SECRETS_BYTES + 1)), "too long for Credential Manager");
+    }
+
+    #[tokio::test]
+    async fn a_bad_entry_or_value_never_reaches_the_keychain() {
+        // Refused before any keychain call: these can't touch the real keychain.
+        let mut bad = SecretEntry::home();
+        bad.account = "-a".into();
+        assert!(read_secrets(bad.clone()).await.is_err());
+        assert!(delete_secrets(bad).await.is_err());
+        assert!(write_secrets(SecretEntry::home(), "pää".into()).await.unwrap_err().starts_with("Not something"));
     }
 
     #[cfg(unix)]
     #[test]
     fn a_slow_keychain_call_is_stopped() {
-        assert_eq!(run_with_timeout("/bin/echo", &["value"], Duration::from_secs(5)).unwrap(), Some((Some(0), "value\n".into())));
+        let run = run_with_timeout("/bin/cat", &[], "value on stdin", Duration::from_secs(5)).unwrap().unwrap();
+        assert_eq!((run.code, run.stdout.as_str()), (Some(0), "value on stdin"), "stdin given, then closed");
         let started = std::time::Instant::now();
-        assert_eq!(run_with_timeout("/bin/sleep", &["5"], Duration::from_millis(200)).unwrap(), None, "killed");
+        assert_eq!(run_with_timeout("/bin/sleep", &["5".into()], "", Duration::from_millis(200)).unwrap(), None, "killed");
         assert!(started.elapsed() < Duration::from_secs(2));
     }
 
-    #[test]
-    fn session_keys_like_the_cli() {
-        let v2 = "18e7bcf46ac5969e085d0b5eac867bbbf4ffe590073dce493c82445fd120f6d9";
-        assert_eq!(session_key_v2("https://example.inschool.fi/", "Matti.M"), v2);
-        assert_eq!(session_key_v2("https://example.inschool.fi", "matti.m"), v2);
-        assert!(valid_session_key(&session_key_v2("https://example.inschool.fi", "x")));
+    use tauri::async_runtime::block_on;
+
+    /// Removes the test entry however the test ends.
+    struct Cleanup(SecretEntry);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            let _ = keychain_delete(&self.0);
+        }
     }
 
+    /// The app's own entry in the real keychain, under a test service (never the app's own). Opt-in:
+    /// `cargo test -- --ignored home_secrets_in_the_real_keychain`. WILMAI_HOME_KEYCHAIN_SERVICE picks the service
+    /// (default ai.wilm.home.secrets.test); on macOS, WILMAI_HOME_KEYCHAIN_PATH a keychain file instead of the login
+    /// keychain (made and unlocked beforehand: `security create-keychain` and `security unlock-keychain`).
     #[test]
-    fn the_key_follows_the_cli_config_at_each_read_and_write() {
-        let v1 = "c4cb441cdc450d3151d3de14dd1576b4aa3235ea224813cac8e8d9c982dd3507";
-        let v2 = "18e7bcf46ac5969e085d0b5eac867bbbf4ffe590073dce493c82445fd120f6d9";
-        let login = |v1_key: Option<&str>| SessionLogin { base_url: "https://example.inschool.fi".into(), username: "Matti.M".into(), v1_key: v1_key.map(str::to_owned) };
-        let profile = |secrets: Option<&str>, url: &str, username: &str| {
-            let mut p = serde_json::json!({ "id": "p", "tenantUrl": url, "username": username });
-            if let Some(secrets) = secrets {
-                p["secrets"] = secrets.into();
-                p["secretId"] = SECRET_ID.into();
-            }
-            serde_json::json!({ "profiles": [p] }).to_string()
-        };
-        let keychain = profile(Some("keychain"), "https://example.inschool.fi/", "matti.m");
-        let file = profile(None, "https://example.inschool.fi", "Matti.M");
-        assert!(is_keychain_login(&keychain, "https://example.inschool.fi", "MATTI.M"), "address without the slash, username in any case");
-        assert!(!is_keychain_login(&file, "https://example.inschool.fi", "Matti.M"), "a file login");
-        assert!(!is_keychain_login(&profile(Some("keychain"), "https://other.inschool.fi", "Matti.M"), "https://example.inschool.fi", "Matti.M"), "another Wilma");
-        assert!(!is_keychain_login(&profile(Some("keychain"), "https://example.inschool.fi", "matti"), "https://example.inschool.fi", "Matti.M"), "another user");
-        assert!(is_keychain_login(&profile(Some("vault"), "https://example.inschool.fi", "Matti.M"), "https://example.inschool.fi", "Matti.M"), "a store a newer CLI knows is v2 too, as in the CLI");
-        assert!(!is_keychain_login("", "https://example.inschool.fi", "Matti.M"), "no CLI config");
-        assert!(!is_keychain_login("not json", "https://example.inschool.fi", "Matti.M"));
-
-        // The same login, read and written while the CLI moves it: v1 from the file, v2 from the keychain.
-        assert_eq!(session_key(&file, &login(Some(v1))), Ok(Some(v1.into())), "a file login: the app's v1 key, as before");
-        assert_eq!(session_key(&keychain, &login(Some(v1))), Ok(Some(v2.into())), "moved to the keychain: v2, and the password's key isn't used");
-        assert_eq!(session_key(&keychain, &login(None)), Ok(Some(v2.into())), "no password needed");
-        assert_eq!(session_key(&file, &login(None)), Ok(None), "a file login without the password: nothing to share under");
-        assert_eq!(session_key("", &login(Some(v1))), Ok(Some(v1.into())), "no CLI at all");
-        assert!(session_key(&file, &login(Some("../etc/passwd"))).is_err());
-        assert!(session_key(&file, &login(Some(&"A".repeat(64)))).is_err(), "the CLI writes lowercase hex");
-        let wire: SessionLogin = serde_json::from_str(r#"{"baseUrl":"https://example.inschool.fi","username":"Matti.M","v1Key":"x"}"#).unwrap();
-        assert_eq!(wire.v1_key.as_deref(), Some("x"), "the page's field names");
+    #[ignore]
+    fn home_secrets_in_the_real_keychain() {
+        let service = std::env::var("WILMAI_HOME_KEYCHAIN_SERVICE").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| "ai.wilm.home.secrets.test".into());
+        assert_ne!(service, SECRETS_SERVICE, "never the app's own entry");
+        let mut id = [0u8; 8];
+        getrandom::getrandom(&mut id).unwrap();
+        let account = format!("test-{}", id.iter().map(|b| format!("{b:02x}")).collect::<String>());
+        let entry = SecretEntry { service, account, keychain_file: std::env::var("WILMAI_HOME_KEYCHAIN_PATH").ok().filter(|p| !p.is_empty()) };
+        check_entry(&entry).expect("a test entry the app could make");
+        let _cleanup = Cleanup(entry.clone());
+        let first = r#"{"v":1,"openaiKey":"sk-test \"q\" \\ \u00e4","wilmaPassword":"","passwords":{}}"#;
+        let second = r#"{"v":1,"openaiKey":"","wilmaPassword":"","passwords":{"[\"https://example.inschool.fi\",\"parent\"]":"pw"}}"#;
+        assert_eq!(block_on(read_secrets(entry.clone())), Ok(None), "nothing there yet");
+        block_on(write_secrets(entry.clone(), first.into())).expect("written");
+        assert_eq!(block_on(read_secrets(entry.clone())).unwrap().as_deref(), Some(first), "read back exactly");
+        block_on(write_secrets(entry.clone(), second.into())).expect("replaced: deleted and added again, with nothing to answer");
+        assert_eq!(block_on(read_secrets(entry.clone())).unwrap().as_deref(), Some(second));
+        #[cfg(target_os = "macos")]
+        if let Some(file) = &entry.keychain_file {
+            // The item trusts /usr/bin/security only: read without a prompt, whatever runs it.
+            let dump = run_with_timeout("/usr/bin/security", &["dump-keychain".into(), "-a".into(), file.clone()], "", KEYCHAIN_TIMEOUT).unwrap().unwrap();
+            let decrypt = dump.stdout.split("entry 1:").next().unwrap_or_default();
+            assert!(decrypt.contains("applications (1):") && decrypt.contains("0: /usr/bin/security (OK)"), "trusted applications: {}", dump.stdout);
+        }
+        assert_eq!(block_on(delete_secrets(entry.clone())), Ok(true));
+        assert_eq!(block_on(read_secrets(entry.clone())), Ok(None), "gone");
+        assert_eq!(block_on(delete_secrets(entry)), Ok(false), "nothing left to delete");
     }
 
     #[test]

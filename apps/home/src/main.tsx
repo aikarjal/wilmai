@@ -6,7 +6,7 @@ import "@fontsource/atkinson-hyperlegible-next/600.css";
 import "@fontsource/atkinson-hyperlegible-next/700.css";
 import "./ui/styles.css";
 import { App } from "./ui/App";
-import { getState, loadPersisted, loadSecrets, updateSettings } from "./data/store";
+import { getState, loadPersisted, loadSecrets, moveOldJevKey, updateSettings } from "./data/store";
 import { appEdition } from "./data/edition";
 import { resume } from "./data/engine";
 import { runJev } from "./jev/runner";
@@ -55,9 +55,12 @@ async function start() {
   if (!edition.localAi && (settings.aiProvider === "local" || settings.localAI?.setupPending)) {
     updateSettings({ aiProvider: "off", ...(settings.localAI ? { localAI: { ...settings.localAI, setupPending: false } } : {}) });
   }
-  void loadPersisted().then(({ session }) => resume(session));
-  // Once, on the first start after the key moved out of the keychain, macOS may ask; nothing waits for it.
-  void loadSecrets().then(() => (void runJev(), runLuna()));
+  // The passwords and the OpenAI key are in the keychain (desktop app): read once now. Signing in and the AI wait for
+  // it; nothing else does (the window shows once the family's data is read too).
+  const secrets = loadSecrets();
+  void Promise.all([loadPersisted(), secrets]).then(([{ session }]) => resume(session));
+  // The Jev key's old place: once, on the first start after it moved, macOS may ask; only Jev waits for it.
+  void Promise.all([secrets, moveOldJevKey()]).then(() => (void runJev(), runLuna()));
 }
 void start();
 startUpdateChecks();

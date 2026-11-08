@@ -17,7 +17,7 @@ import {
 } from "@wilm-ai/wilma-client";
 import { fileNameFromResponse, readResponseCapped } from "./downloads.js";
 import type { SessionStore } from "./session-store.js";
-import { sessionKeyV1, type SessionKeys } from "./session-keys.js";
+import { fileLoginKeys, type SessionKeys } from "./session-keys.js";
 
 /**
  * An error with a stable code for agents and scripts (the CLI's JSON errors
@@ -422,26 +422,45 @@ export function useSessionStore(store: SessionStore | undefined): void {
  * in only when that one has ended too. Each login ends the others, so this
  * keeps WilmAI's programs from logging each other out.
  */
-function rememberSession(key: string, client: WilmaClient, opts: { fresh: boolean }): void {
+function rememberSession(keys: string[], client: WilmaClient, opts: { fresh: boolean }): void {
   const store = sessionStore;
   if (!store) return;
   const save = (state: string): Promise<void> => {
-    const saving = store.save(key, state).catch(() => {});
+    const saving = saveUnder(store, keys, state).catch(() => {});
     pendingSaves.add(saving);
     void saving.finally(() => pendingSaves.delete(saving));
     return saving;
   };
-  client.useSharedSession({ load: () => store.load(key), save });
+  client.useSharedSession({ load: () => loadNewest(store, keys), save });
   // A resumed session is already saved (and another process may have saved a newer one since).
   if (opts.fresh) void save(client.exportSession());
 }
 
+/** A login's session under any of its labels, the newest (a store without that falls back to the first found). */
+async function loadNewest(store: SessionStore, keys: string[]): Promise<string | null> {
+  if (store.loadNewest) return store.loadNewest(keys);
+  for (const key of keys) {
+    const state = await store.load(key);
+    if (state) return state;
+  }
+  return null;
+}
+
+async function saveUnder(store: SessionStore, keys: string[], state: string): Promise<void> {
+  if (store.saveAll) return store.saveAll(keys, state);
+  for (const key of keys) await store.save(key, state);
+}
+
+async function removeUnder(store: SessionStore, keys: string[]): Promise<void> {
+  if (store.removeAll) return store.removeAll(keys);
+  for (const key of keys) await store.remove(key);
+}
+
 const pendingSaves = new Set<Promise<void>>();
 
-/** Today's keys for a login known by its password (file and environment logins): a changed password starts fresh. */
+/** The keys of a login known by its password (file and environment logins): both labels, v1 in the pool. */
 function defaultKeys(profile: WilmaProfile): SessionKeys {
-  const key = sessionKeyV1(profile.baseUrl, profile.username, profile.password);
-  return { sessionKey: key, poolKey: key };
+  return fileLoginKeys(profile.baseUrl, profile.username, profile.password);
 }
 
 /**
@@ -451,9 +470,9 @@ function defaultKeys(profile: WilmaProfile): SessionKeys {
  * keychain login); without them, today's keys from the profile.
  */
 export function adoptSession(profileOrKeys: WilmaProfile | SessionKeys, client: WilmaClient): void {
-  const keys = "sessionKey" in profileOrKeys ? profileOrKeys : defaultKeys(profileOrKeys);
+  const keys = "sessionKeys" in profileOrKeys ? profileOrKeys : defaultKeys(profileOrKeys);
   pool.set(keys.poolKey, { client: Promise.resolve(client), lastUsed: Date.now() });
-  rememberSession(keys.sessionKey, client, { fresh: true });
+  rememberSession(keys.sessionKeys, client, { fresh: true });
 }
 
 /**
@@ -485,21 +504,21 @@ export async function logoutSession(profile: WilmaProfile, keys: SessionKeys = d
   // one, which another process may have replaced since. At most one is live.
   const pooled = entry ? await entry.client.catch(() => null) : null;
   const pooledState = pooled?.exportSession();
-  const saved = sessionStore ? await sessionStore.load(keys.sessionKey).catch(() => null) : null;
+  const saved = sessionStore ? await loadNewest(sessionStore, keys.sessionKeys).catch(() => null) : null;
   let ended = pooled ? await pooled.logout() : false;
   if (pool.get(keys.poolKey) === entry) pool.delete(keys.poolKey);
   if (saved && saved !== pooledState) {
     const resumed = WilmaClient.resume({ ...profile, studentNumber: null }, saved);
     if (resumed && (await resumed.logout())) ended = true;
   }
-  await sessionStore?.remove(keys.sessionKey);
+  if (sessionStore) await removeUnder(sessionStore, keys.sessionKeys);
   return ended;
 }
 
 /** Forget one login's session without ending it in Wilma (when the login itself is removed). */
 export async function forgetSession(profile: WilmaProfile, keys: SessionKeys = defaultKeys(profile)): Promise<void> {
   pool.delete(keys.poolKey);
-  await sessionStore?.remove(keys.sessionKey);
+  if (sessionStore) await removeUnder(sessionStore, keys.sessionKeys);
 }
 
 function pooledSession(account: AccessAccount): Promise<WilmaClient> {
@@ -515,10 +534,10 @@ function pooledSession(account: AccessAccount): Promise<WilmaClient> {
     const client = (async () => {
       // A saved session first; it logs in again by itself if Wilma has ended it
       // (reading a keychain login's password only then).
-      const saved = sessionStore ? await sessionStore.load(keys.sessionKey).catch(() => null) : null;
+      const saved = sessionStore ? await loadNewest(sessionStore, keys.sessionKeys).catch(() => null) : null;
       const resumed = saved ? WilmaClient.resume({ ...profile, password: lazy ?? profile.password }, saved, account.mfa) : null;
       const client = resumed ?? (await WilmaClient.login({ ...profile, password: lazy ? await lazy() : profile.password }, account.mfa));
-      rememberSession(keys.sessionKey, client, { fresh: !resumed });
+      rememberSession(keys.sessionKeys, client, { fresh: !resumed });
       return client;
     })();
     const created = { client, lastUsed: now };

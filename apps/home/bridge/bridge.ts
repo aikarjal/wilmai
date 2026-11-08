@@ -14,13 +14,13 @@
  * can't send "simple" requests), and it forwards only to Wilma hosts from the
  * tenant list and to Jev's one endpoint. It is never an open proxy.
  *
- * Optional extra for this machine: reuse the WilmAI CLI's saved login
- * (/bridge/cli/*), so trying the app doesn't start a second Wilma session.
+ * It also reads and writes WilmAI's shared session file (/bridge/session/*),
+ * as the desktop app does, so the app shares one Wilma session with the CLI.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve } from "node:path";
 import type { Plugin } from "vite";
-import { HttpError, cliAccounts, cliSession, forwardToJev, forwardToOpenAI, forwardToOllama, forwardToWilma, openAIReach, readJson, sharedSessionGet, sharedSessionSet, wilmaHosts, type WireRequest } from "./core.ts";
+import { HttpError, forwardToJev, forwardToOpenAI, forwardToOllama, forwardToWilma, openAIReach, readJson, sharedSessionGet, sharedSessionRemove, sharedSessionSet, wilmaHosts, type WireRequest } from "./core.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../../..");
 
@@ -63,13 +63,6 @@ export function bridge(): Plugin {
       if (path === "/bridge/ollama" && req.method === "POST") {
         return send(res, 200, await forwardToOllama(await readJson<{ endpoint: string; path: string; body?: unknown }>(req)));
       }
-      if (path === "/bridge/cli/accounts" && req.method === "GET") {
-        return send(res, 200, { accounts: await cliAccounts(REPO_ROOT).catch(() => []) });
-      }
-      if (path === "/bridge/cli/session" && req.method === "POST") {
-        const { index } = await readJson<{ index: number }>(req);
-        return send(res, 200, await cliSession(REPO_ROOT, Number(index) || 0));
-      }
       if (path === "/bridge/session/get" && req.method === "POST") {
         const { login } = await readJson<{ login: unknown }>(req);
         return send(res, 200, await sharedSessionGet(REPO_ROOT, login));
@@ -77,6 +70,10 @@ export function bridge(): Plugin {
       if (path === "/bridge/session/set" && req.method === "POST") {
         const { login, state } = await readJson<{ login: unknown; state: unknown }>(req);
         return send(res, 200, await sharedSessionSet(REPO_ROOT, login, state));
+      }
+      if (path === "/bridge/session/remove" && req.method === "POST") {
+        const { login } = await readJson<{ login: unknown }>(req);
+        return send(res, 200, await sharedSessionRemove(REPO_ROOT, login));
       }
       throw new HttpError(404, "No such bridge route");
     } catch (err) {

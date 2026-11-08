@@ -25,7 +25,6 @@ export const SV_DATA: Record<string, string> = {
   "Wilma didn't accept that username and password.": "Wilma godkände inte användarnamnet och lösenordet.",
   "{error} Sign in again with your password.": "{error} Logga in igen med ditt lösenord.",
   "Wilma didn't accept that code. Type the newest code from your authenticator app.": "Wilma godkände inte koden. Skriv in den senaste koden från din autentiseringsapp.",
-  "The CLI's login has no Wilma session.": "CLI-inloggningen har ingen aktiv Wilma-session.",
   "Wilma ended the session. Sign in again to refresh; everything already here stays.": "Wilma avslutade sessionen. Logga in igen för att uppdatera. Allt som redan finns här sparas.",
 
   // engine.ts: sync steps

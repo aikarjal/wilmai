@@ -161,17 +161,14 @@ export const SV_FORMS: Record<string, string> = {
   "The local bridge isn't running. Start it with `pnpm dev`.": "Den lokala bryggan körs inte. Starta den med `pnpm dev`.",
   "Bridge answered {status}": "Bryggan svarade med {status}",
 
-  // Sign-in: one click with the CLI's saved login
-  "That saved login isn't there any more.": "Den sparade inloggningen finns inte längre.",
-  "The saved login has no readable password.": "Den sparade inloggningen har inget läsbart lösenord.",
-  "The saved authenticator key isn't valid.": "Den sparade autentiseringsnyckeln är inte giltig.",
-  // The CLI's login kept in the keychain (src-tauri/src/lib.rs)
-  "The password the WilmAI CLI saved for this Wilma isn't in the keychain any more. Log in again with the CLI (`wilma login`), or type the password here.":
-    "Lösenordet som WilmAI CLI sparade för den här Wilman finns inte längre i nyckelringen. Logga in igen med CLI:n (`wilma login`), eller skriv lösenordet här.",
-  "The keychain on this computer didn't hand over the password the WilmAI CLI saved. If the computer is locked or asking for a password, unlock it, then try again.":
-    "Nyckelringen på den här datorn lämnade inte ut lösenordet som WilmAI CLI sparade. Om datorn är låst eller ber om ett lösenord, lås upp den och försök sedan igen.",
-  "A newer WilmAI saved this login's password where this version of WilmAI Home can't read it. Update WilmAI Home, or type the password here.":
-    "En nyare WilmAI sparade den här inloggningens lösenord där den här versionen av WilmAI Home inte kan läsa det. Uppdatera WilmAI Home, eller skriv lösenordet här.",
+  // Where the passwords and the OpenAI key are kept (the keychain, desktop app), and a login made with the CLI's saved login before
+  "*Your password goes only to your school's Wilma.* The app remembers it in this computer's keychain, so signing in again is one click.": "*Ditt lösenord skickas bara till din skolas Wilma.* Appen kommer ihåg det i den här datorns nyckelring, så nästa gång loggar du in med ett klick.",
+  "Kept in the macOS Keychain on this computer.": "Sparas i macOS-nyckelringen på den här datorn.",
+  "Kept in Windows Credential Manager on this computer.": "Sparas i Windows Autentiseringshanteraren på den här datorn.",
+  "Kept in the system keyring on this computer.": "Sparas i systemets nyckelring på den här datorn.",
+  "Kept in the app's own data for now, scrambled but not encrypted: the keychain couldn't be used. The app tries it again when it next starts.": "Sparas tills vidare bland appens egna data, i förvrängd form men inte krypterat: nyckelringen kunde inte användas. Appen försöker igen nästa gång den startar.",
+  "Passwords:": "Lösenord:",
+  "WilmAI Home doesn't use the WilmAI CLI's saved login any more. Type this Wilma's password once.": "WilmAI Home använder inte längre WilmAI CLI:s sparade inloggning. Skriv lösenordet för den här Wilman en gång.",
   // Settings: sign-in history
   "Sign-in history": "Inloggningshistorik",
   "Wilma keeps one session per account: signing in anywhere (the phone, a browser, a WilmAI program) ends the others. This shows what happened to this app's session.":
@@ -203,7 +200,6 @@ export const SV_FORMS: Record<string, string> = {
   "Stay signed in": "Håll mig inloggad",
   "Signing in again didn't work: {why} Sign in once yourself to start again.": "Det gick inte att logga in igen: {why} Logga in själv en gång för att starta igen.",
   "so signing in again is one click.": "så att du kan logga in igen med ett klick.",
-  "The WilmAI CLI's saved login isn't on this computer any more.": "Den sparade inloggningen i WilmAI CLI finns inte längre på den här datorn.",
   "Wilma asked for a two-step code.": "Wilma bad om en kod för tvåstegsautentisering.",
   "Wilma ended the session, and signing in again didn't work: {why}": "Wilma avslutade sessionen och det gick inte att logga in igen: {why}",
   "Wilma ended the session again soon after: it seems to be in use elsewhere. The app signs in again at {time}.":
@@ -347,7 +343,6 @@ export const SV_FORMS: Record<string, string> = {
   "Ask me for the password each time": "Fråga efter lösenordet varje gång",
   "Nothing is kept on this computer. Choose this on a shared computer.": "Inget sparas på den här datorn. Välj detta på en delad dator.",
   "Passwords go only to each school's Wilma.": "Lösenorden skickas bara till varje skolas Wilma.",
-  "Passwords are kept on this computer, scrambled but not encrypted.": "Lösenorden sparas på den här datorn i förvrängd form, inte krypterade.",
   "All your children, from every school's Wilma.": "Alla dina barn, från varje skolas Wilma.",
   "The password for {schools} is kept from the next time you sign in.": "Lösenordet för {schools} sparas från nästa gång du loggar in.",
   "The passwords for {schools} are kept from the next time you sign in.": "Lösenorden för {schools} sparas från nästa gång du loggar in.",

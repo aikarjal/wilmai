@@ -38,9 +38,11 @@ export interface AccountInfo {
   baseUrl: string;
   username: string;
   tenantName: string | null;
-  /** How the session was made: the parent's password, the WilmAI CLI's saved login (browser development only), or sample data. */
+  /**
+   * How the session was made: the parent's password, or sample data. "cli": signed in with the WilmAI CLI's saved login
+   * by a version before 0.4.0; the app now asks for its password once, and it's a password login from then on.
+   */
   via: "password" | "cli" | "demo";
-  cliIndex?: number;
   /** Whose login this is, as Wilma's account roles say: a guardian's, or a student's own. Read at sign-in. */
   wilmaRole?: Viewer;
 }
@@ -358,7 +360,7 @@ export interface Settings {
     think?: boolean;
   };
   jevKey: string;
-  /** The parent's OpenAI key, for the Luna experiment (kept scrambled like the Jev key). */
+  /** The parent's OpenAI key (the system keychain in the desktop app, else scrambled like the Jev key: data/store.ts). */
   openaiKey: string;
   /** Monthly OpenAI pause limit in USD, from 1 to 5; older settings default to 2. */
   aiMonthlyBudgetUsd?: number;
@@ -389,8 +391,8 @@ export interface Settings {
   /** Notify when something new needs the parent, and the evening before a deadline (desktop app). */
   notify?: boolean;
   /**
-   * Stay signed in: when Wilma ends the app's session, sign in again by itself (with the WilmAI CLI's saved login, or
-   * the password kept below), backing off while Wilma is in use elsewhere. Off: the parent signs in (one click).
+   * Stay signed in: when Wilma ends the app's session, sign in again by itself (with the password kept below), backing
+   * off while Wilma is in use elsewhere. Off: the parent signs in (one click).
    */
   staySignedIn?: boolean;
   /**
@@ -398,9 +400,9 @@ export interface Settings {
    * unless turned off when signing in (a shared computer). Staying signed in keeps it either way.
    */
   rememberPassword?: boolean;
-  /** Before there were several Wilmas: the one login's remembered password (kept scrambled, not encrypted); moves into `passwords`. */
+  /** Before there were several Wilmas: the one login's remembered password; moves into `passwords`. Kept like the OpenAI key. */
   wilmaPassword: string;
-  /** Each Wilma login's remembered password (data/logins.ts), by login (store's accountKey), kept scrambled like wilmaPassword. */
+  /** Each Wilma login's remembered password (data/logins.ts), by login (store's accountKey). Kept like the OpenAI key. */
   passwords: Record<string, string>;
   jevModel: string;
   /** Read new messages in the background so Jev can sort them (Wilma then shows them as read). */

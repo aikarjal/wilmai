@@ -2,9 +2,9 @@
 
 ## 2.5.0 (unreleased)
 
-_Releases: wilma-cli 2.5.0, wilma-client 1.10.0. Not published yet._
+_Releases: wilma-cli 2.5.0, wilma-client 1.10.0, WilmAI Home 0.4.0. Not published yet._
 
-**In short:** saved passwords can live in the operating system's keychain instead of WilmAI's file, if you turn it on. The file stays the default. ([#27](https://github.com/aikarjal/wilmai/issues/27), design in `packages/wilma-cli/docs/secret-store.md`.)
+**In short:** the CLI can keep saved passwords in the operating system's keychain instead of its file, if you turn it on; the file stays the default, and the choice for servers. WilmAI Home keeps its passwords and its OpenAI key in the keychain. ([#27](https://github.com/aikarjal/wilmai/issues/27), design in `packages/wilma-cli/docs/secret-store.md`.)
 
 ### Added
 
@@ -15,7 +15,8 @@ _Releases: wilma-cli 2.5.0, wilma-client 1.10.0. Not published yet._
 
 ### Changed
 
-- **A saved session is found without the password.** For keychain logins the session file's key no longer includes the password (today's key is a SHA-256 of it), so commands use the saved session without reading the keychain, and the file holds nothing derived from the password. File logins keep today's key.
+- **A saved session is found without the password.** The session file's label for a login moves to one without the password (today's label is a SHA-256 of it). Keychain logins use only the new label, so commands use the saved session without reading the keychain. File logins save their session under both labels and use the newer, so older versions (an older CLI, Claude Desktop extension or WilmAI Home) keep sharing one Wilma session with 2.5.0; a later release retires the old label.
+- **If you use WilmAI Home or the Claude Desktop extension with the same Wilma login,** update them before turning the keychain on: older versions can't use a login whose password is in the keychain.
 - **Where a login is saved is decided before Wilma is contacted.** A login that can't be saved (the keychain refuses) no longer costs a Wilma login, the browser session or an authenticator code, and the session is kept only once the login is saved.
 - **A saved login whose password can't be read is reported** instead of being skipped (which looked like "not logged in" and opened a second login).
 - **`wilma config clear`** also deletes the keychain entries the config knows, and works on a damaged config.

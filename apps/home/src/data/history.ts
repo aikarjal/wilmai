@@ -14,7 +14,7 @@ import { useSyncExternalStore } from "react";
 export type Program = string | null;
 
 export type SessionHistoryEntry = (
-  /** This app logged in: with the password typed here, the CLI's saved login, or by itself (staying signed in). */
+  /** This app logged in: with the password typed here, the CLI's saved login (before 0.4.0), or by itself (staying signed in). */
   | { at: number; kind: "signed-in"; how: "password" | "saved-login" | "automatic" }
   /** This app continued a live session another program saved (no login, nothing else ended). */
   | { at: number; kind: "continued"; by: Program; savedAt: number | null; midway: boolean }

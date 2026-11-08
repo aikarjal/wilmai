@@ -103,7 +103,9 @@ try {
     assert.ok(saved.profiles[0].passwordObfuscated, "password in the file");
     assert.equal(saved.profiles[0].secrets, undefined);
     assert.equal(saved.keychainLogins, undefined);
-    assert.ok((await sessions())[v1()], "session under today's key");
+    assert.ok((await sessions())[v1()], "session under the old label");
+    assert.ok((await sessions())[v2()], "and the new one");
+    assert.equal((await sessions())[v1()].state, (await sessions())[v2()].state, "the same session");
     await students();
     const status = await json(["config", "secrets"]);
     assert.equal(status.setting, "file");
@@ -193,7 +195,7 @@ try {
     assert.deepEqual(saved.keychainLogins, {}, "the reservation is gone");
     assert.equal((await keychain()).entries[id], undefined, "the entry is deleted");
     assert.ok((await sessions())[v1()], "the session moved back");
-    assert.equal((await sessions())[v2()], undefined);
+    assert.ok((await sessions())[v2()], "a file login keeps both labels");
     await students();
     assert.equal(wilma.loginPosts, before, "no Wilma login");
   }

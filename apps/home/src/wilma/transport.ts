@@ -7,7 +7,7 @@
  * - desktop app (Tauri): native commands, wilma_send, jev_call and
  *   openai_call (src-tauri/src/lib.rs);
  * - development in a browser: the local 127.0.0.1 bridge in the Vite dev
- *   server (bridge/bridge.ts), which can also borrow the WilmAI CLI's login.
+ *   server (bridge/bridge.ts).
  */
 import { invoke } from "@tauri-apps/api/core";
 import type { SharedSession, WilmaTransport } from "@wilma-client/src/core";
@@ -48,13 +48,11 @@ interface DesktopBridge {
   wilma(wire: WireRequest): Promise<unknown>;
   sessionGet(login: SharedLogin): Promise<unknown>;
   sessionSet(login: SharedLogin, state: string): Promise<unknown>;
+  sessionRemove(login: SharedLogin): Promise<unknown>;
   jev(key: string | undefined, body: unknown): Promise<unknown>;
   openai(key: string | undefined, path: string | undefined, body: unknown): Promise<unknown>;
   openaiReach(): Promise<unknown>;
   ollama(wire: unknown): Promise<unknown>;
-  cliAccounts(): Promise<unknown>;
-  cliSession(index: number): Promise<unknown>;
-  cliSecret(id: string): Promise<unknown>;
 }
 
 /** Errors from the native side come back as { error } like the bridge's. */
@@ -91,6 +89,47 @@ export async function clearReports(): Promise<void> {
  * keychain): read once, to move the key into the app's own storage.
  */
 export const oldKeychain = isDesktopApp ? { get: (name: "jev-key") => invoke<string | null>("secret_get", { name }) } : null;
+
+/**
+ * The app's own secrets in the system keychain (desktop app): one entry, the value a string the store makes
+ * (data/store.ts). `read` gives null when there's none; each call throws when the keychain doesn't do it.
+ */
+export interface SecretsKeychain {
+  read(): Promise<string | null>;
+  write(value: string): Promise<void>;
+  remove(): Promise<boolean>;
+}
+
+const desktopKeychain: SecretsKeychain | null = isDesktopApp
+  ? {
+      read: () => invoke<string | null>("secrets_read"),
+      write: (value) => invoke<void>("secrets_write", { value }),
+      remove: () => invoke<boolean>("secrets_delete"),
+    }
+  : null;
+let keychainOverride: SecretsKeychain | null | undefined;
+
+/** The keychain for the app's secrets: the desktop app's, none in a browser. */
+export const secretsKeychain = (): SecretsKeychain | null => (keychainOverride === undefined ? desktopKeychain : keychainOverride);
+
+/** The tests give a keychain of their own (undefined: back to the app's). */
+export function overrideKeychain(keychain: SecretsKeychain | null | undefined): void {
+  keychainOverride = keychain;
+}
+
+/**
+ * Where the passwords and the OpenAI key are kept, in words for Settings: the keychain (desktop app), or the app's own
+ * storage (a browser; the desktop app while the keychain can't be used). Whole sentences: Finnish inflects the names.
+ */
+export function secretsKept(place: "keychain" | "app" | "app-for-now"): string {
+  if (place === "app") return isDesktopApp ? t("Kept on this computer in the app's own data, scrambled but not encrypted.") : t("Kept in this browser only, scrambled but not encrypted.");
+  if (place === "app-for-now") return t("Kept in the app's own data for now, scrambled but not encrypted: the keychain couldn't be used. The app tries it again when it next starts.");
+  const agent = `${globalThis.navigator?.platform ?? ""} ${globalThis.navigator?.userAgent ?? ""}`;
+  if (/Windows/i.test(agent)) return t("Kept in Windows Credential Manager on this computer.");
+  if (/Mac/i.test(agent)) return t("Kept in the macOS Keychain on this computer.");
+  return t("Kept in the system keyring on this computer.");
+}
+
 /**
  * Where the app keeps things: "on this computer" (desktop app) or "in this browser".
  * For whole sentences, choose the sentence by isDesktopApp instead: word order differs in Finnish.
@@ -100,21 +139,14 @@ export const here = (): string => (isDesktopApp ? t("on this computer") : t("in 
 const desktop: DesktopBridge | undefined = isDesktopApp
   ? {
       wilma: (wire) => native("wilma_send", { wire }),
-      // { state, savedAt, by } or null; errors as { error }. The native side works out the login's key each time.
+      // { state, savedAt, by } or null; errors as { error }. The native side makes the login's labels.
       sessionGet: async (login) => (await native("shared_session_get", { login })) ?? { state: null },
       sessionSet: async (login, state) => (await native("shared_session_set", { login, state })) ?? { ok: true },
+      sessionRemove: async (login) => (await native("shared_session_remove", { login })) ?? { ok: true },
       jev: (key, body) => native("jev_call", { key: key ?? "", body }),
       openai: (key, path, body) => native("openai_call", { key: key ?? "", path: path ?? "", body }),
       openaiReach: () => native("openai_reach", {}),
       ollama: (wire) => native("ollama_call", { wire }),
-      // The CLI's saved logins on this computer (no secrets), for "Continue as".
-      cliAccounts: async () => {
-        const logins = await native("cli_logins", {});
-        return { accounts: Array.isArray(logins) ? logins.map((login, index) => ({ index, ...login })) : [] };
-      },
-      // The browser setup's bridge signs in itself; the app signs in with cliSecret instead.
-      cliSession: async () => ({ error: "Not in the desktop app", status: 404 }),
-      cliSecret: (id) => native("cli_login_secret", { id }),
     }
   : undefined;
 
@@ -126,6 +158,8 @@ async function desktopCall(d: DesktopBridge, path: string, init: { body?: unknow
       return d.sessionGet((init.body as { login: SharedLogin }).login);
     case "session/set":
       return d.sessionSet((init.body as { login: SharedLogin }).login, (init.body as { state: string }).state);
+    case "session/remove":
+      return d.sessionRemove((init.body as { login: SharedLogin }).login);
     case "jev":
       return d.jev(init.headers?.["x-jev-key"], init.body);
     case "openai":
@@ -134,12 +168,6 @@ async function desktopCall(d: DesktopBridge, path: string, init: { body?: unknow
       return d.openaiReach();
     case "ollama":
       return d.ollama(init.body);
-    case "cli/accounts":
-      return d.cliAccounts();
-    case "cli/session":
-      return d.cliSession(Number((init.body as { index?: number } | undefined)?.index) || 0);
-    case "cli/secret":
-      return d.cliSecret(String((init.body as { id?: string } | undefined)?.id ?? ""));
     default:
       return { error: "No such route", status: 404 };
   }
@@ -187,13 +215,13 @@ export interface SharedEntry {
 }
 
 /**
- * A login in WilmAI's shared session file: its Wilma and username, and its v1 key when the app knows its password.
+ * A login in WilmAI's shared session file: its Wilma and username, and its v1 label when the app had its password.
  *
- * The file's key for a login is the CLI's: v2 (the address and username, no password) while the CLI keeps the login's
- * password in the keychain, else v1 (the address, username and password; sessionKeyV1). The CLI can move a login
- * between its file and the keychain while the app is open, so the key is worked out from the CLI's config at every
- * read and write (the native side, or the bridge in development), never kept. A login the app knows no password for
- * shares a session only while the CLI keeps it in the keychain.
+ * The file keeps a login's session under two labels while the old one is retired, as the CLI does: v2 (the address
+ * and username, no password), made by the native side or the bridge, and v1 (the address, username and password;
+ * sessionKeyV1), which the app makes while it has the password and keeps with its saved session. The app saves under
+ * both, looks under both and takes the newer entry, and removes both when the parent signs the login out. It never
+ * reads the CLI's settings: the same labels work however the CLI keeps its password.
  */
 export interface SharedLogin {
   baseUrl: string;
@@ -205,9 +233,10 @@ export interface SharedLogin {
  * WilmAI's shared session for one login: the CLI's session file, which the
  * CLI, assistants' connectors and this app all use, so they continue one Wilma
  * session instead of ending each other's. `entry()` also says who saved it;
- * `last` is the entry the client last loaded.
+ * `last` is the entry the client last loaded; `remove()` takes it out of the
+ * file (signed out here).
  */
-export function sharedSessionFor(login: SharedLogin): SharedSession & { entry(): Promise<SharedEntry | null>; last: SharedEntry | null } {
+export function sharedSessionFor(login: SharedLogin): SharedSession & { entry(): Promise<SharedEntry | null>; remove(): Promise<void>; last: SharedEntry | null } {
   const test = isTestWilma(login.baseUrl) ? `${login.baseUrl.replace(/\/$/, "")}\n${login.username.toLowerCase()}` : null;
   // Only what the other side needs: nothing else of the account goes along.
   const wire: SharedLogin = { baseUrl: login.baseUrl, username: login.username, ...(login.v1Key ? { v1Key: login.v1Key } : {}) };
@@ -226,6 +255,10 @@ export function sharedSessionFor(login: SharedLogin): SharedSession & { entry():
       if (test) testShared.set(test, state);
       else await bridgeCall("session/set", { body: { login: wire, state } });
     },
+    remove: async () => {
+      if (test) testShared.delete(test);
+      else await bridgeCall("session/remove", { body: { login: wire } });
+    },
   };
   return shared;
 }
@@ -234,15 +267,7 @@ export function sharedSessionFor(login: SharedLogin): SharedSession & { entry():
 const isTestWilma = (url: string) => typeof __TEST_WILMAS__ !== "undefined" && __TEST_WILMAS__ && /^https:\/\/[^/]+\.wilmai\.test(\/|$)/i.test(url);
 const testShared = new Map<string, string>();
 
-/**
- * One saved login's password and authenticator key (desktop app): from the CLI's file, or from the keychain for a
- * login the CLI keeps there, read only when Wilma needs a new login. A failure comes with the words for the parent.
- */
-export function savedLoginSecret(id: string): Promise<{ password: string; totpSecret: string | null }> {
-  return bridgeCall("cli/secret", { body: { id } });
-}
-
-/** A login's v1 key, as the CLI makes it: SHA-256 hex of the Wilma address, the lower-case username and the password. */
+/** A login's v1 label, as the CLI makes it: SHA-256 hex of the Wilma address, the lower-case username and the password. */
 export async function sessionKeyV1(baseUrl: string, username: string, password: string): Promise<string> {
   const text = `${baseUrl.replace(/\/$/, "")}\n${username.toLowerCase()}\n${password}`;
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));

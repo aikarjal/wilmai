@@ -57,9 +57,10 @@ pnpm dev
 Then open http://127.0.0.1:5199.
 
 - **Sign in** with a school, username and password (two-step codes work). The
-  password goes only to the school's Wilma. The app doesn't offer the WilmAI
-  CLI's saved logins: it signs in with what the parent types here (a login
-  made with one before still signs in with it).
+  password goes only to the school's Wilma. The app never reads the WilmAI
+  CLI's saved logins: it signs in with what the parent types here. A login an
+  earlier version signed in with the CLI's saved login asks for its password
+  once, on the Wilma page, and is a password login from then on.
 - **Test schools** (the development server only, `pnpm dev` or `pnpm app`):
   search "testi" for Testikoulu Pohjoinen and Testikoulu Etelä, answered in
   memory with anonymised real pages (`src/demo/test-wilma.ts`). Pohjoinen:
@@ -100,7 +101,7 @@ Then open http://127.0.0.1:5199.
   live session another WilmAI program on this computer saved (no login).
   - *Keep the app signed in* (recommended; the Wilma page and Settings,
     "When Wilma signs the app out"): the app signs in again by itself, with
-    the password kept here, scrambled. A
+    the password it keeps (see *Secrets on this computer*). A
     session the app signed into itself that Wilma ends within 15 minutes
     means Wilma is in use elsewhere (a browser): it waits 30 minutes, then
     an hour, at most two, so it doesn't race the parent. A login Wilma
@@ -166,22 +167,52 @@ Then open http://127.0.0.1:5199.
     (`evals/logins.test.ts`) and by hand with the test schools; not yet with
     a real second Wilma.
 
-**Secrets on this computer**, kept the way the WilmAI CLI keeps its saved
-logins: the Wilma session (cookies) in the app's IndexedDB, the OpenAI key
-in its localStorage, scrambled (base64 with a `wilmai::` prefix, as the CLI's
-`obfuscateSecret`). Scrambled, not encrypted: it keeps them out of a glance
-at the files, but anyone who can use your account can read them. A leaked
-key is deleted in the OpenAI account; Sign out ends the Wilma session and keeps the API key and each account's
-messages, drafts and AI answers on this computer. Reset app, the red action
-at the bottom of Settings, deletes all of them. A released app might move these to the keychain; a build signed
-with a Developer ID can read its own keychain items without asking.
+**Secrets on this computer.** The remembered Wilma passwords and the OpenAI
+key are in the system keychain (since 0.4.0): one entry, service
+`ai.wilm.home.secrets`, account `secrets`, holding them as JSON. The app reads
+it once at start (signing in and the AI wait for that) and writes it whole
+after a change (`src/data/store.ts`; `secrets_read/write/delete` in
+`src-tauri/src/lib.rs`).
+
+- macOS: the macOS Keychain, through `/usr/bin/security`, killed after ten
+  seconds. The item trusts `/usr/bin/security` only, so it's read without the
+  Mac asking for its password, whatever the app's signature or version. The
+  value goes in as hex on stdin, never on a command line. Saving deletes the
+  item and adds it again: changing it in place (`-U`) makes macOS ask for
+  authorization, and the keychain refuses everything until someone answers.
+- Windows: Credential Manager (the `keyring` crate). One entry holds at most
+  2,560 bytes, plenty for a few Wilmas and the key.
+- The browser build keeps them in localStorage, scrambled (base64 with a
+  `wilmai::` prefix, as the CLI's `obfuscateSecret`), not encrypted, as every
+  version before 0.4.0 did. So does the desktop app while the keychain can't
+  be used: Settings then says so, and the next start tries again.
+
+The first start of 0.4.0 moves them, with no prompt: it writes what the app
+kept in localStorage to the keychain (taking in anything already there),
+reads it back, and only when it's the same deletes the localStorage copies.
+If the keychain refuses, the copies stay. Settings (the AI's key, and Sign-in
+settings for the passwords) says where they are. Sign out keeps them; Reset
+app, the red action at the bottom of the Wilma page's settings, deletes the
+entry, and if the keychain refuses then, the next start deletes it before
+reading anything. The Jev key (Jev isn't used) stays in localStorage. The
+Wilma session (cookies) is in the app's IndexedDB. Anyone who can use your
+account can still read the keychain entry (`security` on a Mac, Credential
+Manager's own tools); what it gives is the secrets out of the app's files. A
+leaked key is deleted in the OpenAI account.
 
 Wilma allows one live session per account: signing in here signs you out of
 Wilma elsewhere (a browser, the phone app), and the other way round. Within
 WilmAI there's one session: the app, the CLI and assistants' connectors share
 the CLI's session file (`~/.config/wilmai/wilmai-sessions.json`), so when one
 of them signs in, the others continue that session instead of signing in
-again. The app never signs in by itself; only when no WilmAI session is alive
+again. A login's session is there under two labels while the old one is
+retired, as the CLI does it: v2 (SHA-256 of `wilmai-session-v2`, the address
+and the username) always, and v1 (the address, username and password) while
+the app knows the password; it keeps the v1 label with its own saved session.
+It looks under both and takes the newer, and removes both when the parent
+signs the login out, removes it, or resets the app. It never reads the CLI's
+settings to choose a label, so it shares the session however the CLI keeps
+its password. The app never signs in by itself; only when no WilmAI session is alive
 (Wilma opened on the phone or in a browser) does it ask you. A send that meets
 a changed session posts nothing, prepares the form again and asks again.
 
@@ -383,16 +414,10 @@ allows it.
   nothing (`wilma_send` only to Wilmas from wilma-client's tenant list,
   redirects not followed, so the app sees every cookie); `secret_get` reads a
   Jev key an earlier build kept in the keychain, once, to move it;
-  `shared_session_get/set` read and write the
-  shared session file, working out the login's key from the CLI's config each
-  time (v2 while the CLI keeps the login's password in the keychain, else v1,
-  so a login the CLI moves while the app is open stays shared); `cli_logins`
-  lists the CLI's saved logins without secrets and `cli_login_secret` reads
-  one login's password, only for a login made with the CLI's saved login
-  before or one the CLI keeps in the keychain (read only when Wilma needs a
-  new login: `/usr/bin/security` on a Mac, Credential Manager on Windows; the
-  app keeps no password for such a login); `update_manifest` checks wilm.ai
-  for a newer version.
+  `secrets_read/write/delete` keep the app's own entry in the keychain;
+  `shared_session_get/set/remove` read, write and remove a login's session in
+  the shared session file (both labels); `update_manifest` checks wilm.ai for
+  a newer version.
   The window may only call those, move itself and open https links in the
   browser (`src-tauri/capabilities`).
 - Wilma itself is **wilma-client**: its runtime-neutral `core` entry for

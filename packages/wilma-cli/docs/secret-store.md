@@ -2,9 +2,9 @@
 
 Drafted 8 November 2026 for [issue #27](https://github.com/aikarjal/wilmai/issues/27)
 and revised the same day after a pressure test and a pass over its state
-machines (both at the end). Not built.
-Covers wilma-cli and wilma-client; WilmAI Home only where it reads the CLI's
-files.
+machines (both at the end). The plan below was approved on 8 November 2026;
+where an older section disagrees with it, the plan wins. Covers wilma-cli,
+wilma-client and WilmAI Home.
 
 ## Why, and what stays
 
@@ -22,6 +22,70 @@ each run.
 The decision: **the file stays the default.** The keychain is an optional
 backend that a program or a person turns on: Parent Recap now, WilmAI Home
 later.
+
+## The plan (approved 8 November 2026)
+
+**Principles**
+
+- **Each app stores its own passwords.** Home never reads the CLI's settings
+  or keychain entries, and the CLI never reads Home's.
+- **The CLI keeps the file as its default, and the file option stays for
+  good.** Unattended servers (an OpenClaw agent, cron, CI) have no logged-in
+  user and so no keychain; they need the config file. The keychain is
+  something a CLI user opts into, never a requirement.
+- **Home moves to the keychain.** It always runs in a logged-in user's
+  session.
+- **Nobody who doesn't opt in sees a change.** The session label moves in
+  overlapping steps.
+
+**wilma-client 1.10.0:** the password callback in `resume()`,
+`CredentialsUnavailableError`, `logout()` always staying logged out.
+
+**wilma-cli 2.5.0**
+
+- `wilma config secrets file|auto|keychain` (file the default; `auto` falls
+  back to the file where no keychain can be used; `keychain` strict),
+  `WILMAI_SECRET_STORE` for one process, macOS through `/usr/bin/security`,
+  Windows and Linux through the optional `@napi-rs/keyring`, the errors
+  `secret_missing|refused|unavailable` (exit 4). As in sections 1–8.
+- **The session label overlap.** The session file's key moves from v1
+  (address, username and password) to v2 (address and username) for every
+  login, in steps. In 2.5.0 file and environment logins save their session
+  under both labels and look under both, taking the newer; keychain logins
+  use v2 only. Logging out and removing a login clear both. Moving a login to
+  the keychain then only takes v1 down (copying a session an older program
+  left under v1).
+
+**WilmAI Home 0.4.0**
+
+- Its own passwords only: "one click with the CLI's saved login" goes, and
+  so does the dev bridge's borrowing.
+- Both session labels, like the CLI, so Home shares one Wilma session with
+  the CLI however the CLI keeps its password, without reading its settings.
+- Its own secrets in the keychain: the remembered Wilma passwords and the
+  OpenAI key (Home's only AI key). macOS through `/usr/bin/security` under a
+  service of Home's own; Windows through Credential Manager. Entries are
+  replaced by deleting and adding again, never changed in place.
+- Moved automatically at the first start of 0.4.0: written, read back, then
+  deleted from Home's own storage. If the keychain fails, the old copy stays
+  and the move is tried again at the next start. Settings says where secrets
+  are kept. Reset app deletes the entries; Sign out keeps them.
+- Session cookies stay in Home's own storage and the shared session file.
+
+**Release (all in one go):** client 1.10.0, CLI 2.5.0 (`latest`), Home 0.4.0,
+the MCP Registry and the Claude Desktop extension, then a comment on #27.
+Fix forward with 2.5.x; rolling `latest` back would strand keychain logins.
+
+**Later:** once old versions have faded (npm per-version downloads, the
+extension's downloads), a CLI and Home release stops writing v1; the one
+after stops reading it. Then every session has one label, and no hash of a
+password is left in the session file.
+
+**What users see:** CLI and assistant users, the usual update notice and
+nothing else. CLI users who opt in, one command and the password out of the
+file. Home users, nothing: their secrets move at the first start with no
+prompt. Anyone who used Home's one-click CLI sign-in types their password
+once.
 
 ## Goals
 
@@ -61,7 +125,7 @@ later.
 | **Session key** | `agent-data.ts` `poolKey`: SHA-256 of address, username **and password**, for the session file and the in-memory pool. Home (`src/wilma/transport.ts` `sharedKeyFor`, stored with each login) and the dev bridge (`bridge/core.ts`) compute the same key |
 | Login order | `verifyLoginSession`, then `adoptSession` (session saved), then `saveLogin` (`login-server.ts`, `index.ts` twice) |
 | Client | wilma-client takes the password as a string and keeps it for logging in again when Wilma ends a session (`session.ts` `recover`, `canRelogin`) |
-| Home reads CLI logins | `lib.rs` `cli_logins` (`has_totp` from `totpSecretObfuscated`), `cli_login_secret` (unscrambles the password) |
+| Home reads CLI logins | `lib.rs` `cli_logins` (`has_totp` from `totpSecretObfuscated`), `cli_login_secret` (unscrambles the password). Removed in Home 0.4.0: Home keeps its own passwords |
 
 Two facts shape the design:
 
@@ -364,40 +428,20 @@ Error codes for scripts and assistants, with their own exit code:
 
 ### 9. Other programs
 
-- **WilmAI Home, next release (before CLI 2.5.0).**
-  - Session key rule: v2 exactly when the CLI config has a keychain login for
-    the same address and username, otherwise v1 as today. The key depends on
-    the CLI's state, which can change while Home is open (a move). So Home
-    works it out from the CLI config at **every session-file read and
-    write**: `sharedSessionFor` takes the login, not a key, and Home stops
-    storing the key with each login. A key fixed when the client was made
-    would keep writing v1 after a move (the password hash back in the file)
-    and miss the CLI's v2 saves, and the two would end each other's
-    sessions. The dev bridge changes the same way.
-  - A CLI keychain login: Home continues the shared session with
-    `WilmaClient.resumeSession`. When it needs a new login it reads the entry:
-    on macOS through `/usr/bin/security` (no prompt, no signing needed), on
-    Windows with its `keyring` crate (same target name `{user}.{service}`,
-    checked in both crates' source). Home never stores a typed password for a
-    keychain login. If it can't read the entry, it says so and doesn't fall
-    back to remembering the password.
-- **Home's own secrets, later.** The same macOS route works without a
-  Developer ID: items trusted by `/usr/bin/security` don't ask for the Mac
-  password, signed or not.
+- **WilmAI Home 0.4.0** stores its own passwords (in the keychain) and never
+  reads the CLI's; it shares the Wilma session through both labels (the plan
+  above). This replaces the first draft, where Home read the CLI's keychain
+  entries and worked out the CLI's key from its config.
 - **Parent Recap and similar tools.** `wilma config secrets auto` once in
-  setup; drop the temporary config. Their `/usr/bin/security` route matches
-  section 3.
+  setup (safe to run again); drop the temporary config. Their
+  `/usr/bin/security` route matches section 3.
 - **The Claude Desktop extension (MCPB).** It uses the same `config.json`.
-  `build-mcpb.mjs` must mark `@napi-rs/keyring` as `external` (today an
-  installed platform package breaks the build). macOS needs no module. The
-  Windows binaries (x64 and arm64, about 2 MB each) go in the bundle's
-  `node_modules` before 2.5.0 ships, so a parent with only Claude Desktop is
-  never told to "reinstall with npm".
-- **Older versions.** A CLI before 2.4.1 skips a login it can't read without
-  a word. In a one-login family, an MCP server on an old version then thinks
-  nobody is logged in and opens a login page. 2.4.1 says "this login's
-  password is in the keychain; update WilmAI" instead, and section 6 repairs
-  a login an old version rewrote.
+  `build-mcpb.mjs` marks `@napi-rs/keyring` as `external` and ships its
+  Windows packages; macOS needs no module.
+- **Older versions** (CLI 2.4.0, an old extension, Home 0.3.1) keep sharing
+  sessions with 2.5.0 through the v1 label. They can't read a keychain login;
+  the release notes say to update them before turning the keychain on, and
+  section 6 repairs a login an old version rewrote.
 
 ### 10. Text that changes
 
@@ -436,18 +480,8 @@ Error codes for scripts and assistants, with their own exit code:
 
 ### 12. Rollout
 
-1. **wilma-cli 2.4.1**, no keychain yet: a login that can't be read is
-   reported, not skipped; `external` in the MCPB build; interactive mode
-   saving on a fresh load. (Built as part of 2.5.0; shipping it first only
-   helps if older installs update before anyone turns the keychain on.)
-2. **wilma-client 1.10.0**: the password callback, `CredentialsUnavailableError`,
-   `logout()` resetting `endedByWilma`.
-3. **WilmAI Home**: the session key rule, worked out at every session-file
-   read and write, and CLI keychain logins (section 9).
-4. **wilma-cli 2.5.0**: the stores, `wilma config secrets`, v2 keys, the new
-   login order, the extension with Windows binaries, the text changes. File
-   stays the default.
-5. Reply on #27 with this design as the spec for the contributor's PR.
+See the plan above: one release with client 1.10.0, CLI 2.5.0 and Home 0.4.0
+(no CLI 2.4.1), then the v1 label retired in two later releases.
 
 ## States
 
@@ -585,21 +619,16 @@ stateDiagram-v2
 
 ### Machine 4: the session-file key (shared between programs)
 
-Not a machine of its own: the key follows machine 1, which another process
-can change at any moment.
+With the label overlap the key no longer depends on another program's state.
 
-| Login (machine 1) | Key | Written by |
+| Login | Saved under | Looked up under |
 | --- | --- | --- |
-| F, F+, environment logins | v1 | the CLI, the MCP server and Home, as today |
-| K, K-gone | v2 | the CLI and MCP server 2.5.0 and later; Home's next release |
-| During a move | both, tagged with the login's id | the process moving it |
+| CLI file and environment logins (2.5.0) | v1 and v2 | v2 and v1, the newer wins |
+| CLI keychain logins | v2 | v2 (and v1 once, when moving a login an older program used) |
+| Home 0.4.0 | v1 and v2 | v2 and v1, the newer wins |
+| CLI 2.4.0 and older, Home 0.3.1 and older | v1 | v1 |
 
-The rule: work the key out from the CLI config at every session-file read
-and write, and never keep it between them. The CLI already does (the MCP
-server reads the config on every tool call); Home changes to it (section 9).
-Programs that know only v1 can't share a keychain login's session, so turning
-the keychain on needs Home's next release and CLI 2.5.0 wherever this config
-is read.
+Later releases stop saving v1, then stop looking it up.
 
 ## Implementation notes (8 November 2026)
 
@@ -663,12 +692,14 @@ confirmed:
 | --- | --- |
 | macOS, the login keychain (`pnpm test:keychain`) | Passed: write, read, replace (delete and add), delete through `/usr/bin/security`; the same through `@napi-rs/keyring`; the CLI end to end (login to the keychain, saved session without a read, a new login reading it, moving back). No test items left |
 | macOS, a temporary keychain (`pnpm test:keychain:temp`) | Passed, and each entry trusts `/usr/bin/security` and no `node` |
-| macOS, Home reading the CLI's entry | Passed: an entry the CLI wrote (real service, random id) read by Home's Rust code, password and key intact; deleted after (`cargo test -- --ignored reads_an_entry_the_cli_wrote`) |
+| macOS, Home reading the CLI's entry (first draft) | Passed, but no longer needed: under the approved plan Home keeps its own passwords, and that test and its interop script are removed |
+| macOS, Home's own entry | Passed against a temporary keychain file: written, read back, replaced (delete and add) and deleted, trusted by `/usr/bin/security` only (`WILMAI_HOME_KEYCHAIN_PATH=… cargo test -- --ignored home_secrets_in_the_real_keychain`) |
+| Real Wilma, a copy of the stored login | 25 of 25: the file path (data commands, the MCP server, logout, both labels), `config secrets auto` and back with the real keychain under a test service, a new login reading the keychain, `--password-stdin`, `accounts remove` |
+| CLI 2.4.0 with client 1.10.0 | Its eight behaviour tests pass, so the client can go to `latest` |
 | Linux desktop (Docker: D-Bus, gnome-keyring unlocked) | Passed: the real-keychain test through the Secret Service, the CLI end to end, nothing left |
 | Linux headless (no D-Bus session) | Passed: "no Secret Service here"; `keychain` refuses with `secret_unavailable` (exit 4) and changes nothing; `auto` keeps the file and says so |
 | The CLI suite | 10 of 10 on macOS, on Linux (Docker), and in CI on Node 20 and 22 |
-| Windows (Credential Manager; Home reading the CLI's entry with `keyring` 3.6) | Passed on a GitHub Windows runner (`.github/workflows/keychain.yml`, PR #28): the store and the CLI end to end against Credential Manager, and Home's Rust code reading the entry the CLI wrote with `@napi-rs/keyring`, so the two libraries share entries. On the way: the test now takes the CLI's path with `fileURLToPath` (Windows paths), and Home's `ps`-based runtime test is Unix only, so Home's tests compile on Windows |
-| macOS, the same interop script | Passed (`node apps/home/scripts/keychain-interop.mjs`) |
+| Windows (Credential Manager) | Passed on a GitHub Windows runner (`.github/workflows/keychain.yml`, PR #28): the CLI's store and the CLI end to end. On the way: the test takes the CLI's path with `fileURLToPath` (Windows paths), and Home's `ps`-based runtime test is Unix only, so Home's tests compile on Windows. The job now also round-trips Home's own entry |
 
 ## Open questions
 

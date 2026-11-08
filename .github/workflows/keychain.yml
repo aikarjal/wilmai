@@ -1,9 +1,11 @@
 # The opt-in keychain backend against a real Windows Credential Manager
 # (packages/wilma-cli/docs/secret-store.md, Validation): the CLI's store and
-# the CLI end to end, then WilmAI Home's Rust code reading an entry the CLI
-# wrote. macOS and Linux run locally (`pnpm --filter @wilm-ai/wilma-cli
-# test:keychain`, a Linux desktop or Docker with gnome-keyring). Run by hand,
-# or on pull requests that touch the keychain code.
+# the CLI end to end, then WilmAI Home's own entry (written, read back,
+# replaced and deleted under a test service). macOS and Linux run locally
+# (`pnpm --filter @wilm-ai/wilma-cli test:keychain`, a Linux desktop or Docker
+# with gnome-keyring; Home's test against a temporary keychain file, see
+# `home_secrets_in_the_real_keychain` in apps/home/src-tauri/src/lib.rs). Run
+# by hand, or on pull requests that touch the keychain code.
 name: Keychain
 
 on:
@@ -13,7 +15,6 @@ on:
       - packages/wilma-cli/src/secret-*.ts
       - packages/wilma-cli/test/keychain-real.mjs
       - apps/home/src-tauri/src/lib.rs
-      - apps/home/scripts/keychain-interop.mjs
 
 permissions:
   contents: read
@@ -32,5 +33,6 @@ jobs:
       - run: pnpm --filter @wilm-ai/wilma-client build && pnpm --filter @wilm-ai/wilma-cli build
       - name: The CLI against Credential Manager
         run: node packages/wilma-cli/test/keychain-real.mjs --run
-      - name: Home reads the entry the CLI wrote
-        run: node apps/home/scripts/keychain-interop.mjs
+      - name: Home's own entry in Credential Manager
+        working-directory: apps/home/src-tauri
+        run: cargo test -- --ignored home_secrets_in_the_real_keychain

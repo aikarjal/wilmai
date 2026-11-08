@@ -116,7 +116,12 @@ export function Intro() {
         <li>
           <Icon name="lock" />
           <span>
-            {marked(t("*Your password goes only to your school's Wilma.* The app remembers it here, scrambled, so signing in again is one click."), (part) => <b>{part}</b>)}
+            {marked(
+              isDesktopApp
+                ? t("*Your password goes only to your school's Wilma.* The app remembers it in this computer's keychain, so signing in again is one click.")
+                : t("*Your password goes only to your school's Wilma.* The app remembers it here, scrambled, so signing in again is one click."),
+              (part) => <b>{part}</b>
+            )}
           </span>
         </li>
         <li>

@@ -4,15 +4,18 @@
  * (localStorage). Nothing is sent anywhere except Wilma and, when turned
  * on, Jev.
  *
- * Secrets are kept like the WilmAI CLI keeps its saved logins: on this
- * computer, scrambled (base64 with a prefix, as `obfuscateSecret` in the
- * CLI), not encrypted. The Wilma session is in IndexedDB, the Jev and
- * OpenAI keys in localStorage. Scrambled only so a glance at the files doesn't show them;
- * anyone with the user's account can read them, and the README says so.
+ * Secrets, the remembered Wilma passwords and the OpenAI key: in the desktop
+ * app, in the system keychain (the macOS Keychain, Windows Credential
+ * Manager), one entry read once at start (loadSecrets) and written whole
+ * after a change. In a browser, and in the desktop app while the keychain
+ * can't be used, in localStorage, scrambled (base64 with a prefix, as
+ * `obfuscateSecret` in the CLI), not encrypted, as before 0.4.0: anyone with
+ * the user's account can read them, and the README says so. The Jev key stays
+ * in localStorage (Jev isn't used). The Wilma session is in IndexedDB.
  */
 import { useSyncExternalStore } from "react";
 import { clear, del, get, set } from "idb-keyval";
-import { oldKeychain } from "../wilma/transport";
+import { oldKeychain, secretsKeychain } from "../wilma/transport";
 import { t } from "../i18n";
 import { DEFAULT_SETTINGS, keepsPassword, viewerOf, type AccountInfo, type Child, type ChildLook, type GradeKind, type ItemTranslation, type JevRecord, type LocalState, type LunaRecord, type Settings, type Snapshot, type UsageBucket, type Viewer } from "./model";
 import type { NoteKind } from "./notes";
@@ -66,7 +69,15 @@ export interface AppState {
   openaiBlocked: { at: number; reason: "network" | "intercepted"; detail: string | null } | null;
   /** Each Wilma login's session, by slot (data/logins.ts). */
   loginStatus: Record<number, LoginStatus>;
+  /** Where the passwords and the OpenAI key are (see loadSecrets). */
+  secrets: SecretsPlace;
 }
+
+/**
+ * Where the secrets are: "keychain" (desktop app; also while it's being read at start), "app" (a browser: localStorage),
+ * "app-for-now" (the keychain couldn't be used: localStorage until the next start tries it again).
+ */
+export type SecretsPlace = "keychain" | "app" | "app-for-now";
 
 /** A Wilma login's session: live, or not (why, and when staying signed in tries again). */
 export interface LoginStatus {
@@ -83,21 +94,18 @@ export interface SavedSession {
   account: AccountInfo;
   /** wilma-client's exportSession(): the login's cookies ("" when Wilma ended it). */
   state: string;
-  /**
-   * The login's v1 key in WilmAI's shared session file, when the app knew its password. Not the key itself: that's
-   * worked out at every read and write (see SharedLogin), since the CLI may keep the login in the keychain (v2).
-   */
+  /** The login's v1 label in WilmAI's shared session file, made while the app had its password (see SharedLogin). */
   v1Key?: string;
 }
 
 /**
- * Sessions saved before the app used wilma-client kept bare cookie pairs. Ones saved before the key was worked out at
- * each read and write kept it as `sharedKey`: always a v1 key then.
+ * Sessions saved before the app used wilma-client kept bare cookie pairs. Before 0.4.0 the shared file's label was
+ * kept as `sharedKey`: a v1 label (or, for a test Wilma, one with a "test:" prefix, which isn't needed any more).
  */
 function upgradeSession(saved: (SavedSession & { cookies?: [string, string][]; sharedKey?: string }) | undefined): SavedSession | null {
   if (!saved?.account) return null;
   const { cookies, sharedKey, ...session } = saved;
-  if (sharedKey && !session.v1Key) session.v1Key = sharedKey;
+  if (!session.v1Key && sharedKey && /^[0-9a-f]{64}$/.test(sharedKey)) session.v1Key = sharedKey;
   if (typeof session.state === "string") return session;
   if (!Array.isArray(cookies)) return null;
   const domain = new URL(saved.account.baseUrl).hostname;
@@ -112,7 +120,21 @@ const WILMA_PASSWORD = "wilmai.wilmaPassword";
 const PASSWORDS = "wilmai.passwords";
 /** Set once the key in the old keychain place has been looked for (so macOS asks at most once more). */
 const MOVED_KEY = "wilmai.keyMoved";
+/** The copies here are every secret (a keychain write failed after the entry was read): they replace the entry. */
+const SECRETS_WHOLE = "wilmai.secretsWhole";
+/** Reset app couldn't delete the keychain entry: the next start deletes it before reading anything. */
+const SECRETS_DELETE = "wilmai.secretsDelete";
 const SECRET_PREFIX = "wilmai::";
+
+/* The keychain's state (see loadSecrets), declared before the settings load at the start. */
+/** The entry was read this start: changes are written to it. */
+let keychainRead = false;
+/** What the entry holds now, as last read or written (null: no entry; undefined: not known, after a failure). */
+let keychainValue: string | null | undefined;
+/** The secrets to write next (the newest change), and the writes, one at a time. */
+let pendingSecrets: Secrets | null = null;
+let keychainWrites: Promise<void> = Promise.resolve();
+let secretsLoaded: Promise<void> = Promise.resolve();
 
 /** Scrambled, not encrypted (the CLI's `obfuscateSecret`): base64 of a prefix and the secret. */
 function scramble(value: string): string {
@@ -178,6 +200,7 @@ let state: AppState = {
   update: { available: null, current: null, checkedAt: null, error: null, phase: "idle", progress: null },
   openaiBlocked: null,
   loginStatus: {},
+  secrets: secretsKeychain() ? "keychain" : "app",
 };
 
 // A key an older version kept plainly in the settings moves to its scrambled place now.
@@ -317,15 +340,10 @@ export function forgetPasswordsIfAsked() {
   if (!keepsPassword(settings) && (Object.keys(settings.passwords).length || settings.wilmaPassword)) updateSettings({ wilmaPassword: "", passwords: {} });
 }
 
-/**
- * Remember a login's password (when passwords are kept), or forget it (null). A login that signs in with the WilmAI
- * CLI's saved login keeps no password here: the CLI keeps it (in the keychain, for one it keeps there), so one typed
- * for it is forgotten instead.
- */
+/** Remember a login's password (when passwords are kept), or forget it (null). */
 export function rememberPasswordOf(account: AccountInfo, password: string | null) {
   const { settings, snapshot } = state;
   const key = accountKey(account)!;
-  if (account.via === "cli") password = null;
   if (password !== null && !keepsPassword(settings)) return;
   const { [key]: _, ...rest } = settings.passwords;
   updateSettings({ passwords: password === null ? rest : { ...rest, [key]: password }, ...(key === accountKey(snapshot?.account) ? { wilmaPassword: "" } : {}) });
@@ -371,25 +389,212 @@ function migrateAccountStorage() {
 function saveSettings() {
   const { jevKey, openaiKey, wilmaPassword, passwords, ...rest } = state.settings;
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(rest));
-  // The Wilma password while it's remembered (one-click sign-in) or staying signed in needs it.
-  if (wilmaPassword && keepsPassword(rest)) localStorage.setItem(WILMA_PASSWORD, scramble(wilmaPassword));
-  else localStorage.removeItem(WILMA_PASSWORD);
-  if (Object.keys(passwords ?? {}).length && keepsPassword(rest)) localStorage.setItem(PASSWORDS, scramble(JSON.stringify(passwords)));
-  else localStorage.removeItem(PASSWORDS);
+  // The Wilma passwords while they're remembered (one-click sign-in) or staying signed in needs them.
+  const secrets = keptSecrets({ openaiKey, wilmaPassword, passwords }, keepsPassword(rest));
+  if (keychainRead && secretsKeychain()) void saveToKeychain(secrets);
+  else saveHere(secrets);
   if (jevKey) localStorage.setItem(JEV_KEY, scramble(jevKey));
   else localStorage.removeItem(JEV_KEY);
-  if (openaiKey) localStorage.setItem(OPENAI_KEY, scramble(openaiKey));
+}
+
+/* ------------------------------------------------------------------ */
+/*  Secrets in the keychain                                            */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The passwords and the OpenAI key, in the desktop app: one keychain entry
+ * holding them all as JSON (src-tauri/src/lib.rs), so a start reads the
+ * keychain once and Reset app deletes one entry. Until the entry has been
+ * read this start, nothing writes it (a write would replace what's there):
+ * changes go to the copies here, which the next read takes in.
+ *
+ * Moving (each start, loadSecrets): read the entry, take in the copies here
+ * (the copies win; versions before 0.4.0 kept everything here), write the
+ * result, read it back, and only when it's the same, delete the copies. If
+ * the keychain doesn't do it, the copies stay, and the next start tries again.
+ * Settings says where they are (AppState.secrets).
+ */
+type Secrets = Pick<Settings, "openaiKey" | "wilmaPassword" | "passwords">;
+
+
+/** What's kept: the passwords only while passwords are kept (keepsPassword). */
+function keptSecrets(secrets: Secrets, keeps: boolean): Secrets {
+  return { openaiKey: secrets.openaiKey ?? "", wilmaPassword: keeps ? (secrets.wilmaPassword ?? "") : "", passwords: keeps ? { ...secrets.passwords } : {} };
+}
+
+/** The copies in localStorage, scrambled as before 0.4.0. */
+function secretsHere(): Secrets {
+  return {
+    openaiKey: unscramble(localStorage.getItem(OPENAI_KEY)) ?? "",
+    wilmaPassword: unscramble(localStorage.getItem(WILMA_PASSWORD)) ?? "",
+    passwords: passwordsOf(unscramble(localStorage.getItem(PASSWORDS))),
+  };
+}
+
+function saveHere(secrets: Secrets) {
+  if (secrets.wilmaPassword) localStorage.setItem(WILMA_PASSWORD, scramble(secrets.wilmaPassword));
+  else localStorage.removeItem(WILMA_PASSWORD);
+  if (Object.keys(secrets.passwords).length) localStorage.setItem(PASSWORDS, scramble(JSON.stringify(secrets.passwords)));
+  else localStorage.removeItem(PASSWORDS);
+  if (secrets.openaiKey) localStorage.setItem(OPENAI_KEY, scramble(secrets.openaiKey));
   else localStorage.removeItem(OPENAI_KEY);
+}
+
+function deleteHere() {
+  for (const key of [WILMA_PASSWORD, PASSWORDS, OPENAI_KEY, SECRETS_WHOLE]) localStorage.removeItem(key);
+}
+
+const hasSecrets = (s: Secrets) => Boolean(s.openaiKey || s.wilmaPassword || Object.keys(s.passwords).length);
+
+/** The entry's value: JSON, everything past ASCII escaped so every keychain hands it back unchanged (null: nothing to keep). */
+function encodeSecrets(secrets: Secrets): string | null {
+  if (!hasSecrets(secrets)) return null;
+  const json = JSON.stringify({ v: 1, openaiKey: secrets.openaiKey, wilmaPassword: secrets.wilmaPassword, passwords: secrets.passwords });
+  return json.replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+}
+
+/** The entry's secrets; throws on a value this version doesn't know (left as it is, not overwritten). */
+function decodeSecrets(value: string | null): Secrets {
+  if (value === null) return { openaiKey: "", wilmaPassword: "", passwords: {} };
+  const parsed = JSON.parse(value) as { v?: unknown; openaiKey?: unknown; wilmaPassword?: unknown; passwords?: unknown };
+  if (!parsed || parsed.v !== 1) throw new Error("Not an entry this version of WilmAI Home knows");
+  const text = (x: unknown) => (typeof x === "string" ? x : "");
+  const passwords = parsed.passwords && typeof parsed.passwords === "object" ? Object.fromEntries(Object.entries(parsed.passwords).filter(([, p]) => typeof p === "string" && p)) : {};
+  return { openaiKey: text(parsed.openaiKey), wilmaPassword: text(parsed.wilmaPassword), passwords: passwords as Record<string, string> };
+}
+
+/** The entry's secrets with the copies here taken in: a copy wins over the entry's for the same thing. */
+function mergeSecrets(entry: Secrets, here: Secrets): Secrets {
+  return { openaiKey: here.openaiKey || entry.openaiKey, wilmaPassword: here.wilmaPassword || entry.wilmaPassword, passwords: { ...entry.passwords, ...here.passwords } };
+}
+
+/** Put the secrets in the settings in memory, without saving them anywhere. */
+function applySecrets(secrets: Secrets) {
+  setState((s) => ({ settings: { ...s.settings, ...secrets } }));
+}
+
+function setSecretsPlace(place: SecretsPlace) {
+  if (state.secrets !== place) setState({ secrets: place });
+}
+
+/**
+ * Write the secrets to the keychain (the newest of the changes waiting), read them back, and delete the copies here.
+ * When the keychain doesn't do it, everything is kept here, marked whole, until a later write or start manages.
+ */
+function saveToKeychain(secrets: Secrets): Promise<void> {
+  pendingSecrets = secrets;
+  const keychain = secretsKeychain();
+  keychainWrites = keychainWrites.then(async () => {
+    const next = pendingSecrets;
+    if (!next || !keychain) return;
+    pendingSecrets = null;
+    const value = encodeSecrets(next);
+    try {
+      if (value !== keychainValue) {
+        keychainValue = undefined;
+        if (value === null) await keychain.remove();
+        else await keychain.write(value);
+        if ((await keychain.read()) !== value) throw new Error("The keychain gave back something else");
+        keychainValue = value;
+      }
+      deleteHere();
+      setSecretsPlace("keychain");
+    } catch (err) {
+      console.warn("WilmAI Home: the keychain didn't keep the secrets; kept in the app's own data for now.", err);
+      // The newest secrets, in case another change came meanwhile (it's written after this).
+      const kept = pendingSecrets ?? next;
+      saveHere(kept);
+      if (hasSecrets(kept)) localStorage.setItem(SECRETS_WHOLE, "1");
+      setSecretsPlace("app-for-now");
+    }
+  });
+  return keychainWrites;
+}
+
+/**
+ * Read the keychain at start (desktop app) and move the copies here into it (see above). Features that need a secret
+ * wait for this (main.tsx: the sign-ins and the AI start after it). A browser keeps the secrets here.
+ */
+export function loadSecrets(): Promise<void> {
+  secretsLoaded = moveSecrets();
+  return secretsLoaded;
+}
+
+/** Done once the keychain has been read this start (or couldn't be). */
+export const secretsRead = (): Promise<void> => secretsLoaded;
+
+/** The keychain writes done (tests). */
+export const secretsWritten = (): Promise<void> => keychainWrites;
+
+async function moveSecrets(): Promise<void> {
+  const keychain = secretsKeychain();
+  keychainRead = false;
+  if (!keychain) return setSecretsPlace("app");
+  const generation = resetScope();
+  keychainValue = undefined;
+  // What the start took from here (loadSettings): the copies, if any.
+  applySecrets(keptSecrets(secretsHere(), keepsPassword(state.settings)));
+  setSecretsPlace("keychain");
+  let raw: string | null;
+  let entry: Secrets;
+  try {
+    if (localStorage.getItem(SECRETS_DELETE)) {
+      await keychain.remove();
+      localStorage.removeItem(SECRETS_DELETE);
+    }
+    raw = await keychain.read();
+    entry = decodeSecrets(raw);
+  } catch (err) {
+    console.warn("WilmAI Home: the keychain couldn't be read; the app's own copies stay, and the next start tries again.", err);
+    if (generation === resetScope()) setSecretsPlace("app-for-now");
+    return;
+  }
+  if (generation !== resetScope()) return;
+  // The copies now, with anything typed while the keychain was being read.
+  const here = secretsHere();
+  const whole = Boolean(localStorage.getItem(SECRETS_WHOLE));
+  const merged = keptSecrets(whole ? here : mergeSecrets(entry, here), keepsPassword(state.settings));
+  // From here the settings in memory are the secrets, and every change goes to the keychain (this one first).
+  keychainValue = raw;
+  keychainRead = true;
+  applySecrets(merged);
+  await saveToKeychain(merged);
+}
+
+/**
+ * Reset app: the keychain entry goes. If the keychain doesn't do it now, the next start deletes it before reading
+ * anything, and until then new secrets stay here.
+ */
+async function deleteKeychainEntry(): Promise<void> {
+  const keychain = secretsKeychain();
+  if (!keychain) return;
+  pendingSecrets = null;
+  keychainWrites = keychainWrites.then(async () => {
+    try {
+      keychainValue = undefined;
+      await keychain.remove();
+      // Known to be empty now: new secrets can go to it.
+      keychainValue = null;
+      keychainRead = true;
+      setSecretsPlace("keychain");
+    } catch (err) {
+      console.warn("WilmAI Home: the keychain entry couldn't be deleted now; the next start deletes it.", err);
+      keychainRead = false;
+      localStorage.setItem(SECRETS_DELETE, "1");
+      setSecretsPlace("app-for-now");
+    }
+  });
+  await keychainWrites;
 }
 
 /**
  * Desktop app: earlier versions kept the Jev key in the system keychain,
  * where macOS asks for the password again after every new build of an app
  * that isn't signed with a Developer ID. Look there once, move the key into
- * the app's own storage, and never look again. Nothing waits for this: the
- * app shows at once and Jev starts when the key is in.
+ * the app's own storage, and never look again. Nothing waits for this but
+ * Jev: the app shows at once and Jev starts when the key is in.
  */
-export async function loadSecrets(): Promise<void> {
+export async function moveOldJevKey(): Promise<void> {
   const generation = resetScope();
   if (!oldKeychain || localStorage.getItem(MOVED_KEY)) return;
   localStorage.setItem(MOVED_KEY, "1");
@@ -503,7 +708,7 @@ export function updateSettings(patch: Partial<Settings>) {
   setState((s) => ({ settings: { ...s.settings, ...patch, aiMonthlyBudgetUsd: normalizeAIBudget(patch.aiMonthlyBudgetUsd ?? s.settings.aiMonthlyBudgetUsd) } }));
 }
 
-/** Forget everything this app stored on this device. */
+/** Forget everything this app stored on this device, the keychain entry too. */
 export async function forgetEverything() {
   resetGeneration += 1;
   if (timer) clearTimeout(timer);
@@ -518,6 +723,7 @@ export async function forgetEverything() {
   }
   // A reset must not import a key from an earlier version on the next launch.
   localStorage.setItem(MOVED_KEY, "1");
+  await deleteKeychainEntry();
   setState({ settings: { ...DEFAULT_SETTINGS }, usage: {}, translations: {}, phrases: {} });
   await flushPersisted();
 }

@@ -88,6 +88,10 @@ const json = async (args, extraEnv, config) => {
   return JSON.parse(result.stdout);
 };
 const savedSessions = async (path = sessionsPath) => Object.keys(JSON.parse(await readFile(path, "utf8").catch(() => "{}")));
+// One login's session is saved under two labels while the old one is retired (v1 with the password, v2 without):
+// count sessions, not entries.
+const distinctSessions = async (path = sessionsPath) =>
+  new Set(Object.values(JSON.parse(await readFile(path, "utf8").catch(() => "{}"))).map((entry) => entry.state)).size;
 const textOf = (result) => result.content.filter((c) => c.type === "text").map((c) => c.text).join("\n");
 
 let mcp;
@@ -97,7 +101,8 @@ try {
   assert.equal((await json(["login", "--tenant", wilmaUrl, "--username", "parent", "--json"], { WILMA_PASSWORD: "right" })).status, "ok");
   await json(["students"]);
   assert.equal(wilma.loginPosts, 1, "one login so far");
-  assert.equal((await savedSessions()).length, 1, "the session is saved");
+  assert.equal(await distinctSessions(), 1, "the session is saved");
+  assert.equal((await savedSessions()).length, 2, "under both labels");
 
   // Logging out ends that session in Wilma and forgets it; the login stays saved.
   const out = await json(["logout"]);
@@ -140,7 +145,7 @@ try {
   wilma.homeOutage = false;
   assert.equal(down.code, 1);
   assert.equal(JSON.parse(down.stdout).status, "error");
-  assert.equal((await savedSessions()).length, 1, "the session is kept");
+  assert.equal(await distinctSessions(), 1, "the session is kept");
   assert.notEqual(wilma.currentSid, null);
   assert.equal((await json(["logout"])).logins[0].session, "ended", "the retry ends it");
   assert.equal(wilma.currentSid, null);
@@ -161,13 +166,14 @@ try {
   const familySessions = join(tempDirectory, "family", "wilmai-sessions.json");
   await json(["login", "--tenant", wilmaUrl, "--username", "parent", "--json"], { WILMA_PASSWORD: "right" }, familyConfig);
   await json(["login", "--tenant", other.url, "--username", "parent2", "--json"], { WILMA_PASSWORD: "pw2" }, familyConfig);
-  assert.equal((await savedSessions(familySessions)).length, 2);
+  assert.equal(await distinctSessions(familySessions), 2);
   const keptSid = wilma.currentSid;
   const removed = await json(["accounts", "remove", "2"], {}, familyConfig);
   assert.deepEqual(removed, { status: "removed", wilma: other.url, username: "parent2", session: "ended" });
   assert.equal(other.currentSid, null, "the removed login's session was ended in Wilma");
   assert.equal(wilma.currentSid, keptSid, "the other login's session is untouched");
-  assert.equal((await savedSessions(familySessions)).length, 1, "only the removed login's session is forgotten");
+  assert.equal(await distinctSessions(familySessions), 1, "only the removed login's session is forgotten");
+  assert.equal((await savedSessions(familySessions)).length, 2, "both of its labels are gone, the other login's stay");
   wilma.loginPosts = 0;
   await json(["students"], {}, familyConfig);
   assert.equal(wilma.loginPosts, 0, "the other login continues its session without logging in");
@@ -180,7 +186,7 @@ try {
   assert.equal(unreachable.session, "not_ended");
   assert.match(unreachable.message, /503/);
   assert.equal((await json(["accounts"], {}, familyConfig)).accounts.length, 1);
-  assert.equal((await savedSessions(familySessions)).length, 1);
+  assert.equal(await distinctSessions(familySessions), 1);
   assert.equal(wilma.currentSid, keptSid);
 
   /* ---------------- MCP ---------------- */

@@ -77,7 +77,8 @@ export async function moveLoginToKeychain(id: string): Promise<MoveResult> {
     return { ...base, outcome: "failed", message: errorText(err) };
   }
 
-  // 3. The session goes with it (no new Wilma login, no new code), both entries tagged.
+  // 3. The session goes with it (no new Wilma login, no new code), both entries tagged. With the labels
+  //    overlapping v2 is usually there already; an older program may have saved a newer one under v1 only.
   const v1 = sessionKeyV1(snapshot.tenantUrl, snapshot.username, password);
   const v2 = sessionKeyV2(snapshot.tenantUrl, snapshot.username);
   await copySession(v1, v2, id).catch(() => false);
@@ -143,9 +144,10 @@ export async function moveLoginToFile(id: string): Promise<MoveResult> {
       flipped = true;
     });
     if (!flipped) return { ...base, outcome: "skipped", message: "The login changed while it was being moved; try again." };
+    // A file login uses both labels: the session stays under v2 and is copied to v1 for older programs.
     const v2 = sessionKeyV2(profile.tenantUrl, profile.username);
     const v1 = sessionKeyV1(profile.tenantUrl, profile.username, secrets.password);
-    if (await copySession(v2, v1, id).catch(() => false)) await fileSessionStore.remove(v2).catch(() => {});
+    await copySession(v2, v1, id).catch(() => false);
     dropPooledSession(keychainLoginKeys(profile.tenantUrl, profile.username, stamp));
   } else if (profile.secrets) {
     return { ...base, outcome: "failed", message: secretErrorMessage("unavailable", base.wilma) };

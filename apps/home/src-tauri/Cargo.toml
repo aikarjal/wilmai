@@ -25,7 +25,6 @@ serde_json = "1"
 # system-proxy: the computer's own proxy settings (Windows, macOS), which school and work networks often require.
 # rustls-tls-native-roots: the computer's own certificates as well, for networks whose proxy inspects HTTPS.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json", "system-proxy"] }
-base64 = "0.22"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 tokio = { version = "1", features = ["macros", "rt", "sync", "time", "fs", "io-util"] }
 sha2 = "0.10"

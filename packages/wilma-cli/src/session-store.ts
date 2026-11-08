@@ -24,6 +24,12 @@ export interface SessionStore {
   save(key: string, state: string): Promise<void>;
   /** Forget one session (after logging out). */
   remove(key: string): Promise<void>;
+  /** The newest session saved under any of these keys (one login's labels). */
+  loadNewest?(keys: string[]): Promise<string | null>;
+  /** Save one session under all of these keys, in one write. */
+  saveAll?(keys: string[], state: string): Promise<void>;
+  /** Forget a session under all of these keys, in one write. */
+  removeAll?(keys: string[]): Promise<void>;
 }
 
 /**
@@ -79,6 +85,37 @@ export const fileSessionStore: SessionStore = {
     delete all[key];
     await writeAll(all);
   },
+
+  async loadNewest(keys) {
+    if (process.env.WILMAI_NO_SESSION_CACHE === "1") return null;
+    const all = await readAll();
+    let newest: { state: string; savedAt: number } | null = null;
+    for (const key of keys) {
+      const entry = all[key];
+      if (!entry || typeof entry.state !== "string" || Date.now() - entry.savedAt > SESSION_TTL_MS) continue;
+      if (!newest || entry.savedAt > newest.savedAt) newest = entry;
+    }
+    return newest?.state ?? null;
+  },
+
+  async saveAll(keys, state) {
+    if (process.env.WILMAI_NO_SESSION_CACHE === "1") return;
+    const all = await readAll();
+    const now = Date.now();
+    for (const [k, entry] of Object.entries(all)) {
+      if (now - entry.savedAt > SESSION_TTL_MS) delete all[k];
+    }
+    for (const key of keys) all[key] = { state, savedAt: now, by: savedBy };
+    await writeAll(all);
+  },
+
+  async removeAll(keys) {
+    const all = await readAll();
+    const present = keys.filter((key) => key in all);
+    if (!present.length) return;
+    for (const key of present) delete all[key];
+    await writeAll(all);
+  },
 };
 
 async function writeAll(all: Saved): Promise<void> {
@@ -91,17 +128,22 @@ async function writeAll(all: Saved): Promise<void> {
 }
 
 /**
- * Copy a login's saved session to another key (moving the login between the
- * file and the keychain), keeping when and by whom it was saved, and tag both
- * entries with the login's id. Nothing to copy (none, or expired): false.
+ * Make sure a login's newest session is under `to` too (moving a login
+ * between the file and the keychain), keeping when and by whom it was saved,
+ * and tag both entries with the login's id. With the labels overlapping, `to`
+ * usually has it already; an older program may have saved a newer one under
+ * `from` only. Nothing to copy (none, or expired): false.
  */
 export async function copySession(from: string, to: string, login: string): Promise<boolean> {
   if (process.env.WILMAI_NO_SESSION_CACHE === "1") return false;
   const all = await readAll();
-  const entry = all[from];
-  if (!entry || typeof entry.state !== "string" || Date.now() - entry.savedAt > SESSION_TTL_MS) return false;
-  all[from] = { ...entry, login };
-  all[to] = { ...entry, login };
+  const valid = (entry: Saved[string] | undefined) => entry && typeof entry.state === "string" && Date.now() - entry.savedAt <= SESSION_TTL_MS;
+  const source = all[from];
+  const target = all[to];
+  if (!valid(source)) return false;
+  const newest = valid(target) && target!.savedAt >= source!.savedAt ? target! : source!;
+  all[from] = { ...source!, login };
+  all[to] = { ...newest, login };
   await writeAll(all);
   return true;
 }

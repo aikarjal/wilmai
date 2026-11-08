@@ -22,7 +22,7 @@ import { UpdatesCard } from "./Update";
 import { LanguageChoice, ThemeChoice } from "./Settings";
 import { Icon } from "./bits";
 import { go } from "./shared";
-import { isDesktopApp } from "../wilma/transport";
+import { isDesktopApp, secretsKept } from "../wilma/transport";
 import { t } from "../i18n";
 import { runJev } from "../jev/runner";
 import { runLuna } from "../luna/events";
@@ -137,7 +137,7 @@ export function Wilmas() {
       const pending = [...ready];
       if (!family) {
         const first = pending.shift()!;
-        if (!(await attempt(first, () => signInWithPassword(first.tenant!.url, first.username.trim(), first.password, undefined, false, who)))) return;
+        if (!(await attempt(first, () => signInWithPassword(first.tenant!.url, first.username.trim(), first.password, false, who)))) return;
       }
       for (const d of pending) await attempt(d, () => addWilma(d.tenant!.url, d.username.trim(), d.password));
       // Signed-out Wilmas changed to another login (another account's family, when it's the only one).
@@ -392,7 +392,9 @@ function WilmaRow({ login, demo, many, kids, ask, typed, onType, change, onChang
     // The same login as before, with its password kept: dots in the password field.
     const same = Boolean(tenant && sameWilma(tenant.url, login.account.baseUrl)) && username.trim().toLowerCase() === login.account.username.toLowerCase();
     // Why it isn't in, when Wilma (not the parent) ended it or signing in again didn't work.
-    const why = !login.signedOut && status?.why && (status.failed || status.rejoinAt !== undefined) ? status.why : null;
+    const ended = !login.signedOut && status?.why && (status.failed || status.rejoinAt !== undefined) ? status.why : null;
+    // Signed in with the WilmAI CLI's saved login by an earlier version: its password is typed here once.
+    const why = login.account.via === "cli" && same ? t("WilmAI Home doesn't use the WilmAI CLI's saved login any more. Type this Wilma's password once.") : ended;
     return (
       <DraftRow
         draft={{ id: -1 - login.slot, tenant, username, password: typed }}
@@ -592,7 +594,8 @@ export function SigningIn() {
     updateSettings(
       v === "stay" ? { staySignedIn: true, rememberPassword: true } : v === "click" ? { staySignedIn: false, rememberPassword: true } : { staySignedIn: false, rememberPassword: false }
     );
-  const missing = value !== "type" && snap && snap.account.via !== "demo" ? logins(snap).filter((l) => l.account.via === "password" && !passwordOf(l.account)).map((l) => schoolOf(l.account)) : [];
+  const secrets = useApp((s) => s.secrets);
+  const missing = value !== "type" && snap && snap.account.via !== "demo" ? logins(snap).filter((l) => !passwordOf(l.account)).map((l) => schoolOf(l.account)) : [];
   const options: { id: Signing; title: ReactNode; help: string }[] = [
     {
       id: "stay",
@@ -617,7 +620,7 @@ export function SigningIn() {
           </div>
         </label>
       ))}
-      <p className="help-line">{value === "type" ? t("Passwords go only to each school's Wilma.") : t("Passwords are kept on this computer, scrambled but not encrypted.")}</p>
+      <p className="help-line">{value === "type" ? t("Passwords go only to each school's Wilma.") : `${t("Passwords:")} ${secretsKept(secrets)}`}</p>
       {missing.length ? (
         <p className="help-line">
           {t(missing.length === 1 ? "The password for {schools} is kept from the next time you sign in." : "The passwords for {schools} are kept from the next time you sign in.", { schools: missing.join(", ") })}

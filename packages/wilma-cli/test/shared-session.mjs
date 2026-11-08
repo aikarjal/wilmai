@@ -97,6 +97,36 @@ try {
   for (let i = 0; i < 50 && (await storedSid()) !== wilma.currentSid; i += 1) await new Promise((r) => setTimeout(r, 20));
   assert.equal(await storedSid(), wilma.currentSid, "and its session is saved for the other programs");
   assert.equal((await stored()).by, "mcp");
+
+  // The labels overlap (v1 with the password, v2 without): what the connector just saved is under both.
+  const v2key = createHash("sha256").update(`wilmai-session-v2\n${wilma.url}\nparent`).digest("hex");
+  const all = () => readFile(sessionsPath, "utf8").then(JSON.parse);
+  assert.equal((await all())[v2key]?.state, (await stored()).state, "saved under the new label too");
+
+  // A newer program saves under the new label only (Home 0.4.0 also writes the old one; a keychain login doesn't):
+  // a CLI command continues it, no login.
+  wilma.loginPosts += 1;
+  wilma.currentSid = String(++wilma.sidCounter);
+  const newer = await all();
+  newer[v2key] = { state: JSON.stringify({ cookies: [{ key: "Wilma2SID", value: wilma.currentSid, domain: "127.0.0.1", path: "/", hostOnly: true }] }), savedAt: Date.now(), by: "home" };
+  await writeFile(sessionsPath, JSON.stringify(newer));
+  const logins = wilma.loginPosts;
+  assert.equal((await run(["students", "--json"])).code, 0);
+  assert.equal(wilma.loginPosts, logins, "found under the new label: no login");
+
+  // The store itself: the newest entry among a login's labels wins, saving writes every label in one go, removing clears them all.
+  process.env.WILMAI_CONFIG_PATH = join(tempDirectory, "unit", "config.json");
+  const { fileSessionStore } = await import("../dist/session-store.js");
+  await fileSessionStore.save("a", "older");
+  await new Promise((r) => setTimeout(r, 5));
+  await fileSessionStore.save("b", "newer");
+  assert.equal(await fileSessionStore.loadNewest(["a", "b"]), "newer");
+  assert.equal(await fileSessionStore.loadNewest(["b", "a"]), "newer", "whatever the order");
+  await fileSessionStore.saveAll(["a", "b"], "both");
+  assert.equal(await fileSessionStore.load("a"), "both");
+  assert.equal(await fileSessionStore.load("b"), "both");
+  await fileSessionStore.removeAll(["a", "b"]);
+  assert.equal(await fileSessionStore.loadNewest(["a", "b"]), null);
   console.log("shared-session: all assertions passed");
 } finally {
   await mcp?.close().catch(() => {});
