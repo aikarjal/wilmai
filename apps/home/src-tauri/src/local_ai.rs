@@ -976,6 +976,8 @@ mod tests {
             "normal setup/requirements checks work again after a failed update"
         );
     }
+    // Unix only: it reads `ps` and kills a process group (Home's tests then compile on Windows too).
+    #[cfg(unix)]
     #[test]
     fn crashed_parent_does_not_leave_runtime_behind() {
         let mut parent = Command::new("/bin/sleep").arg("60").spawn().unwrap();
