@@ -219,6 +219,22 @@ try {
     assert.match(saved.note, /no keychain/);
   }
 
+  // --- A keychain that is there but refuses (locked): logging in again saves to the file, and the note says why.
+  {
+    useFolder("locked");
+    await login();
+    await json(["config", "secrets", "auto"]);
+    await setKeychain({ ...(await keychain()), fail: { get: "refused", set: "refused", delete: "refused" } });
+    const back = await json(["config", "secrets", "file"], {}, 4);
+    assert.deepEqual(back.moved.map((m) => m.outcome), ["failed"], "can't move it out while locked");
+    assert.equal(back.setting, "file", "but new logins go to the file");
+    const saved = await login();
+    assert.equal(saved.secrets, "file");
+    assert.match(saved.note, /couldn't be used just now/);
+    assert.doesNotMatch(saved.note, /no keychain/);
+    assert.ok((await config()).profiles[0].passwordObfuscated, "password in the file");
+  }
+
   // --- The environment variable only decides where new logins go: it never moves saved ones.
   {
     useFolder("env-only");

@@ -257,6 +257,8 @@ const sameAccountAs = (tenantUrl: string, username: string) => (p: StoredProfile
   normalizeTenantUrl(p.tenantUrl) === normalizeTenantUrl(tenantUrl) && p.username.toLowerCase() === username.toLowerCase();
 
 const FILE_FALLBACK_NOTE = "Saved in WilmAI's file on this computer: there is no keychain WilmAI can use here.";
+/** The keychain is there but refused the write just now (locked, or the user said no). */
+const KEYCHAIN_REFUSED_NOTE = "Saved in WilmAI's file on this computer: the keychain couldn't be used just now (it may be locked).";
 
 /**
  * Decide where a login's secrets go and check the keychain can be used,
@@ -346,7 +348,7 @@ export async function saveLogin(
     } catch (err) {
       // `keychain` never quietly saves to the file; `auto` and `file` do, and say so.
       if (effectiveSecretStore(config.secretStore) === "keychain") throw err;
-      note = FILE_FALLBACK_NOTE;
+      note = err instanceof SecretStoreError && err.reason === "unavailable" ? FILE_FALLBACK_NOTE : KEYCHAIN_REFUSED_NOTE;
       secretFields = fileSecretFields(secrets);
     }
   } else {

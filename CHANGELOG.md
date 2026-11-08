@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.5.1 (unreleased)
+
+**In short:** when the keychain is locked, WilmAI now says so, and the help says to keep the file on servers, a Mac used as a server too.
+
+### Fixed
+
+- **A login saved in the file because the keychain refused it** (locked, or someone said no) now says "the keychain couldn't be used just now (it may be locked)". Before, it said there was no keychain on the computer, which is only true where there's none, such as headless Linux.
+- **`wilma help config`** says to keep `file` on servers and for unattended runs, a Mac used as a server too: there `auto` picks the Keychain, which can be locked after a restart or over SSH.
+
 ## 2.5.0 (2026-11-08)
 
 _Releases: wilma-cli 2.5.0, wilma-client 1.10.0, WilmAI Home 0.4.0._
